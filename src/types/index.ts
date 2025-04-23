@@ -4,6 +4,7 @@ export interface User {
   email: string;
   role: 'admin' | 'user';
   name: string;
+  password?: string;
 }
 
 export interface Cafe {

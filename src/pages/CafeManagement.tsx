@@ -5,13 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Camera, MapPin } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { mexicoLocations } from '@/data/mexicoLocations';
 import { toast } from 'sonner';
 
 const CafeManagement: React.FC = () => {
   const { addCafe, getCafeSize } = useData();
+  const { user } = useAuth();
   
   const [formState, setFormState] = useState({
     name: '',
@@ -23,13 +25,10 @@ const CafeManagement: React.FC = () => {
     photoUrl: '',
     governorate: '',
     city: '',
-    latitude: null as number | null,
-    longitude: null as number | null,
   });
   
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Update available cities when governorate changes
@@ -76,32 +75,6 @@ const CafeManagement: React.FC = () => {
     }
   };
 
-  const getCurrentLocation = () => {
-    setIsGettingLocation(true);
-    
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setFormState(prev => ({
-            ...prev,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          }));
-          toast.success("Location captured successfully");
-          setIsGettingLocation(false);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          toast.error("Failed to get location. Please check permissions.");
-          setIsGettingLocation(false);
-        }
-      );
-    } else {
-      toast.error("Geolocation is not supported by this browser");
-      setIsGettingLocation(false);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -128,10 +101,9 @@ const CafeManagement: React.FC = () => {
         numberOfTables: formState.numberOfTables,
         status: formState.status as 'Pending' | 'Visited' | 'Contracted',
         photoUrl: formState.photoUrl,
-        latitude: formState.latitude ?? undefined,
-        longitude: formState.longitude ?? undefined,
         governorate: formState.governorate,
-        city: formState.city
+        city: formState.city,
+        createdBy: user?.name || 'Unknown'
       });
       
       // Reset form
@@ -145,8 +117,6 @@ const CafeManagement: React.FC = () => {
         photoUrl: '',
         governorate: '',
         city: '',
-        latitude: null,
-        longitude: null,
       });
       setPhotoPreview(null);
       
@@ -308,59 +278,37 @@ const CafeManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Photo and GPS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="photo">Cafe Photo</Label>
-                <div className="flex items-center">
-                  <Label 
-                    htmlFor="photo" 
-                    className="flex items-center justify-center h-10 px-4 border border-custom-red rounded-md cursor-pointer hover:bg-gray-100"
-                  >
-                    <Camera className="mr-2 h-5 w-5" />
-                    <span>Choose Photo</span>
-                  </Label>
-                  <Input 
-                    id="photo" 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handlePhotoChange}
-                    className="hidden" 
-                  />
-                </div>
-                
-                {photoPreview && (
-                  <div className="mt-2">
-                    <div className="w-full h-40 bg-gray-100 rounded-md overflow-hidden">
-                      <img 
-                        src={photoPreview} 
-                        alt="Cafe preview" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </div>
-                )}
+            {/* Photo */}
+            <div className="space-y-2">
+              <Label htmlFor="photo">Cafe Photo</Label>
+              <div className="flex items-center">
+                <Label 
+                  htmlFor="photo" 
+                  className="flex items-center justify-center h-10 px-4 border border-custom-red rounded-md cursor-pointer hover:bg-gray-100"
+                >
+                  <Camera className="mr-2 h-5 w-5" />
+                  <span>Choose Photo</span>
+                </Label>
+                <Input 
+                  id="photo" 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handlePhotoChange}
+                  className="hidden" 
+                />
               </div>
               
-              <div className="space-y-2">
-                <Label>GPS Location</Label>
-                <Button 
-                  type="button" 
-                  onClick={getCurrentLocation} 
-                  disabled={isGettingLocation}
-                  className="w-full flex justify-center items-center bg-custom-red hover:bg-red-700"
-                >
-                  <MapPin className="mr-2 h-5 w-5" />
-                  {isGettingLocation ? "Getting Location..." : "Capture Current Location"}
-                </Button>
-                
-                {formState.latitude && formState.longitude && (
-                  <div className="text-sm mt-2">
-                    <p>Latitude: {formState.latitude.toFixed(6)}</p>
-                    <p>Longitude: {formState.longitude.toFixed(6)}</p>
+              {photoPreview && (
+                <div className="mt-2">
+                  <div className="w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                    <img 
+                      src={photoPreview} 
+                      alt="Cafe preview" 
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </CardContent>
           <CardFooter>

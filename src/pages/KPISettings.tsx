@@ -4,10 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useData } from '@/contexts/DataContext';
+import PasswordProtection from '@/components/PasswordProtection';
 
 const KPISettings: React.FC = () => {
   const { kpiSettings, updateKPISettings } = useData();
   const [settings, setSettings] = useState({ ...kpiSettings });
+  const [authenticated, setAuthenticated] = useState(false);
 
   // Update local state when kpiSettings change
   useEffect(() => {
@@ -37,6 +39,11 @@ const KPISettings: React.FC = () => {
     // Update global state
     updateKPISettings({ [field]: numValue });
   };
+
+  // If not authenticated, show password protection
+  if (!authenticated) {
+    return <PasswordProtection onAuthenticate={() => setAuthenticated(true)} title="KPI Settings" />;
+  }
 
   // Calculate derived values
   const kpiSalaryPercentage = 100 - settings.basicSalaryPercentage;

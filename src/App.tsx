@@ -15,6 +15,7 @@ import KPISettings from "./pages/KPISettings";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/AppLayout";
+import UserApp from "./pages/UserApp";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/user-app" element={<UserApp />} />
               
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />

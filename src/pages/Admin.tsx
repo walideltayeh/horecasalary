@@ -1,18 +1,80 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Navigate } from 'react-router-dom';
+import PasswordProtection from '@/components/PasswordProtection';
+import { toast } from 'sonner';
+import { User } from '@/types';
 
 const Admin: React.FC = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, addUser } = useAuth();
   const { cafes, getCafeSize } = useData();
+  const [authenticated, setAuthenticated] = useState(false);
   
+  // State for new user form
+  const [newUser, setNewUser] = useState({
+    email: '',
+    name: '',
+    password: '',
+    role: 'user' as 'admin' | 'user'
+  });
+  const [isAddingUser, setIsAddingUser] = useState(false);
+
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
   }
+  
+  if (!authenticated) {
+    return <PasswordProtection onAuthenticate={() => setAuthenticated(true)} title="Admin Panel" />;
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewUser(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleRoleChange = (value: string) => {
+    setNewUser(prev => ({ ...prev, role: value as 'admin' | 'user' }));
+  };
+
+  const handleAddUser = () => {
+    setIsAddingUser(true);
+    
+    try {
+      // Validate form
+      if (!newUser.email || !newUser.name || !newUser.password) {
+        toast.error("Please fill in all fields");
+        return;
+      }
+      
+      // Add user
+      addUser({
+        email: newUser.email,
+        name: newUser.name,
+        password: newUser.password,
+        role: newUser.role
+      });
+      
+      // Reset form
+      setNewUser({
+        email: '',
+        name: '',
+        password: '',
+        role: 'user'
+      });
+      
+      toast.success("User added successfully");
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
   
   return (
     <div className="space-y-8">
@@ -21,6 +83,109 @@ const Admin: React.FC = () => {
         <p className="text-gray-600">Monitor user activity and cafe data</p>
       </div>
       
+      {/* User Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle>User Management</CardTitle>
+          <CardDescription>Add and manage users</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                name="email"
+                value={newUser.email}
+                onChange={handleInputChange}
+                placeholder="Enter user email" 
+                className="input-with-red-outline"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input 
+                id="name" 
+                name="name"
+                value={newUser.name}
+                onChange={handleInputChange}
+                placeholder="Enter user name" 
+                className="input-with-red-outline"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                name="password"
+                type="password"
+                value={newUser.password}
+                onChange={handleInputChange}
+                placeholder="Enter user password" 
+                className="input-with-red-outline"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select
+                value={newUser.role}
+                onValueChange={handleRoleChange}
+              >
+                <SelectTrigger id="role" className="input-with-red-outline">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <Button
+            onClick={handleAddUser}
+            disabled={isAddingUser}
+            className="w-full bg-custom-red hover:bg-red-700"
+          >
+            {isAddingUser ? 'Adding...' : 'Add User'}
+          </Button>
+        </CardContent>
+      </Card>
+      
+      {/* User Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle>User Activity</CardTitle>
+          <CardDescription>Review user performance and created cafes</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Cafes Created</TableHead>
+                  <TableHead>Cafe Visits</TableHead>
+                  <TableHead>Contracts</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {/* This section will be populated from the database */}
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                    User activity data will appear here when users create cafes
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Cafe Database */}
       <Card>
         <CardHeader>
           <CardTitle>Cafe Database</CardTitle>
@@ -36,13 +201,14 @@ const Admin: React.FC = () => {
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Owner</TableHead>
+                  <TableHead>Created By</TableHead>
                   <TableHead>Date Added</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {cafes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                       No cafes found. Add some cafes to see them here.
                     </TableCell>
                   </TableRow>
@@ -67,6 +233,7 @@ const Admin: React.FC = () => {
                         </span>
                       </TableCell>
                       <TableCell>{cafe.ownerName}</TableCell>
+                      <TableCell>{cafe.createdBy}</TableCell>
                       <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))
@@ -77,6 +244,7 @@ const Admin: React.FC = () => {
         </CardContent>
       </Card>
       
+      {/* System Information */}
       <Card>
         <CardHeader>
           <CardTitle>System Information</CardTitle>
