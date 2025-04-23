@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Cafe, KPISettings, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
@@ -142,11 +143,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateCafeStatus = (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => {
     setCafes(prev => 
-      prev.map(cafe => 
-        cafe.id === cafeId 
-          ? { ...cafe, status } 
-          : cafe
-      )
+      prev.map(cafe => {
+        // If changing to Contracted status, we automatically consider it visited too
+        if (cafe.id === cafeId) {
+          return { ...cafe, status };
+        }
+        return cafe;
+      })
     );
   };
 
@@ -176,6 +179,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getVisitCounts = () => {
+    // Consider both Visited and Contracted cafes as visited
     const visitedCafes = cafes.filter(cafe => cafe.status === 'Visited' || cafe.status === 'Contracted');
     
     const small = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length;
@@ -196,6 +200,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getUserVisitCounts = (userId: string) => {
+    // Consider both Visited and Contracted cafes as visited
     const visitedCafes = cafes.filter(cafe => 
       (cafe.status === 'Visited' || cafe.status === 'Contracted') && cafe.createdBy === userId
     );

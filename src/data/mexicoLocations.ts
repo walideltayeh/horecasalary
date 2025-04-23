@@ -1,4 +1,3 @@
-
 import { MexicoLocation } from '@/types';
 
 export const mexicoLocations: MexicoLocation[] = [
@@ -20,7 +19,21 @@ export const mexicoLocations: MexicoLocation[] = [
       "Tláhuac",
       "Magdalena Contreras",
       "Cuajimalpa",
-      "Milpa Alta"
+      "Milpa Alta",
+      "Polanco",
+      "Condesa",
+      "Roma",
+      "Napoles",
+      "Del Valle",
+      "Santa Fe",
+      "Lomas de Chapultepec",
+      "Doctores",
+      "Juárez",
+      "Anzures",
+      "Narvarte",
+      "San Ángel",
+      "Pedregal",
+      "Interlomas"
     ]
   },
   {
