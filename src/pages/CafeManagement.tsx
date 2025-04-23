@@ -103,7 +103,7 @@ const CafeManagement: React.FC = () => {
         photoUrl: formState.photoUrl,
         governorate: formState.governorate,
         city: formState.city,
-        createdBy: user?.name || 'Unknown'
+        createdBy: user?.id || 'unknown'
       });
       
       // Reset form

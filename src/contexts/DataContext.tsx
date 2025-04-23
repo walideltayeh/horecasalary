@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Cafe, KPISettings, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
@@ -7,7 +6,7 @@ import { toast } from 'sonner';
 interface DataContextType {
   cafes: Cafe[];
   kpiSettings: KPISettings;
-  addCafe: (cafe: Omit<Cafe, 'id' | 'createdAt' | 'createdBy'>) => void;
+  addCafe: (cafe: Omit<Cafe, 'id' | 'createdAt'>) => void;
   updateKPISettings: (settings: Partial<KPISettings>) => void;
   getCafeSize: (numberOfHookahs: number) => CafeSize;
   calculateSalary: () => {
@@ -93,14 +92,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('horeca-kpi-settings', JSON.stringify(kpiSettings));
   }, [kpiSettings]);
 
-  const addCafe = (cafeData: Omit<Cafe, 'id' | 'createdAt' | 'createdBy'>) => {
+  const addCafe = (cafeData: Omit<Cafe, 'id' | 'createdAt'>) => {
     if (!user) return;
 
     const newCafe: Cafe = {
       ...cafeData,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
-      createdBy: user.id,
     };
 
     setCafes(prev => [...prev, newCafe]);
