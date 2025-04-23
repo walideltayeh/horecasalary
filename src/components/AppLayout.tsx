@@ -35,10 +35,12 @@ const AppLayout: React.FC = () => {
                 <Building className="mr-2 h-5 w-5" />
                 <span>Cafe Management</span>
               </Link>
-              <Link to="/kpi-settings" className={`flex items-center p-2 rounded-md ${isActive('/kpi-settings')}`}>
-                <Settings className="mr-2 h-5 w-5" />
-                <span>KPI Settings</span>
-              </Link>
+              {isAdmin && (
+                <Link to="/kpi-settings" className={`flex items-center p-2 rounded-md ${isActive('/kpi-settings')}`}>
+                  <Settings className="mr-2 h-5 w-5" />
+                  <span>KPI Settings</span>
+                </Link>
+              )}
               {isAdmin && (
                 <Link to="/admin" className={`flex items-center p-2 rounded-md ${isActive('/admin')}`}>
                   <Users className="mr-2 h-5 w-5" />

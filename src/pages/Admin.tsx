@@ -6,26 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Navigate } from 'react-router-dom';
 import PasswordProtection from '@/components/PasswordProtection';
 import { toast } from 'sonner';
 import { User } from '@/types';
+import { Download } from 'lucide-react';
+import UserDashboard from '@/components/UserDashboard';
+import CafeList from '@/components/CafeList';
 
 const Admin: React.FC = () => {
-  const { isAdmin, addUser } = useAuth();
+  const { isAdmin, addUser, users } = useAuth();
   const { cafes, getCafeSize } = useData();
   const [authenticated, setAuthenticated] = useState(false);
   
   // State for new user form
   const [newUser, setNewUser] = useState({
-    email: '',
     name: '',
     password: '',
     role: 'user' as 'admin' | 'user'
   });
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<string>("all");
 
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
@@ -49,14 +53,13 @@ const Admin: React.FC = () => {
     
     try {
       // Validate form
-      if (!newUser.email || !newUser.name || !newUser.password) {
+      if (!newUser.name || !newUser.password) {
         toast.error("Please fill in all fields");
         return;
       }
       
       // Add user
       addUser({
-        email: newUser.email,
         name: newUser.name,
         password: newUser.password,
         role: newUser.role
@@ -64,7 +67,6 @@ const Admin: React.FC = () => {
       
       // Reset form
       setNewUser({
-        email: '',
         name: '',
         password: '',
         role: 'user'
@@ -74,6 +76,31 @@ const Admin: React.FC = () => {
     } finally {
       setIsAddingUser(false);
     }
+  };
+
+  const exportToExcel = () => {
+    // Prepare cafe data for export
+    const cafesData = cafes.map(cafe => ({
+      "Name": cafe.name,
+      "Size": getCafeSize(cafe.numberOfHookahs),
+      "Location": `${cafe.governorate}, ${cafe.city}`,
+      "Status": cafe.status,
+      "Owner": cafe.ownerName,
+      "Owner Number": cafe.ownerNumber,
+      "Tables": cafe.numberOfTables,
+      "Hookahs": cafe.numberOfHookahs,
+      "Created By": cafe.createdBy,
+      "Date Added": new Date(cafe.createdAt).toLocaleDateString()
+    }));
+
+    // Create worksheet
+    const worksheet = window.XLSX.utils.json_to_sheet(cafesData);
+    const workbook = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(workbook, worksheet, "Cafes");
+    
+    // Generate Excel file and download
+    window.XLSX.writeFile(workbook, "HoReCa_Cafes_Export.xlsx");
+    toast.success("Cafes data exported successfully");
   };
   
   return (
@@ -91,18 +118,6 @@ const Admin: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                name="email"
-                value={newUser.email}
-                onChange={handleInputChange}
-                placeholder="Enter user email" 
-                className="input-with-red-outline"
-              />
-            </div>
-            
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input 
@@ -155,41 +170,11 @@ const Admin: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* User Activity */}
+      {/* User List */}
       <Card>
         <CardHeader>
-          <CardTitle>User Activity</CardTitle>
-          <CardDescription>Review user performance and created cafes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Cafes Created</TableHead>
-                  <TableHead>Cafe Visits</TableHead>
-                  <TableHead>Contracts</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* This section will be populated from the database */}
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
-                    User activity data will appear here when users create cafes
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Cafe Database */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cafe Database</CardTitle>
-          <CardDescription>All cafes in the system</CardDescription>
+          <CardTitle>User List</CardTitle>
+          <CardDescription>Users registered in the system</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -197,50 +182,103 @@ const Admin: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Created By</TableHead>
-                  <TableHead>Date Added</TableHead>
+                  <TableHead>Role</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cafes.length === 0 ? (
+                {users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
-                      No cafes found. Add some cafes to see them here.
+                    <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                      No users found. Add some users to see them here.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  cafes.map((cafe) => (
-                    <TableRow key={cafe.id}>
-                      <TableCell className="font-medium">{cafe.name}</TableCell>
+                  users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>
-                        <span className={getCafeSize(cafe.numberOfHookahs) === 'In Negotiation' ? 'text-orange-500' : 
-                                         getCafeSize(cafe.numberOfHookahs) === 'Small' ? 'text-blue-500' : 
-                                         getCafeSize(cafe.numberOfHookahs) === 'Medium' ? 'text-green-500' : 
-                                         'text-purple-500'}>
-                          {getCafeSize(cafe.numberOfHookahs)}
+                        <span className={user.role === 'admin' ? 'text-custom-red' : 'text-gray-600'}>
+                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                         </span>
                       </TableCell>
-                      <TableCell>{cafe.governorate}, {cafe.city}</TableCell>
-                      <TableCell>
-                        <span className={cafe.status === 'Contracted' ? 'text-green-500' : 
-                                         cafe.status === 'Visited' ? 'text-blue-500' : 
-                                         'text-gray-500'}>
-                          {cafe.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{cafe.ownerName}</TableCell>
-                      <TableCell>{cafe.createdBy}</TableCell>
-                      <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
           </div>
+        </CardContent>
+      </Card>
+      
+      {/* User Dashboard Tabs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>User Performance Dashboard</CardTitle>
+          <CardDescription>View performance metrics by user</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
+            <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              <TabsTrigger value="all">All Users</TabsTrigger>
+              {users.filter(u => u.role === 'user').map((user) => (
+                <TabsTrigger key={user.id} value={user.id}>{user.name}</TabsTrigger>
+              ))}
+            </TabsList>
+            <TabsContent value="all" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Cafes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{cafes.length}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Visited Cafes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{cafes.filter(c => c.status === 'Visited' || c.status === 'Contracted').length}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Contracted Cafes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{cafes.filter(c => c.status === 'Contracted').length}</div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            
+            {users.filter(u => u.role === 'user').map((user) => (
+              <TabsContent key={user.id} value={user.id}>
+                <UserDashboard userId={user.id} userName={user.name} />
+              </TabsContent>
+            ))}
+          </Tabs>
+        </CardContent>
+      </Card>
+      
+      {/* Cafe Management */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Cafe Database</CardTitle>
+            <CardDescription>All cafes in the system</CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 border-custom-red text-custom-red hover:bg-red-50"
+            onClick={exportToExcel}
+          >
+            <Download className="h-4 w-4" /> Export to Excel
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <CafeList adminView={true} />
         </CardContent>
       </Card>
       
