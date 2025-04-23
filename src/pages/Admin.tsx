@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +15,13 @@ import { User } from '@/types';
 import { Download } from 'lucide-react';
 import UserDashboard from '@/components/UserDashboard';
 import CafeList from '@/components/CafeList';
+
+// This is needed to fix the TypeScript error with the XLSX library
+declare global {
+  interface Window {
+    XLSX: any;
+  }
+}
 
 const Admin: React.FC = () => {
   const { isAdmin, addUser, users } = useAuth();
