@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Default admin user
       const defaultAdmin: User = {
         id: 'admin',
-        email: '',
+        email: 'admin@horeca.app',
         name: 'Admin',
         role: 'admin',
         password: 'AlFakher2025',
