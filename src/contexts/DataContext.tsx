@@ -83,9 +83,9 @@ interface DataContextType {
 
 // Default KPI settings
 const DEFAULT_KPI_SETTINGS: KPISettings = {
-  totalPackage: 5000,
-  basicSalaryPercentage: 60,
-  visitKpiPercentage: 40,
+  totalPackage: 2000,
+  basicSalaryPercentage: 20,
+  visitKpiPercentage: 80,
   visitThresholdPercentage: 70,
   targetVisitsLarge: 30,
   targetVisitsMedium: 50,
