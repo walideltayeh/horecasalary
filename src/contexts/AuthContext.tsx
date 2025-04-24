@@ -2,14 +2,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@/types';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 type AuthContextType = {
   user: User | null;
   users: User[];
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAdmin: boolean;
-  addUser: (userData: { name: string; password: string; role: 'admin' | 'user' }) => void;
+  addUser: (userData: { name: string; password: string; role: 'admin' | 'user' }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,13 +19,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   
-  // Load user and users from localStorage on initial load
+  // Load users from localStorage on initial load
   useEffect(() => {
-    const storedUser = localStorage.getItem('horeca-user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-
     const storedUsers = localStorage.getItem('horeca-users');
     if (storedUsers) {
       setUsers(JSON.parse(storedUsers));
@@ -40,6 +36,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUsers([defaultAdmin]);
       localStorage.setItem('horeca-users', JSON.stringify([defaultAdmin]));
     }
+    
+    // Setup Supabase auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session && session.user) {
+          // Create a user object from Supabase session
+          const userRole = session.user.user_metadata?.role || 'user';
+          const supabaseUser: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            role: userRole === 'admin' ? 'admin' : 'user',
+          };
+          setUser(supabaseUser);
+        } else {
+          setUser(null);
+        }
+      }
+    );
+    
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && session.user) {
+        const userRole = session.user.user_metadata?.role || 'user';
+        const supabaseUser: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          role: userRole === 'admin' ? 'admin' : 'user',
+        };
+        setUser(supabaseUser);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Save users to localStorage whenever they change
@@ -49,40 +82,112 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [users]);
 
-  const login = (name: string, password: string): boolean => {
-    // Find user with matching credentials
-    const foundUser = users.find(u => 
-      (u.email === name || u.name === name) && u.password === password
-    );
-    
-    if (foundUser) {
-      // Create a clone without the password for security
-      const { password, ...secureUser } = foundUser;
-      setUser(secureUser);
-      localStorage.setItem('horeca-user', JSON.stringify(secureUser));
-      toast.success(`Welcome, ${secureUser.name}!`);
-      return true;
-    } else {
-      toast.error('Invalid credentials');
+  const login = async (name: string, password: string): Promise<boolean> => {
+    try {
+      // First try to log in with Supabase using email authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: name.includes('@') ? name : `${name}@horeca.app`,
+        password: password,
+      });
+      
+      if (error) {
+        // If Supabase login fails, try legacy authentication
+        // Find user with matching credentials in localStorage
+        const foundUser = users.find(u => 
+          (u.email === name || u.name === name) && u.password === password
+        );
+        
+        if (foundUser) {
+          // If found in legacy system, migrate to Supabase
+          const email = foundUser.email || `${foundUser.name}@horeca.app`;
+          
+          // Create new user in Supabase
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name: foundUser.name,
+                role: foundUser.role,
+              }
+            }
+          });
+          
+          if (signUpError) {
+            toast.error('Failed to migrate account: ' + signUpError.message);
+            return false;
+          }
+          
+          // Login with newly created account
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (loginError) {
+            toast.error('Login failed after migration: ' + loginError.message);
+            return false;
+          }
+          
+          toast.success(`Welcome, ${foundUser.name}! Your account has been migrated.`);
+          return true;
+        } else {
+          toast.error('Invalid credentials');
+          return false;
+        }
+      }
+      
+      if (data.user) {
+        toast.success(`Welcome, ${data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User'}!`);
+        return true;
+      }
+      
+      return false;
+    } catch (err) {
+      console.error('Login error:', err);
+      toast.error('An error occurred during login.');
       return false;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('horeca-user');
     toast.info('Logged out successfully');
   };
 
-  const addUser = (userData: { name: string; password: string; role: 'admin' | 'user' }) => {
-    const newUser: User = {
-      id: Date.now().toString(),
-      email: '',
-      ...userData,
-    };
-    
-    setUsers(prev => [...prev, newUser]);
-    toast.success(`User ${userData.name} added successfully`);
+  const addUser = async (userData: { name: string; password: string; role: 'admin' | 'user' }) => {
+    try {
+      const email = `${userData.name.toLowerCase().replace(/\s+/g, '.')}@horeca.app`;
+      
+      // Create user in Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role,
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      // Also add to local storage for backward compatibility
+      const newUser: User = {
+        id: data.user?.id || Date.now().toString(),
+        email,
+        name: userData.name,
+        role: userData.role,
+        password: userData.password,
+      };
+      
+      setUsers(prev => [...prev, newUser]);
+      toast.success(`User ${userData.name} added successfully`);
+    } catch (error: any) {
+      toast.error(`Failed to add user: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const isAdmin = user?.role === 'admin';

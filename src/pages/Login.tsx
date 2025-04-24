@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Login: React.FC = () => {
   const [name, setName] = useState('');
@@ -29,11 +30,17 @@ const Login: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const success = login(name, password);
-      if (success) {
-        // Navigation will happen automatically via the conditional redirect
+      // Using await with the updated async login function
+      const success = await login(name, password);
+      
+      if (!success) {
+        // Error toast is shown in the login function
+        setIsLoading(false);
       }
-    } finally {
+      // If success is true, the user will be redirected by the conditional above
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('An unexpected error occurred');
       setIsLoading(false);
     }
   };
@@ -48,13 +55,13 @@ const Login: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Username</Label>
+              <Label htmlFor="name">Username or Email</Label>
               <Input
                 id="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Enter your username or email"
                 className="input-with-red-outline"
                 required
               />
