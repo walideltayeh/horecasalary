@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login: React.FC = () => {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -28,16 +29,66 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-      // Using await with the updated async login function
-      const success = await login(name, password);
+      // For Admin user, we need to handle it differently
+      if (username.toLowerCase() === 'admin') {
+        if (password === 'AlFakher2025') {
+          // Try to sign in with admin@horeca.app
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: 'admin@horeca.app',
+            password: 'AlFakher2025',
+          });
+          
+          if (error) {
+            // If admin user doesn't exist in Supabase yet, create it
+            const { error: signUpError } = await supabase.auth.signUp({
+              email: 'admin@horeca.app',
+              password: 'AlFakher2025',
+              options: {
+                data: {
+                  name: 'Admin',
+                  role: 'admin'
+                }
+              }
+            });
+            
+            if (signUpError) {
+              toast.error('Failed to create admin account: ' + signUpError.message);
+              setIsLoading(false);
+              return;
+            }
+            
+            // Login again with newly created account
+            const { error: loginError } = await supabase.auth.signInWithPassword({
+              email: 'admin@horeca.app',
+              password: 'AlFakher2025',
+            });
+            
+            if (loginError) {
+              toast.error('Login failed after admin creation: ' + loginError.message);
+              setIsLoading(false);
+              return;
+            }
+            
+            toast.success('Welcome, Admin!');
+          } else {
+            toast.success('Welcome back, Admin!');
+          }
+          return; // Auth state change will handle redirect
+        } else {
+          toast.error('Invalid admin password');
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // For regular users, use the standard login flow
+      const success = await login(username, password);
       
       if (!success) {
-        // Error toast is shown in the login function
         setIsLoading(false);
       }
-      // If success is true, the user will be redirected by the conditional above
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');
@@ -55,12 +106,12 @@ const Login: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Username or Email</Label>
+              <Label htmlFor="username">Username or Email</Label>
               <Input
-                id="name"
+                id="username"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username or email"
                 className="input-with-red-outline"
                 required
