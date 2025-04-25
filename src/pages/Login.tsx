@@ -49,6 +49,7 @@ const Login: React.FC = () => {
         if (checkError) {
           console.log('Admin user not found or login error, creating account', checkError);
           
+          // Handle "Email not confirmed" error - attempt to create the account regardless
           // Create admin account in Supabase
           const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
             email: 'admin@horeca.app',
@@ -57,7 +58,8 @@ const Login: React.FC = () => {
               data: {
                 name: 'Admin',
                 role: 'admin'
-              }
+              },
+              emailRedirectTo: window.location.origin // Add redirect URL
             }
           });
           
@@ -68,16 +70,24 @@ const Login: React.FC = () => {
             return;
           }
           
-          // Login with newly created account
-          const { error: loginError } = await supabase.auth.signInWithPassword({
+          // For development purposes, attempt to auto-confirm the email using admin sign-in
+          // This works if "Confirm email" is disabled in Supabase Auth settings
+          const { data: adminData, error: adminLoginError } = await supabase.auth.signInWithPassword({
             email: 'admin@horeca.app',
             password: 'AlFakher2025',
           });
           
-          if (loginError) {
-            toast.error('Login failed after admin creation: ' + loginError.message);
-            console.error('Admin login error after creation:', loginError);
+          if (adminLoginError) {
+            if (adminLoginError.message.includes('Email not confirmed')) {
+              toast.warning('Admin account created but email confirmation is required. Please check Supabase Auth settings to disable email confirmation for testing.');
+            } else {
+              toast.error('Login failed after admin creation: ' + adminLoginError.message);
+            }
+            console.error('Admin login error after creation:', adminLoginError);
             setIsLoading(false);
+            
+            // Show helpful message
+            toast.info('For testing: You may need to disable email confirmation in Supabase Auth settings');
             return;
           }
           
@@ -138,7 +148,7 @@ const Login: React.FC = () => {
               />
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-2">
             <Button 
               type="submit" 
               className="w-full bg-custom-red hover:bg-red-700"
@@ -146,6 +156,9 @@ const Login: React.FC = () => {
             >
               {isLoading ? "Logging in..." : "Login"}
             </Button>
+            <p className="text-xs text-gray-500">
+              Note: For admin login, use admin/AlFakher2025
+            </p>
           </CardFooter>
         </form>
       </Card>
