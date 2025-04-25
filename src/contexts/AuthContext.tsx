@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@/types';
 import { toast } from 'sonner';
@@ -11,6 +10,7 @@ type AuthContextType = {
   logout: () => void;
   isAdmin: boolean;
   addUser: (userData: { name: string; password: string; role: 'admin' | 'user' }) => Promise<void>;
+  deleteUser: (userId: string) => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -196,6 +196,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteUser = async (userId: string): Promise<boolean> => {
+    try {
+      // Check if trying to delete admin
+      if (userId === 'admin' || users.find(u => u.id === userId && u.role === 'admin' && u.name === 'Admin')) {
+        toast.error("Cannot delete the main admin user");
+        return false;
+      }
+      
+      // First, delete from Supabase (if it's a Supabase user)
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        // If the error is a 404, the user might not exist in Supabase yet (local only)
+        // or it might be a permissions issue (not an admin)
+        console.error("Failed to delete from Supabase:", error);
+        
+        // We'll still delete from local storage if the user exists there
+      }
+      
+      // Update local users list
+      setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
+      toast.success("User deleted successfully");
+      return true;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("Failed to delete user");
+      return false;
+    }
+  };
+
   const isAdmin = user?.role === 'admin';
 
   return (
@@ -207,6 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         isAdmin,
         addUser,
+        deleteUser,
       }}
     >
       {children}

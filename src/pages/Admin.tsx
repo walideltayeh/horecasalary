@@ -12,7 +12,7 @@ import { Navigate } from 'react-router-dom';
 import PasswordProtection from '@/components/PasswordProtection';
 import { toast } from 'sonner';
 import { User } from '@/types';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import UserDashboard from '@/components/UserDashboard';
 import CafeList from '@/components/CafeList';
 
@@ -24,9 +24,10 @@ declare global {
 }
 
 const Admin: React.FC = () => {
-  const { isAdmin, addUser, users } = useAuth();
+  const { isAdmin, addUser, deleteUser, users } = useAuth();
   const { cafes, getCafeSize } = useData();
   const [authenticated, setAuthenticated] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   
   // State for new user form
   const [newUser, setNewUser] = useState({
@@ -81,6 +82,21 @@ const Admin: React.FC = () => {
       toast.success("User added successfully");
     } finally {
       setIsAddingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (confirm(`Are you sure you want to delete the user "${userName}"? This action cannot be undone.`)) {
+      setIsDeletingUser(userId);
+      try {
+        const success = await deleteUser(userId);
+        if (success && selectedTab === userId) {
+          // If we're on the deleted user's tab, switch to "all"
+          setSelectedTab("all");
+        }
+      } finally {
+        setIsDeletingUser(null);
+      }
     }
   };
 
@@ -189,12 +205,13 @@ const Admin: React.FC = () => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
                       No users found. Add some users to see them here.
                     </TableCell>
                   </TableRow>
@@ -206,6 +223,21 @@ const Admin: React.FC = () => {
                         <span className={user.role === 'admin' ? 'text-custom-red' : 'text-gray-600'}>
                           {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {/* Don't allow deleting the main admin account */}
+                        {!(user.name === 'Admin' && user.role === 'admin') && (
+                          <Button
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id, user.name)}
+                            disabled={isDeletingUser === user.id}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
