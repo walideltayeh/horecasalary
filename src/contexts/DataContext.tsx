@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Cafe, KPISettings, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
@@ -79,9 +78,9 @@ interface DataContextType {
     large: number;
     total: number;
   };
+  deleteCafe: (cafeId: string) => void;
 }
 
-// Default KPI settings
 const DEFAULT_KPI_SETTINGS: KPISettings = {
   totalPackage: 2000,
   basicSalaryPercentage: 20,
@@ -106,7 +105,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [kpiSettings, setKpiSettings] = useState<KPISettings>(DEFAULT_KPI_SETTINGS);
 
-  // Load data from localStorage on initial load
   useEffect(() => {
     const storedCafes = localStorage.getItem('horeca-cafes');
     if (storedCafes) {
@@ -119,7 +117,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Save data to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('horeca-cafes', JSON.stringify(cafes));
   }, [cafes]);
@@ -144,7 +141,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateCafeStatus = (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => {
     setCafes(prev => 
       prev.map(cafe => {
-        // If changing to Contracted status, we automatically consider it visited too
         if (cafe.id === cafeId) {
           return { ...cafe, status };
         }
@@ -157,7 +153,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setKpiSettings(prev => {
       const updated = { ...prev, ...newSettings };
       
-      // Ensure KPI percentages add up to 100%
       if ('basicSalaryPercentage' in newSettings) {
         updated.basicSalaryPercentage = Math.max(0, Math.min(100, updated.basicSalaryPercentage));
       }
@@ -179,7 +174,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getVisitCounts = () => {
-    // Consider both Visited and Contracted cafes as visited
     const visitedCafes = cafes.filter(cafe => cafe.status === 'Visited' || cafe.status === 'Contracted');
     
     const small = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length;
@@ -200,7 +194,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getUserVisitCounts = (userId: string) => {
-    // Consider both Visited and Contracted cafes as visited
     const visitedCafes = cafes.filter(cafe => 
       (cafe.status === 'Visited' || cafe.status === 'Contracted') && cafe.createdBy === userId
     );
@@ -242,15 +235,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bonusSmallCafe
     } = kpiSettings;
 
-    // Basic values
     const basicSalary = totalPackage * (basicSalaryPercentage / 100);
     const totalKpiSalary = totalPackage - basicSalary;
     
-    // Visit vs Contract split
     const visitKpiSalary = totalKpiSalary * (visitKpiPercentage / 100);
     const contractKpiSalary = totalKpiSalary - visitKpiSalary;
 
-    // Calculate targets and achievements
     const visitCounts = getVisitCounts();
     const contractCounts = getContractCounts();
     
@@ -263,21 +253,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const visitPercentage = totalVisitTarget > 0 ? (visitAchieved / totalVisitTarget) * 100 : 0;
     const contractPercentage = totalContractTarget > 0 ? (contractAchieved / totalContractTarget) * 100 : 0;
     
-    // Threshold checks
     const visitThresholdMet = visitPercentage >= visitThresholdPercentage;
     const contractThresholdMet = contractPercentage >= contractThresholdPercentage;
     
-    // Calculate payouts
     const visitKpiPayout = visitThresholdMet ? visitKpiSalary : 0;
     const contractKpiPayout = contractThresholdMet ? contractKpiSalary : 0;
     
-    // Calculate bonus
     const bonusAmount = 
       (contractCounts.large * bonusLargeCafe) + 
       (contractCounts.medium * bonusMediumCafe) + 
       (contractCounts.small * bonusSmallCafe);
     
-    // Total salary
     const totalSalary = basicSalary + visitKpiPayout + contractKpiPayout + bonusAmount;
     
     const visitThresholdValue = Math.round(totalVisitTarget * (visitThresholdPercentage / 100));
@@ -325,15 +311,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bonusSmallCafe
     } = kpiSettings;
 
-    // Basic values
     const basicSalary = totalPackage * (basicSalaryPercentage / 100);
     const totalKpiSalary = totalPackage - basicSalary;
     
-    // Visit vs Contract split
     const visitKpiSalary = totalKpiSalary * (visitKpiPercentage / 100);
     const contractKpiSalary = totalKpiSalary - visitKpiSalary;
 
-    // Calculate targets and achievements
     const visitCounts = getUserVisitCounts(userId);
     const contractCounts = getUserContractCounts(userId);
     
@@ -346,21 +329,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const visitPercentage = totalVisitTarget > 0 ? (visitAchieved / totalVisitTarget) * 100 : 0;
     const contractPercentage = totalContractTarget > 0 ? (contractAchieved / totalContractTarget) * 100 : 0;
     
-    // Threshold checks
     const visitThresholdMet = visitPercentage >= visitThresholdPercentage;
     const contractThresholdMet = contractPercentage >= contractThresholdPercentage;
     
-    // Calculate payouts
     const visitKpiPayout = visitThresholdMet ? visitKpiSalary : 0;
     const contractKpiPayout = contractThresholdMet ? contractKpiSalary : 0;
     
-    // Calculate bonus
     const bonusAmount = 
       (contractCounts.large * bonusLargeCafe) + 
       (contractCounts.medium * bonusMediumCafe) + 
       (contractCounts.small * bonusSmallCafe);
     
-    // Total salary
     const totalSalary = basicSalary + visitKpiPayout + contractKpiPayout + bonusAmount;
     
     const visitThresholdValue = Math.round(totalVisitTarget * (visitThresholdPercentage / 100));
@@ -390,6 +369,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
+  const deleteCafe = (cafeId: string) => {
+    setCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
+    toast.success("Cafe deleted successfully");
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -404,7 +388,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getVisitCounts,
         getContractCounts,
         getUserVisitCounts,
-        getUserContractCounts
+        getUserContractCounts,
+        deleteCafe
       }}
     >
       {children}
