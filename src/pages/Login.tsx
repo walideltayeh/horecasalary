@@ -31,59 +31,67 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // For Admin user, we need to handle it differently
+      // Special case for Admin user
       if (username.toLowerCase() === 'admin') {
-        if (password === 'AlFakher2025') {
-          // Try to sign in with admin@horeca.app
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: 'admin@horeca.app',
-            password: 'AlFakher2025',
-          });
-          
-          if (error) {
-            // If admin user doesn't exist in Supabase yet, create it
-            const { error: signUpError } = await supabase.auth.signUp({
-              email: 'admin@horeca.app',
-              password: 'AlFakher2025',
-              options: {
-                data: {
-                  name: 'Admin',
-                  role: 'admin'
-                }
-              }
-            });
-            
-            if (signUpError) {
-              toast.error('Failed to create admin account: ' + signUpError.message);
-              setIsLoading(false);
-              return;
-            }
-            
-            // Login again with newly created account
-            const { error: loginError } = await supabase.auth.signInWithPassword({
-              email: 'admin@horeca.app',
-              password: 'AlFakher2025',
-            });
-            
-            if (loginError) {
-              toast.error('Login failed after admin creation: ' + loginError.message);
-              setIsLoading(false);
-              return;
-            }
-            
-            toast.success('Welcome, Admin!');
-          } else {
-            toast.success('Welcome back, Admin!');
-          }
-          return; // Auth state change will handle redirect
-        } else {
+        if (password !== 'AlFakher2025') {
           toast.error('Invalid admin password');
           setIsLoading(false);
           return;
         }
+
+        // First check if admin user exists in Supabase
+        const { data: adminUser, error: checkError } = await supabase.auth.signInWithPassword({
+          email: 'admin@horeca.app',
+          password: 'AlFakher2025',
+        });
+
+        // If admin doesn't exist or there was an error logging in, create the admin account
+        if (checkError) {
+          console.log('Admin user not found or login error, creating account', checkError);
+          
+          // Create admin account in Supabase
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: 'admin@horeca.app',
+            password: 'AlFakher2025',
+            options: {
+              data: {
+                name: 'Admin',
+                role: 'admin'
+              }
+            }
+          });
+          
+          if (signUpError) {
+            toast.error('Failed to create admin account: ' + signUpError.message);
+            console.error('Admin signup error:', signUpError);
+            setIsLoading(false);
+            return;
+          }
+          
+          // Login with newly created account
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email: 'admin@horeca.app',
+            password: 'AlFakher2025',
+          });
+          
+          if (loginError) {
+            toast.error('Login failed after admin creation: ' + loginError.message);
+            console.error('Admin login error after creation:', loginError);
+            setIsLoading(false);
+            return;
+          }
+          
+          toast.success('Welcome, Admin!');
+        } else {
+          // Admin exists and login was successful
+          toast.success('Welcome back, Admin!');
+        }
+        
+        setIsLoading(false);
+        return; // Auth state change will handle redirect
       }
       
-      // For regular users, use the standard login flow
+      // For all other users, use the standard login flow
       const success = await login(username, password);
       
       if (!success) {

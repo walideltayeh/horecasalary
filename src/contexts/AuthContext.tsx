@@ -84,7 +84,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (name: string, password: string): Promise<boolean> => {
     try {
-      // First try to log in with Supabase using email authentication
+      // Special case for Admin user (should be handled in Login.tsx directly)
+      if (name.toLowerCase() === 'admin') {
+        // Admin authentication is handled in Login.tsx
+        return false;
+      }
+      
+      // For regular users, use Supabase authentication
       const { data, error } = await supabase.auth.signInWithPassword({
         email: name.includes('@') ? name : `${name}@horeca.app`,
         password: password,
@@ -145,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     } catch (err) {
       console.error('Login error:', err);
-      toast.error('An error occurred during login.');
+      toast.error('An unexpected error occurred during login.');
       return false;
     }
   };
