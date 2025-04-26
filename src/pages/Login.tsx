@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,11 +13,17 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
+
+  // Debug: Log on component load
+  useEffect(() => {
+    console.log('Login component mounted, current user:', user);
+  }, [user]);
 
   // Redirect authenticated users
   if (user) {
+    console.log('User already authenticated, redirecting based on role:', user.role);
     if (user.role === 'admin') {
       return <Navigate to="/dashboard" />;
     } else {
@@ -34,139 +40,80 @@ const Login: React.FC = () => {
     }
     
     setIsLoading(true);
+    console.log('Starting login process for:', username);
+    
     try {
-      console.log('Login attempt for:', username);
-      
       // Special case for Admin user
       if (username.toLowerCase() === 'admin') {
-        console.log('Attempting admin login');
+        console.log('Using admin login flow');
         if (password !== 'AlFakher2025') {
           toast.error('Invalid admin password');
           setIsLoading(false);
           return;
         }
 
-        // First check if admin user exists in Supabase
-        const {
-          data: authData,
-          error: checkError
-        } = await supabase.auth.signInWithPassword({
-          email: 'admin@horeca.app',
-          password: 'AlFakher2025'
-        });
-
-        console.log('Admin login response:', authData, checkError);
-
-        // If admin doesn't exist or there was an error logging in, create the admin account
-        if (checkError) {
-          console.log('Admin user not found or login error, creating account', checkError);
-
-          // Create admin account in Supabase
-          const {
-            data: signUpData,
-            error: signUpError
-          } = await supabase.auth.signUp({
-            email: 'admin@horeca.app',
-            password: 'AlFakher2025',
-            options: {
-              data: {
-                name: 'Admin',
-                role: 'admin'
-              },
-              emailRedirectTo: window.location.origin
-            }
-          });
-          
-          console.log('Admin signup response:', signUpData, signUpError);
-          
-          if (signUpError) {
-            toast.error('Failed to create admin account: ' + signUpError.message);
-            console.error('Admin signup error:', signUpError);
-            setIsLoading(false);
-            return;
-          }
-
-          // For development purposes, attempt to auto-confirm the email using admin sign-in
-          // This works if "Confirm email" is disabled in Supabase Auth settings
-          const {
-            data: adminData,
-            error: adminLoginError
-          } = await supabase.auth.signInWithPassword({
-            email: 'admin@horeca.app',
-            password: 'AlFakher2025'
-          });
-          
-          console.log('Admin login after creation response:', adminData, adminLoginError);
-          
-          if (adminLoginError) {
-            if (adminLoginError.message.includes('Email not confirmed')) {
-              toast.warning('Admin account created but email confirmation is required. Please check Supabase Auth settings to disable email confirmation for testing.');
-            } else {
-              toast.error('Login failed after admin creation: ' + adminLoginError.message);
-            }
-            console.error('Admin login error after creation:', adminLoginError);
-            setIsLoading(false);
-
-            // Show helpful message
-            toast.info('For testing: You may need to disable email confirmation in Supabase Auth settings');
-            return;
-          }
-          toast.success('Welcome, Admin!');
-          setIsLoading(false);
-          
-          console.log('Admin creation successful, redirecting to dashboard');
-          // Force navigation and reload to ensure auth state is updated
-          window.location.href = '/dashboard';
-          return;
-        } else if (authData && authData.user) {
-          // Admin exists and login was successful
+        // Use the login method from AuthContext instead of direct Supabase calls
+        const success = await login('admin@horeca.app', 'AlFakher2025');
+        
+        console.log('Admin login result:', success);
+        
+        if (success) {
           toast.success('Welcome back, Admin!');
-          setIsLoading(false);
+          console.log('Admin login successful, navigating to dashboard');
           
-          console.log('Admin login successful, redirecting to dashboard');
-          // Force navigation and reload to ensure auth state is updated
-          window.location.href = '/dashboard';
-          return;
+          // Use a combination of React Router and direct navigation to ensure the page refreshes
+          navigate('/dashboard');
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 100);
+        } else {
+          toast.error('Failed to login. Please try again.');
         }
-      }
-
-      // For all other users, use the standard login flow
-      const email = username.includes('@') ? username : `${username}@horeca.app`;
-      console.log('Standard user login attempt with email:', email);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      console.log('Standard login response:', data, error);
-      
-      if (error) {
-        console.error('Login error:', error);
-        toast.error(error.message || 'Invalid credentials');
+        
         setIsLoading(false);
         return;
       }
+
+      // For all other users, use the login method from context
+      const email = username.includes('@') ? username : `${username}@horeca.app`;
+      console.log('Standard user login attempt with email:', email);
       
-      if (data.user) {
-        toast.success(`Welcome, ${data.user.email}!`);
+      const success = await login(email, password);
+      
+      console.log('Login result:', success);
+      
+      if (success) {
+        console.log('Login successful, fetching user data');
         
-        const { data: userData } = await supabase
+        // Fetch user details to determine redirect
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('role')
-          .eq('id', data.user.id)
+          .eq('email', email)
           .single();
           
-        console.log('User data from database:', userData);
+        console.log('User data from database:', userData, 'Error:', userError);
 
-        // Force navigation and reload to ensure auth state is updated
-        if (userData && userData.role === 'admin') {
-          console.log('Standard user with admin role, redirecting to dashboard');
-          window.location.href = '/dashboard';
+        if (userData) {
+          if (userData.role === 'admin') {
+            console.log('User is admin, redirecting to dashboard');
+            navigate('/dashboard');
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 100);
+          } else {
+            console.log('Standard user, redirecting to user app');
+            navigate('/user-app');
+            setTimeout(() => {
+              window.location.href = '/user-app';
+            }, 100);
+          }
         } else {
-          console.log('Standard user, redirecting to user-app');
-          window.location.href = '/user-app';
+          console.error('Could not determine user role:', userError);
+          toast.error('Login successful but could not determine user role');
         }
+      } else {
+        toast.error('Invalid credentials');
       }
       
       setIsLoading(false);
