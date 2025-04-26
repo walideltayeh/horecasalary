@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Cafe, KPISettings, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
@@ -108,7 +107,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [kpiSettings, setKpiSettings] = useState<KPISettings>(DEFAULT_KPI_SETTINGS);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Fetch KPI settings from Supabase
   useEffect(() => {
     const fetchKpiSettings = async () => {
       if (!user) return;
@@ -122,13 +120,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
         if (error) {
           console.error('Error fetching KPI settings:', error);
-          // If we can't fetch from Supabase, use local storage as fallback
           const storedKPISettings = localStorage.getItem('horeca-kpi-settings');
           if (storedKPISettings) {
             setKpiSettings(JSON.parse(storedKPISettings));
           }
         } else if (data) {
-          // Map Supabase data to our KPI settings format
           const mappedSettings: KPISettings = {
             totalPackage: data.total_package,
             basicSalaryPercentage: data.basic_salary_percentage,
@@ -147,8 +143,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           
           setKpiSettings(mappedSettings);
-          
-          // Update local storage with remote data
           localStorage.setItem('horeca-kpi-settings', JSON.stringify(mappedSettings));
         }
       } catch (err) {
@@ -161,7 +155,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchKpiSettings();
   }, [user]);
 
-  // Load cafes from localStorage on initial load
   useEffect(() => {
     const storedCafes = localStorage.getItem('horeca-cafes');
     if (storedCafes) {
@@ -169,18 +162,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Save cafes to localStorage when they change
   useEffect(() => {
     localStorage.setItem('horeca-cafes', JSON.stringify(cafes));
   }, [cafes]);
 
-  // Update KPI settings in both Supabase and localStorage
   const updateKPISettings = async (newSettings: Partial<KPISettings>) => {
     if (!user) return;
     
     const updatedSettings = { ...kpiSettings, ...newSettings };
-
-    // Validate percentage values
+    
     if ('basicSalaryPercentage' in newSettings) {
       updatedSettings.basicSalaryPercentage = Math.max(0, Math.min(100, updatedSettings.basicSalaryPercentage));
     }
@@ -190,13 +180,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     setKpiSettings(updatedSettings);
-    
-    // Update local storage
     localStorage.setItem('horeca-kpi-settings', JSON.stringify(updatedSettings));
     
-    // Update Supabase
     try {
-      // Map our KPI settings to Supabase table format
       const mappedSettings = {
         total_package: updatedSettings.totalPackage,
         basic_salary_percentage: updatedSettings.basicSalaryPercentage,
@@ -221,7 +207,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .limit(1);
         
       if (existingSettings && existingSettings.length > 0) {
-        // Update existing settings
         const { error } = await supabase
           .from('kpi_settings')
           .update(mappedSettings)
@@ -229,22 +214,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
         if (error) {
           console.error('Error updating KPI settings in Supabase:', error);
-          // Continue working with local storage even if Supabase sync failed
-          // Don't show error toast to avoid confusing the user
           toast.success("KPI settings updated locally");
         } else {
           toast.success("KPI settings updated and synced to server");
         }
       } else {
-        // Insert new settings if none exist
         const { error } = await supabase
           .from('kpi_settings')
           .insert([mappedSettings]);
           
         if (error) {
           console.error('Error inserting KPI settings in Supabase:', error);
-          // Continue working with local storage even if Supabase sync failed
-          // Don't show error toast to avoid confusing the user
           toast.success("KPI settings updated locally");
         } else {
           toast.success("KPI settings created and synced to server");
@@ -252,7 +232,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.error('Error syncing KPI settings:', err);
-      // Still show success for local update
       toast.success("KPI settings updated locally");
     }
   };
