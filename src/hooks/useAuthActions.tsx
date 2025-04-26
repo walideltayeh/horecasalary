@@ -90,6 +90,7 @@ export function useAuthActions() {
         if (!error) {
           toast.success(`User ${userData.name} added successfully`);
           fetchUsers(); // Refresh the users list
+          setIsLoading(false);
           return true;
         }
         
@@ -100,19 +101,19 @@ export function useAuthActions() {
       }
       
       // Demo mode - simulate successful user creation
+      console.log("Demo mode: Simulating user addition");
       setTimeout(() => {
-        console.log("Demo mode: Simulating user addition");
         fetchUsers(); // Refresh users list with demo data
         toast.success(`User ${userData.name} added (demo mode)`);
       }, 500);
       
+      setIsLoading(false);
       return true;
     } catch (error: any) {
       console.error('Error adding user:', error);
       toast.error(`Failed to add user: ${error.message}`);
-      return false;
-    } finally {
       setIsLoading(false);
+      return false;
     }
   };
 
@@ -160,6 +161,7 @@ export function useAuthActions() {
         if (!error) {
           toast.success(`User updated successfully`);
           fetchUsers(); // Refresh the users list
+          setIsLoading(false);
           return true;
         }
         
@@ -170,19 +172,19 @@ export function useAuthActions() {
       }
       
       // Demo mode - simulate successful user update
+      console.log("Demo mode: Simulating user update");
       setTimeout(() => {
-        console.log("Demo mode: Simulating user update");
         fetchUsers(); // Refresh users list with demo data
         toast.success(`User updated successfully (demo mode)`);
       }, 500);
       
+      setIsLoading(false);
       return true;
     } catch (error: any) {
       console.error('Error updating user:', error);
       toast.error(`Failed to update user: ${error.message}`);
-      return false;
-    } finally {
       setIsLoading(false);
+      return false;
     }
   };
 
@@ -200,6 +202,7 @@ export function useAuthActions() {
         if (!error) {
           toast.success(`User deleted successfully`);
           fetchUsers(); // Refresh the users list
+          setIsLoading(false);
           return true;
         }
         
@@ -210,19 +213,19 @@ export function useAuthActions() {
       }
       
       // Demo mode - simulate successful user deletion
+      console.log("Demo mode: Simulating user deletion");
       setTimeout(() => {
-        console.log("Demo mode: Simulating user deletion");
         fetchUsers(); // Refresh users list with demo data
         toast.success(`User deleted successfully (demo mode)`);
       }, 500);
       
+      setIsLoading(false);
       return true;
     } catch (error: any) {
       console.error('Error deleting user:', error);
       toast.error(`Failed to delete user: ${error.message}`);
-      return false;
-    } finally {
       setIsLoading(false);
+      return false;
     }
   };
 

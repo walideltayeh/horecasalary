@@ -52,54 +52,48 @@ export function useAuthState() {
         console.log("Admin API access denied - falling back to alternative approach");
       }
       
-      // If admin API fails, fallback to current user + hardcoded admin for demo
+      // If admin API fails, fallback to current user + hardcoded demo users
       // This is just for the demo - in a real app, you'd implement a different approach
-      if (user) {
-        const demoUsers: User[] = [];
-        
-        // Always include the admin user
-        const adminUser: User = {
-          id: '6ed9791e-b2b3-4440-a434-673a9f2d06c4', // Known admin ID
-          email: 'admin@horeca.app',
-          name: 'Admin',
-          role: 'admin',
-          password: null
-        };
-        
-        demoUsers.push(adminUser);
-        
-        // Include the current user if not admin
-        if (user.role !== 'admin') {
-          demoUsers.push(user);
-        }
-        
-        // For demo, add some example users
-        const demoUser1: User = {
-          id: '7ed9791e-b2b3-4440-a434-673a9f2d06c5',
-          email: 'user1@horeca.app',
-          name: 'User 1',
-          role: 'user',
-          password: null
-        };
-        
-        const demoUser2: User = {
-          id: '8ed9791e-b2b3-4440-a434-673a9f2d06c6',
-          email: 'user2@horeca.app',
-          name: 'User 2',
-          role: 'user',
-          password: null
-        };
-        
-        demoUsers.push(demoUser1);
-        demoUsers.push(demoUser2);
-        
-        console.log("Setting up demo users:", demoUsers);
-        setUsers(demoUsers);
-        return;
+      const demoUsers: User[] = [];
+      
+      // Always include the admin user
+      const adminUser: User = {
+        id: '6ed9791e-b2b3-4440-a434-673a9f2d06c4', // Known admin ID
+        email: 'admin@horeca.app',
+        name: 'Admin',
+        role: 'admin',
+        password: null
+      };
+      
+      demoUsers.push(adminUser);
+      
+      // Include the current user if not admin and if we have one
+      if (user && user.role !== 'admin') {
+        demoUsers.push(user);
       }
       
-      // If no current user, set empty users array
-      setUsers([]);
+      // For demo, add some example users
+      const demoUser1: User = {
+        id: '7ed9791e-b2b3-4440-a434-673a9f2d06c5',
+        email: 'user1@horeca.app',
+        name: 'User 1',
+        role: 'user',
+        password: null
+      };
+      
+      const demoUser2: User = {
+        id: '8ed9791e-b2b3-4440-a434-673a9f2d06c6',
+        email: 'user2@horeca.app',
+        name: 'User 2',
+        role: 'user',
+        password: null
+      };
+      
+      demoUsers.push(demoUser1);
+      demoUsers.push(demoUser2);
+      
+      console.log("Setting up demo users:", demoUsers);
+      setUsers(demoUsers);
       
     } catch (err: any) {
       console.error("Error fetching users:", err);
@@ -113,8 +107,25 @@ export function useAuthState() {
         password: null
       };
       
+      // Demo users for fallback
+      const demoUser1: User = {
+        id: '7ed9791e-b2b3-4440-a434-673a9f2d06c5',
+        email: 'user1@horeca.app',
+        name: 'User 1',
+        role: 'user',
+        password: null
+      };
+      
+      const demoUser2: User = {
+        id: '8ed9791e-b2b3-4440-a434-673a9f2d06c6',
+        email: 'user2@horeca.app',
+        name: 'User 2',
+        role: 'user',
+        password: null
+      };
+      
       console.log("Setting up fallback users");
-      setUsers([adminUser]);
+      setUsers([adminUser, demoUser1, demoUser2]);
       
       // Don't show error toast here anymore since we have a fallback
       // toast.error("Failed to load all users. Using fallback data.");
