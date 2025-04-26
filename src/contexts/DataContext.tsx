@@ -109,6 +109,51 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
+    const fetchCafes = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('cafes')
+          .select(`
+            *,
+            cafe_surveys (
+              id,
+              brand_sales (
+                brand,
+                packs_per_week
+              )
+            )
+          `);
+          
+        if (error) throw error;
+        
+        if (data) {
+          setCafes(data.map(cafe => ({
+            id: cafe.id,
+            name: cafe.name,
+            ownerName: cafe.owner_name,
+            ownerNumber: cafe.owner_number,
+            numberOfHookahs: cafe.number_of_hookahs,
+            numberOfTables: cafe.number_of_tables,
+            status: cafe.status,
+            photoUrl: cafe.photo_url,
+            governorate: cafe.governorate,
+            city: cafe.city,
+            createdAt: cafe.created_at,
+            createdBy: cafe.created_by
+          })));
+        }
+      } catch (err: any) {
+        console.error('Error fetching cafes:', err);
+        toast.error(err.message || 'Failed to fetch cafes');
+      }
+    };
+
+    fetchCafes();
+  }, [user]);
+
+  useEffect(() => {
     const fetchKpiSettings = async () => {
       if (!user) return;
       

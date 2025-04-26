@@ -9,6 +9,121 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      brand_sales: {
+        Row: {
+          brand: Database["public"]["Enums"]["tobacco_brand"]
+          created_at: string | null
+          id: string
+          packs_per_week: number
+          survey_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          brand: Database["public"]["Enums"]["tobacco_brand"]
+          created_at?: string | null
+          id?: string
+          packs_per_week: number
+          survey_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          brand?: Database["public"]["Enums"]["tobacco_brand"]
+          created_at?: string | null
+          id?: string
+          packs_per_week?: number
+          survey_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_sales_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "cafe_surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cafe_surveys: {
+        Row: {
+          cafe_id: string | null
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          cafe_id?: string | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          cafe_id?: string | null
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cafe_surveys_cafe_id_fkey"
+            columns: ["cafe_id"]
+            isOneToOne: false
+            referencedRelation: "cafes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cafes: {
+        Row: {
+          city: string
+          created_at: string | null
+          created_by: string
+          governorate: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          number_of_hookahs: number
+          number_of_tables: number
+          owner_name: string
+          owner_number: string
+          photo_url: string | null
+          status: string
+        }
+        Insert: {
+          city: string
+          created_at?: string | null
+          created_by: string
+          governorate: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          number_of_hookahs?: number
+          number_of_tables?: number
+          owner_name: string
+          owner_number: string
+          photo_url?: string | null
+          status?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string | null
+          created_by?: string
+          governorate?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          number_of_hookahs?: number
+          number_of_tables?: number
+          owner_name?: string
+          owner_number?: string
+          photo_url?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       kpi_settings: {
         Row: {
           basic_salary_percentage: number
@@ -104,7 +219,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      tobacco_brand: "Al Fakher" | "Adalya" | "Fumari" | "Star Buzz"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -219,6 +334,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      tobacco_brand: ["Al Fakher", "Adalya", "Fumari", "Star Buzz"],
+    },
   },
 } as const
