@@ -15,8 +15,11 @@ export function useAuthActions() {
       setIsLoading(true);
       console.log("useAuthActions: Attempting login with:", email);
       
+      // Handle email with or without @horeca.app
+      const loginEmail = email.includes('@') ? email : `${email}@horeca.app`;
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.includes('@') ? email : `${email}@horeca.app`,
+        email: loginEmail,
         password: password,
       });
       
@@ -29,7 +32,8 @@ export function useAuthActions() {
       
       if (data.user) {
         console.log("useAuthActions: Login successful for user:", data.user.id);
-        fetchUsers(); // Refresh our hardcoded users
+        toast.success(`Welcome, ${data.user.email}!`);
+        // The fetchUsers call will happen automatically via the onAuthStateChange listener
         setIsLoading(false);
         return true;
       }
@@ -51,13 +55,16 @@ export function useAuthActions() {
       console.log("useAuthActions: Logging out");
       await supabase.auth.signOut();
       toast.info('Logged out successfully');
+      
+      // Force navigation to login page after logout in case the listener doesn't catch it
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
     } catch (err) {
       console.error('Logout error:', err);
       toast.error('Failed to log out');
     } finally {
       setIsLoading(false);
-      // Force navigation to login page after logout
-      window.location.href = '/login';
     }
   };
 
@@ -69,7 +76,14 @@ export function useAuthActions() {
     try {
       setIsLoading(true);
       toast.info("In demo mode - Can't add real users due to database constraints");
-      // In a real app, we would add the user to the database here
+      // In a real app, we would add the user to the database here using Supabase Auth API
+      
+      // For a full implementation, we would use:
+      // const { data, error } = await supabase.auth.admin.createUser({
+      //   email: userData.email,
+      //   password: userData.password,
+      //   user_metadata: { name: userData.name, role: userData.role }
+      // });
     } catch (error: any) {
       console.error('Error adding user:', error);
       toast.error(`Failed to add user: ${error.message}`);
@@ -83,7 +97,7 @@ export function useAuthActions() {
     try {
       setIsLoading(true);
       toast.info("In demo mode - Can't update real users due to database constraints");
-      // In a real app, we would update the user in the database here
+      // In a real app, we would update the user in the database here using Supabase Admin API
       return true;
     } catch (error: any) {
       console.error('Error updating user:', error);
@@ -99,7 +113,7 @@ export function useAuthActions() {
     try {
       setIsLoading(true);
       toast.info("In demo mode - Can't delete real users due to database constraints");
-      // In a real app, we would delete the user from the database here
+      // In a real app, we would delete the user from the database here using Supabase Admin API
       return true;
     } catch (error: any) {
       console.error('Error deleting user:', error);
