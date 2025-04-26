@@ -95,22 +95,23 @@ const CafeManagement: React.FC = () => {
         return;
       }
       
-      const cafe = {
+      // Convert camelCase to snake_case for Supabase
+      const cafeData = {
         name: formState.name,
-        ownerName: formState.ownerName,
-        ownerNumber: formState.ownerNumber,
-        numberOfHookahs: formState.numberOfHookahs,
-        numberOfTables: formState.numberOfTables,
+        owner_name: formState.ownerName,
+        owner_number: formState.ownerNumber,
+        number_of_hookahs: formState.numberOfHookahs,
+        number_of_tables: formState.numberOfTables,
         status: formState.status as 'Pending' | 'Visited' | 'Contracted',
-        photoUrl: formState.photoUrl,
+        photo_url: formState.photoUrl,
         governorate: formState.governorate,
         city: formState.city,
-        createdBy: user?.id || 'unknown'
+        created_by: user?.id || 'unknown'
       };
 
       const { data: newCafe } = await supabase
         .from('cafes')
-        .insert([cafe])
+        .insert([cafeData])
         .select()
         .single();
 
