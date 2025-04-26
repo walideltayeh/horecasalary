@@ -51,7 +51,7 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Handle admin login
+      // Demo mode - handle admin login specifically
       if (username.toLowerCase() === 'admin') {
         console.log('Using admin login flow');
         if (password !== 'AlFakher2025') {
@@ -146,6 +146,9 @@ const Login: React.FC = () => {
             </Button>
             <div className="text-sm text-center mt-2">
               {(isLoading || isSubmitting) && "Please wait..."}
+            </div>
+            <div className="text-xs text-center mt-2 text-gray-500">
+              Demo mode: Use "admin" / "AlFakher2025" to login
             </div>
           </CardFooter>
         </form>
