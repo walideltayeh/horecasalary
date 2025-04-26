@@ -16,6 +16,13 @@ export const supabase = createClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
+      detectSessionInUrl: true,
+      storageKey: 'supabase-horeca-app-auth'
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
     }
   }
 );

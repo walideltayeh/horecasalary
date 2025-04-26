@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useData } from '@/contexts/DataContext';
 import PasswordProtection from '@/components/PasswordProtection';
+import { Loader2 } from 'lucide-react';
 
 const KPISettings: React.FC = () => {
   const { kpiSettings, updateKPISettings } = useData();
   const [settings, setSettings] = useState({ ...kpiSettings });
   const [authenticated, setAuthenticated] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   // Update local state when kpiSettings change
   useEffect(() => {
@@ -16,6 +18,7 @@ const KPISettings: React.FC = () => {
   }, [kpiSettings]);
 
   const handleChange = (field: keyof typeof settings, value: string) => {
+    setSyncing(true);
     const numValue = Number(value);
     
     // Create a new settings object with the updated field
@@ -43,7 +46,8 @@ const KPISettings: React.FC = () => {
     setSettings(updatedSettings);
     
     // Update global state
-    updateKPISettings(updatedSettings);
+    updateKPISettings(updatedSettings)
+      .finally(() => setSyncing(false));
   };
 
   // If not authenticated, show password protection
@@ -63,9 +67,17 @@ const KPISettings: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">KPI Settings</h1>
-        <p className="text-gray-600">Configure salary breakdown and performance targets</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">KPI Settings</h1>
+          <p className="text-gray-600">Configure salary breakdown and performance targets</p>
+        </div>
+        {syncing && (
+          <div className="flex items-center text-amber-600">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            <span>Syncing with server...</span>
+          </div>
+        )}
       </div>
 
       {/* Salary Breakdown */}
