@@ -5,11 +5,12 @@ import { useEffect, useState } from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, session } = useAuth();
   const [localLoading, setLocalLoading] = useState(true);
   
   useEffect(() => {
     console.log("Index page - Current user:", user);
+    console.log("Index page - Current session:", session);
     console.log("Index page - Is loading:", isLoading);
     
     // Set a timeout to avoid infinite loading state
@@ -18,7 +19,7 @@ const Index = () => {
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [user, isLoading]);
+  }, [user, isLoading, session]);
   
   // Show loading state while checking auth
   if (isLoading || localLoading) {

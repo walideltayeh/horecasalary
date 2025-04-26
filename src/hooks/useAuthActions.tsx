@@ -47,16 +47,13 @@ export function useAuthActions() {
       console.log("useAuthActions: Logging out");
       await supabase.auth.signOut();
       toast.info('Logged out successfully');
-      
-      // Give time for auth state to update before redirecting
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 500);
     } catch (err) {
       console.error('Logout error:', err);
       toast.error('Failed to log out');
     } finally {
       setIsLoading(false);
+      // Force navigation to login page after logout
+      window.location.href = '/login';
     }
   };
 

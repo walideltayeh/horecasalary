@@ -11,6 +11,7 @@ type AuthContextType = {
   logout: () => void;
   isAdmin: boolean;
   isLoading: boolean;
+  session: any;
   addUser: (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => Promise<void>;
   deleteUser: (userId: string) => Promise<boolean>;
   updateUser: (userId: string, userData: { name?: string; email?: string; password?: string; role?: 'admin' | 'user' }) => Promise<boolean>;
@@ -19,7 +20,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, users, isLoading: stateLoading } = useAuthState();
+  const { user, users, isLoading: stateLoading, session } = useAuthState();
   const { 
     login, 
     logout, 
@@ -41,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         isAdmin,
         isLoading,
+        session,
         addUser,
         deleteUser,
         updateUser,

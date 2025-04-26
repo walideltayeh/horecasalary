@@ -12,25 +12,32 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, login, isLoading } = useAuth();
+  const { user, login, isLoading, session } = useAuth();
   const navigate = useNavigate();
   
   useEffect(() => {
     console.log('Login component mounted, current user:', user);
-  }, [user]);
+    console.log('Login component current session:', session);
+  }, [user, session]);
   
+  // Reset submitting state when loading changes
   useEffect(() => {
-    // Reset the submitting state when isLoading changes to false
     if (!isLoading) {
       setIsSubmitting(false);
     }
   }, [isLoading]);
   
-  // If user is already authenticated, redirect
-  if (user) {
-    console.log('User already authenticated, redirecting to:', user.role === 'admin' ? '/dashboard' : '/user-app');
-    return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} replace />;
-  }
+  // Effect to handle navigation after login
+  useEffect(() => {
+    if (user && !isLoading) {
+      console.log('User authenticated in Login, redirecting to:', user.role === 'admin' ? '/dashboard' : '/user-app');
+      
+      // Short timeout to ensure state has settled
+      setTimeout(() => {
+        navigate(user.role === 'admin' ? '/dashboard' : '/user-app', { replace: true });
+      }, 100);
+    }
+  }, [user, isLoading, navigate]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +94,11 @@ const Login: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+  
+  // If already logged in, redirect immediately
+  if (user && !isLoading && !isSubmitting) {
+    return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} replace />;
+  }
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
