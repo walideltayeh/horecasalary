@@ -1,11 +1,12 @@
 
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Building, BarChart2, LogOut } from 'lucide-react';
-import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from './Dashboard';
-import CafeManagement from './CafeManagement';
+import CafeSurveyWrapper from '@/components/cafe/CafeSurveyWrapper';
+import CafeList from '@/components/CafeList';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const UserApp: React.FC = () => {
   const { user, logout } = useAuth();
@@ -17,6 +18,32 @@ const UserApp: React.FC = () => {
 
   const handleLogout = () => {
     logout();
+  };
+
+  // Content for the Cafe tab
+  const renderCafeContent = () => {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Cafe Management</h1>
+          <p className="text-gray-600">Add and manage cafe information</p>
+        </div>
+
+        {/* Show survey wrapper for adding new cafes */}
+        <CafeSurveyWrapper />
+
+        {/* List of cafes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>My Cafes</CardTitle>
+            <CardDescription>List of cafes you've added</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CafeList filterByUser={user.id} />
+          </CardContent>
+        </Card>
+      </div>
+    );
   };
 
   return (
@@ -36,7 +63,7 @@ const UserApp: React.FC = () => {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4 pb-24">
         {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'cafe' && <CafeManagement />}
+        {activeTab === 'cafe' && renderCafeContent()}
       </main>
       
       {/* Navigation Bar */}
