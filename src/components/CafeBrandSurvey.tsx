@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 
 interface CafeBrandSurveyProps {
   onComplete: () => void;
+  cafeId?: string; // Make this prop optional to maintain compatibility
 }
 
 interface BrandSale {
@@ -17,7 +19,7 @@ interface BrandSale {
 
 const BRANDS = ['Al Fakher', 'Adalya', 'Fumari', 'Star Buzz'] as const;
 
-export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete }) => {
+export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, cafeId }) => {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,6 +45,11 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete }) 
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+      
+      // If we have a cafeId, we could use it here to save the survey data
+      console.log('Submitting survey for cafe ID:', cafeId);
+      
+      // Now complete the survey process
       onComplete();
     } catch (error: any) {
       console.error('Error in survey:', error);
