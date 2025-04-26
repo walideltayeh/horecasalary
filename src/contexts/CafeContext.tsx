@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Cafe } from '@/types';
+import { Cafe, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';

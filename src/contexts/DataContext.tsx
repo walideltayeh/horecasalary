@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { CafeProvider } from './CafeContext';
-import { KPIProvider } from './KPIContext';
-import { SalaryProvider } from './SalaryContext';
+import { CafeProvider, useCafes } from './CafeContext';
+import { KPIProvider, useKPI } from './KPIContext';
+import { SalaryProvider, useSalary } from './SalaryContext';
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -16,8 +16,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// Re-export the hooks for convenience
+// Create a single useData hook that combines all context hooks
+export const useData = () => {
+  const cafeContext = useCafes();
+  const kpiContext = useKPI();
+  const salaryContext = useSalary();
+
+  return {
+    // Spread all properties from the individual contexts
+    ...cafeContext,
+    ...kpiContext,
+    ...salaryContext
+  };
+};
+
+// Re-export the individual hooks for convenience
 export { useCafes } from './CafeContext';
 export { useKPI } from './KPIContext';
 export { useSalary } from './SalaryContext';
-
