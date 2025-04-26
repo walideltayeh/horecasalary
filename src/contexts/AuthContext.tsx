@@ -52,8 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Authentication state and user fetching logic
   useEffect(() => {
+    console.log("AuthContext: Setting up auth state listener");
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("AuthContext: Auth state changed:", event, session?.user?.id);
+        
         if (session && session.user) {
           // Fetch user details from the users table
           const { data, error } = await supabase
@@ -76,9 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               password: data.password
             };
             
+            console.log("AuthContext: Setting user state:", currentUser);
             setUser(currentUser);
           }
         } else {
+          console.log("AuthContext: No session, clearing user state");
           setUser(null);
         }
         
@@ -87,10 +93,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
     
+    // Check for existing session on mount
+    const checkExistingSession = async () => {
+      console.log("AuthContext: Checking for existing session");
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Error checking session:", error);
+        return;
+      }
+      
+      console.log("AuthContext: Existing session check result:", !!session);
+      
+      if (session && session.user) {
+        // Fetch user details from the users table
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching user details:', error);
+          return;
+        }
+        
+        if (data) {
+          const currentUser: User = {
+            id: data.id,
+            email: data.email,
+            name: data.name,
+            role: data.role as 'admin' | 'user',
+            password: data.password
+          };
+          
+          console.log("AuthContext: Setting user from existing session:", currentUser);
+          setUser(currentUser);
+        }
+      }
+    };
+    
+    checkExistingSession();
+    
     // Initial fetch of users
     fetchUsers();
 
     return () => {
+      console.log("AuthContext: Cleaning up auth state subscription");
       subscription.unsubscribe();
     };
   }, []);
@@ -98,18 +147,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("AuthContext: Attempting login with:", email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.includes('@') ? email : `${email}@horeca.app`,
         password: password,
       });
       
       if (error) {
+        console.error("AuthContext: Login error:", error);
         toast.error('Invalid credentials');
         return false;
       }
       
       if (data.user) {
+        console.log("AuthContext: Login successful for user:", data.user.id);
         toast.success(`Welcome, ${data.user.email}!`);
+        
+        // Session handling is done by onAuthStateChange
         return true;
       }
       
@@ -123,8 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logout function
   const logout = async () => {
+    console.log("AuthContext: Logging out");
     await supabase.auth.signOut();
-    setUser(null);
+    // Session cleared by onAuthStateChange 
     toast.info('Logged out successfully');
   };
 

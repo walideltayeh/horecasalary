@@ -8,28 +8,16 @@ const Index = () => {
   
   useEffect(() => {
     console.log("Index page - Current user:", user);
-    
-    // If user exists, perform full page redirect
-    if (user) {
-      console.log("Index page - Redirecting authenticated user:", user.role);
-      const redirectPath = user.role === 'admin' ? '/dashboard' : '/user-app';
-      window.location.href = redirectPath;
-    } else {
-      console.log("Index page - No authenticated user, redirecting to login");
-    }
   }, [user]);
   
-  // If no user, use React Router navigate
-  if (!user) {
+  // Use React Router navigate for redirection
+  if (user) {
+    console.log("Index page - User authenticated, redirecting to:", user.role === 'admin' ? '/dashboard' : '/user-app');
+    return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} replace />;
+  } else {
+    console.log("Index page - No authenticated user, redirecting to login");
     return <Navigate to="/login" replace />;
   }
-  
-  // This will display briefly during redirect
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <p className="text-lg">Redirecting...</p>
-    </div>
-  );
 };
 
 export default Index;

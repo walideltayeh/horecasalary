@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const Login: React.FC = () => {
@@ -13,8 +13,8 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { user, login } = useAuth();
+  const navigate = useNavigate();
   
-  // Debug: Log when component mounts and when user state changes
   useEffect(() => {
     console.log('Login component mounted, current user:', user);
   }, [user]);
@@ -22,7 +22,7 @@ const Login: React.FC = () => {
   // If user is already authenticated, redirect
   if (user) {
     console.log('User already authenticated, redirecting to:', user.role === 'admin' ? '/dashboard' : '/user-app');
-    return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} />;
+    return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} replace />;
   }
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,7 +52,7 @@ const Login: React.FC = () => {
         if (success) {
           toast.success('Welcome back, Admin!');
           console.log('Admin login successful');
-          window.location.href = '/dashboard';
+          navigate('/dashboard');
         } else {
           toast.error('Failed to login. Please try again.');
         }
@@ -67,7 +67,7 @@ const Login: React.FC = () => {
         if (success) {
           toast.success(`Welcome, ${username}!`);
           console.log('Login successful, redirecting to user app');
-          window.location.href = '/user-app';
+          navigate('/user-app');
         } else {
           toast.error('Invalid credentials');
         }
