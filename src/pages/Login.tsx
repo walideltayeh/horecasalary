@@ -11,8 +11,7 @@ import { toast } from 'sonner';
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { user, login } = useAuth();
+  const { user, login, isLoading } = useAuth();
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -33,7 +32,6 @@ const Login: React.FC = () => {
       return;
     }
     
-    setIsLoading(true);
     console.log('Starting login process for:', username);
     
     try {
@@ -42,7 +40,6 @@ const Login: React.FC = () => {
         console.log('Using admin login flow');
         if (password !== 'AlFakher2025') {
           toast.error('Invalid admin password');
-          setIsLoading(false);
           return;
         }
         
@@ -51,8 +48,9 @@ const Login: React.FC = () => {
         
         if (success) {
           toast.success('Welcome back, Admin!');
-          console.log('Admin login successful');
-          navigate('/dashboard');
+          console.log('Admin login successful, redirecting...');
+          // Force refresh to ensure clean state
+          window.location.href = '/dashboard';
         } else {
           toast.error('Failed to login. Please try again.');
         }
@@ -67,7 +65,8 @@ const Login: React.FC = () => {
         if (success) {
           toast.success(`Welcome, ${username}!`);
           console.log('Login successful, redirecting to user app');
-          navigate('/user-app');
+          // Force refresh to ensure clean state
+          window.location.href = '/user-app';
         } else {
           toast.error('Invalid credentials');
         }
@@ -75,8 +74,6 @@ const Login: React.FC = () => {
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');
-    } finally {
-      setIsLoading(false);
     }
   };
   
@@ -115,7 +112,11 @@ const Login: React.FC = () => {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
-            <Button type="submit" className="w-full bg-custom-red hover:bg-red-700" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-custom-red hover:bg-red-700" 
+              disabled={isLoading}
+            >
               {isLoading ? "Logging in..." : "Login"}
             </Button>
           </CardFooter>
