@@ -5,14 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, login, isLoading } = useAuth();
-  const navigate = useNavigate();
   
   useEffect(() => {
     console.log('Login component mounted, current user:', user);
@@ -33,6 +33,7 @@ const Login: React.FC = () => {
     }
     
     console.log('Starting login process for:', username);
+    setIsSubmitting(true);
     
     try {
       // Handle admin login
@@ -40,6 +41,7 @@ const Login: React.FC = () => {
         console.log('Using admin login flow');
         if (password !== 'AlFakher2025') {
           toast.error('Invalid admin password');
+          setIsSubmitting(false);
           return;
         }
         
@@ -50,9 +52,12 @@ const Login: React.FC = () => {
           toast.success('Welcome back, Admin!');
           console.log('Admin login successful, redirecting...');
           // Force refresh to ensure clean state
-          window.location.href = '/dashboard';
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 500);
         } else {
           toast.error('Failed to login. Please try again.');
+          setIsSubmitting(false);
         }
       } else {
         // Handle regular user login
@@ -66,14 +71,18 @@ const Login: React.FC = () => {
           toast.success(`Welcome, ${username}!`);
           console.log('Login successful, redirecting to user app');
           // Force refresh to ensure clean state
-          window.location.href = '/user-app';
+          setTimeout(() => {
+            window.location.href = '/user-app';
+          }, 500);
         } else {
           toast.error('Invalid credentials');
+          setIsSubmitting(false);
         }
       }
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');
+      setIsSubmitting(false);
     }
   };
   
@@ -96,6 +105,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your username or email" 
                 className="input-with-red-outline" 
                 required 
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -108,6 +118,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your password" 
                 className="input-with-red-outline" 
                 required 
+                disabled={isSubmitting}
               />
             </div>
           </CardContent>
@@ -115,9 +126,9 @@ const Login: React.FC = () => {
             <Button 
               type="submit" 
               className="w-full bg-custom-red hover:bg-red-700" 
-              disabled={isLoading}
+              disabled={isLoading || isSubmitting}
             >
-              {isLoading ? "Logging in..." : "Login"}
+              {isSubmitting ? "Logging in..." : "Login"}
             </Button>
           </CardFooter>
         </form>
