@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,8 +47,9 @@ const KPISettings: React.FC = () => {
     setSettings(updatedSettings);
     
     // Update global state
-    updateKPISettings(updatedSettings)
-      .finally(() => setSyncing(false));
+    updateKPISettings(updatedSettings);
+    // Set syncing to false after a short delay to show the syncing indicator
+    setTimeout(() => setSyncing(false), 1000);
   };
 
   // If not authenticated, show password protection

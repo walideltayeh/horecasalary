@@ -8,7 +8,7 @@ interface DataContextType {
   cafes: Cafe[];
   kpiSettings: KPISettings;
   addCafe: (cafe: Omit<Cafe, 'id' | 'createdAt'>) => void;
-  updateKPISettings: (settings: Partial<KPISettings>) => void;
+  updateKPISettings: (settings: Partial<KPISettings>) => Promise<void>;
   updateCafeStatus: (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => void;
   getCafeSize: (numberOfHookahs: number) => CafeSize;
   calculateSalary: () => {
@@ -198,8 +198,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('horeca-cafes', JSON.stringify(cafes));
   }, [cafes]);
 
-  const updateKPISettings = async (newSettings: Partial<KPISettings>) => {
-    if (!user) return;
+  const updateKPISettings = async (newSettings: Partial<KPISettings>): Promise<void> => {
+    if (!user) return Promise.resolve();
     
     const updatedSettings = { ...kpiSettings, ...newSettings };
     
@@ -244,8 +244,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (queryError) {
         console.error('Error checking KPI settings:', queryError);
         toast.error("Failed to sync with server, working with local settings");
-        setIsSyncing(false);
-        return;
+        return Promise.resolve();
       }
         
       if (existingSettings && existingSettings.length > 0) {
@@ -274,9 +273,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log("KPI settings successfully created in Supabase");
         }
       }
+      
+      return Promise.resolve();
     } catch (err) {
       console.error('Error syncing KPI settings:', err);
       toast.error("Failed to sync settings with server. Local changes saved.");
+      return Promise.reject(err);
     } finally {
       setIsSyncing(false);
     }
