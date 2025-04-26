@@ -28,7 +28,13 @@ export function useAuthState() {
       
       if (error) {
         console.error("Error fetching users:", error);
-        toast.error('Failed to fetch users');
+        toast.error(typeof error === 'string' ? error : error.message || 'Failed to fetch users');
+        return;
+      }
+      
+      if (data?.error) {
+        console.error("Error from admin function:", data.error);
+        toast.error(typeof data.error === 'string' ? data.error : 'Failed to fetch users');
         return;
       }
       
@@ -49,7 +55,7 @@ export function useAuthState() {
       }
     } catch (err: any) {
       console.error("Error fetching users:", err);
-      toast.error('Failed to fetch users');
+      toast.error(typeof err === 'string' ? err : err.message || 'Failed to fetch users');
     } finally {
       setIsLoading(false);
     }

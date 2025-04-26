@@ -49,6 +49,15 @@ serve(async (req) => {
         throw new Error('Invalid action')
     }
 
+    // Process the result to ensure errors are properly formatted as strings
+    if (result.error) {
+      console.error("Admin function error:", result.error);
+      if (typeof result.error === 'object') {
+        // Convert error object to string
+        result.error = result.error.message || JSON.stringify(result.error);
+      }
+    }
+
     console.log("Operation result:", result);
     return new Response(
       JSON.stringify(result),
@@ -59,8 +68,11 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error("Admin function error:", error);
+    // Ensure the error is a string
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400 

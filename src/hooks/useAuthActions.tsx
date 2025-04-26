@@ -86,13 +86,13 @@ export function useAuthActions() {
 
       if (error) {
         console.error('Error adding user:', error);
-        toast.error(error.message || 'Failed to add user');
+        toast.error(typeof error === 'string' ? error : error.message || 'Failed to add user');
         return false;
       }
 
       if (data?.error) {
         console.error('Error from admin function:', data.error);
-        toast.error(data.error || 'Failed to add user');
+        toast.error(typeof data.error === 'string' ? data.error : 'Failed to add user');
         return false;
       }
 
@@ -104,7 +104,7 @@ export function useAuthActions() {
       return true;
     } catch (error: any) {
       console.error('Error adding user:', error);
-      toast.error(error.message || 'Failed to add user');
+      toast.error(typeof error === 'string' ? error : error.message || 'Failed to add user');
       return false;
     } finally {
       setIsLoading(false);
@@ -132,7 +132,13 @@ export function useAuthActions() {
 
       if (error) {
         console.error('Error updating user:', error);
-        toast.error(error.message || 'Failed to update user');
+        toast.error(typeof error === 'string' ? error : error.message || 'Failed to update user');
+        return false;
+      }
+
+      if (data?.error) {
+        console.error('Error from admin function:', data.error);
+        toast.error(typeof data.error === 'string' ? data.error : 'Failed to update user');
         return false;
       }
 
@@ -143,7 +149,7 @@ export function useAuthActions() {
       return true;
     } catch (error: any) {
       console.error('Error updating user:', error);
-      toast.error(error.message || 'Failed to update user');
+      toast.error(typeof error === 'string' ? error : error.message || 'Failed to update user');
       return false;
     } finally {
       setIsLoading(false);
@@ -164,7 +170,13 @@ export function useAuthActions() {
 
       if (error) {
         console.error('Error deleting user:', error);
-        toast.error(error.message || 'Failed to delete user');
+        toast.error(typeof error === 'string' ? error : error.message || 'Failed to delete user');
+        return false;
+      }
+
+      if (data?.error) {
+        console.error('Error from admin function:', data.error);
+        toast.error(typeof data.error === 'string' ? data.error : 'Failed to delete user');
         return false;
       }
 
@@ -175,7 +187,7 @@ export function useAuthActions() {
       return true;
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast.error(error.message || 'Failed to delete user');
+      toast.error(typeof error === 'string' ? error : error.message || 'Failed to delete user');
       return false;
     } finally {
       setIsLoading(false);
