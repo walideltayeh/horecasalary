@@ -38,6 +38,12 @@ export function useAuthState() {
     }
   };
 
+  // Helper function to ensure valid role type
+  const validateRole = (roleValue: string): 'admin' | 'user' => {
+    if (roleValue === 'admin') return 'admin';
+    return 'user'; // Default to 'user' for any other value
+  };
+
   // Set up auth listeners
   useEffect(() => {
     console.log("useAuthState: Setting up auth state listener");
@@ -65,12 +71,12 @@ export function useAuthState() {
           const email = newSession.user.email || '';
           
           // For demo purposes, recognize the admin user
-          let role = 'user';
+          let roleName = 'user';
           let name = metadata.name || 'User';
           
           // If this is our known admin user, make sure to set the role correctly
           if (email === 'admin@horeca.app' || email === 'admin') {
-            role = 'admin';
+            roleName = 'admin';
             name = 'Admin';
           }
           
@@ -78,7 +84,7 @@ export function useAuthState() {
             id: newSession.user.id,
             email: email,
             name: name,
-            role: role,
+            role: validateRole(roleName), // Ensure role is a valid type
             password: null // We never store passwords client-side in real apps
           };
           
@@ -129,12 +135,12 @@ export function useAuthState() {
           const email = session.user.email || '';
           
           // For demo purposes, recognize the admin user
-          let role = 'user';
+          let roleName = 'user';
           let name = metadata.name || 'User';
           
           // If this is our known admin user, make sure to set the role correctly
           if (email === 'admin@horeca.app' || email === 'admin') {
-            role = 'admin';
+            roleName = 'admin';
             name = 'Admin';
           }
           
@@ -142,7 +148,7 @@ export function useAuthState() {
             id: session.user.id,
             email: email,
             name: name,
-            role: role,
+            role: validateRole(roleName), // Ensure role is a valid type
             password: null // We never store passwords client-side in real apps
           };
           
