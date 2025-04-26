@@ -4,14 +4,12 @@ import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import AddCafeForm from './AddCafeForm';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useCafes } from '@/contexts/CafeContext';
 
 const CafeSurveyWrapper: React.FC = () => {
   const { addCafe } = useCafes();
   const [showSurvey, setShowSurvey] = useState(false);
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
-  const [pendingCafeData, setPendingCafeData] = useState<any>(null);
 
   const handleCafeAdded = async (cafeId: string, cafeData: any) => {
     console.log("Cafe added, showing survey dialog - cafeId:", cafeId);
@@ -35,10 +33,6 @@ const CafeSurveyWrapper: React.FC = () => {
   const handleSurveyComplete = () => {
     setShowSurvey(false);
     setNewCafeId(null);
-    setPendingCafeData(null);
-    
-    // The cafe has already been added through the context's addCafe method
-    // which triggers the real-time updates automatically
   };
 
   return (
@@ -48,8 +42,10 @@ const CafeSurveyWrapper: React.FC = () => {
       <Dialog 
         open={showSurvey} 
         onOpenChange={(open) => {
-          if (!open) setShowSurvey(false);
-          console.log("Dialog open state changed to:", open);
+          setShowSurvey(open);
+          if (!open) {
+            console.log("Dialog closed by user interaction");
+          }
         }}
       >
         <DialogContent className="max-w-md mx-auto">

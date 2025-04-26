@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import { mexicoLocations } from '@/data/mexicoLocations';
 import { toast } from 'sonner';
-import { useData } from '@/contexts/DataContext';
 import { PhotoUpload } from './PhotoUpload';
 import { GPSCapture } from './GPSCapture';
 import { useGPSLocation } from '@/hooks/useGPSLocation';
@@ -18,7 +16,6 @@ interface AddCafeFormProps {
 }
 
 const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
-  const { getCafeSize } = useData();
   const { user } = useAuth();
   const { 
     coordinates, 
@@ -97,20 +94,22 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       
       const cafeData = {
         name: formState.name,
-        owner_name: formState.ownerName,
-        owner_number: formState.ownerNumber,
-        number_of_hookahs: formState.numberOfHookahs,
-        number_of_tables: formState.numberOfTables,
+        ownerName: formState.ownerName,
+        ownerNumber: formState.ownerNumber,
+        numberOfHookahs: formState.numberOfHookahs,
+        numberOfTables: formState.numberOfTables,
         status: formState.status as 'Pending' | 'Visited' | 'Contracted',
-        photo_url: formState.photoUrl,
+        photoUrl: formState.photoUrl,
         governorate: formState.governorate,
         city: formState.city,
-        created_by: user?.id || 'unknown',
+        createdBy: user?.id || 'unknown',
         latitude: coordinates.latitude,
         longitude: coordinates.longitude
       };
       
       const tempId = `temp-${Date.now()}`;
+      console.log("Submitting cafe with data:", cafeData);
+      
       onCafeAdded(tempId, cafeData);
       resetForm();
     } catch (error: any) {
@@ -135,8 +134,16 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
     });
   };
 
-  const cafeSize = getCafeSize(formState.numberOfHookahs);
   const shouldShowBrandSurvey = formState.numberOfHookahs > 0;
+
+  const getCafeSize = (numberOfHookahs: number): string => {
+    if (numberOfHookahs === 0) return 'In Negotiation';
+    if (numberOfHookahs >= 1 && numberOfHookahs <= 3) return 'Small';
+    if (numberOfHookahs >= 4 && numberOfHookahs <= 7) return 'Medium';
+    return 'Large';
+  };
+
+  const cafeSize = getCafeSize(formState.numberOfHookahs);
 
   return (
     <Card>
