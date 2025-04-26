@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Cafe, KPISettings, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
@@ -136,7 +137,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ownerNumber: cafe.owner_number,
             numberOfHookahs: cafe.number_of_hookahs,
             numberOfTables: cafe.number_of_tables,
-            status: cafe.status,
+            status: cafe.status as 'Pending' | 'Visited' | 'Contracted', // Explicitly cast to the required type
             photoUrl: cafe.photo_url,
             governorate: cafe.governorate,
             city: cafe.city,
