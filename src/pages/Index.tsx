@@ -7,10 +7,9 @@ const Index = () => {
   const { user } = useAuth();
   
   useEffect(() => {
-    // Force a console log to check if user data is available
     console.log("Index page - Current user:", user);
     
-    // If user exists, manually redirect to ensure full page reload
+    // If user exists, perform full page redirect
     if (user) {
       console.log("Index page - Redirecting authenticated user:", user.role);
       const redirectPath = user.role === 'admin' ? '/dashboard' : '/user-app';
@@ -25,8 +24,12 @@ const Index = () => {
     return <Navigate to="/login" replace />;
   }
   
-  // Return null during the redirect process
-  return null;
+  // This will display briefly during redirect
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <p className="text-lg">Redirecting...</p>
+    </div>
+  );
 };
 
 export default Index;

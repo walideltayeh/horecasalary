@@ -5,30 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { user, login } = useAuth();
-  const navigate = useNavigate();
-
-  // Debug: Log on component load
+  
+  // Debug: Log when component mounts and when user state changes
   useEffect(() => {
     console.log('Login component mounted, current user:', user);
   }, [user]);
-
-  // Redirect authenticated users
+  
+  // If user is already authenticated, redirect
   if (user) {
-    console.log('User already authenticated, redirecting based on role:', user.role);
-    if (user.role === 'admin') {
-      return <Navigate to="/dashboard" />;
-    } else {
-      return <Navigate to="/user-app" />;
-    }
+    console.log('User already authenticated, redirecting to:', user.role === 'admin' ? '/dashboard' : '/user-app');
+    return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} />;
   }
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +37,7 @@ const Login: React.FC = () => {
     console.log('Starting login process for:', username);
     
     try {
-      // Special case for Admin user
+      // Handle admin login
       if (username.toLowerCase() === 'admin') {
         console.log('Using admin login flow');
         if (password !== 'AlFakher2025') {
@@ -51,75 +45,37 @@ const Login: React.FC = () => {
           setIsLoading(false);
           return;
         }
-
-        // Use the login method from AuthContext instead of direct Supabase calls
-        const success = await login('admin@horeca.app', 'AlFakher2025');
         
+        const success = await login('admin@horeca.app', 'AlFakher2025');
         console.log('Admin login result:', success);
         
         if (success) {
           toast.success('Welcome back, Admin!');
-          console.log('Admin login successful, navigating to dashboard');
-          
-          // Use a combination of React Router and direct navigation to ensure the page refreshes
-          navigate('/dashboard');
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 100);
+          console.log('Admin login successful');
+          window.location.href = '/dashboard';
         } else {
           toast.error('Failed to login. Please try again.');
         }
-        
-        setIsLoading(false);
-        return;
-      }
-
-      // For all other users, use the login method from context
-      const email = username.includes('@') ? username : `${username}@horeca.app`;
-      console.log('Standard user login attempt with email:', email);
-      
-      const success = await login(email, password);
-      
-      console.log('Login result:', success);
-      
-      if (success) {
-        console.log('Login successful, fetching user data');
-        
-        // Fetch user details to determine redirect
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', email)
-          .single();
-          
-        console.log('User data from database:', userData, 'Error:', userError);
-
-        if (userData) {
-          if (userData.role === 'admin') {
-            console.log('User is admin, redirecting to dashboard');
-            navigate('/dashboard');
-            setTimeout(() => {
-              window.location.href = '/dashboard';
-            }, 100);
-          } else {
-            console.log('Standard user, redirecting to user app');
-            navigate('/user-app');
-            setTimeout(() => {
-              window.location.href = '/user-app';
-            }, 100);
-          }
-        } else {
-          console.error('Could not determine user role:', userError);
-          toast.error('Login successful but could not determine user role');
-        }
       } else {
-        toast.error('Invalid credentials');
+        // Handle regular user login
+        const email = username.includes('@') ? username : `${username}@horeca.app`;
+        console.log('Standard user login attempt with email:', email);
+        
+        const success = await login(email, password);
+        console.log('Login result:', success);
+        
+        if (success) {
+          toast.success(`Welcome, ${username}!`);
+          console.log('Login successful, redirecting to user app');
+          window.location.href = '/user-app';
+        } else {
+          toast.error('Invalid credentials');
+        }
       }
-      
-      setIsLoading(false);
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -135,11 +91,27 @@ const Login: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username or Email</Label>
-              <Input id="username" type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Enter your username or email" className="input-with-red-outline" required />
+              <Input 
+                id="username" 
+                type="text" 
+                value={username} 
+                onChange={e => setUsername(e.target.value)} 
+                placeholder="Enter your username or email" 
+                className="input-with-red-outline" 
+                required 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" className="input-with-red-outline" required />
+              <Input 
+                id="password" 
+                type="password" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                placeholder="Enter your password" 
+                className="input-with-red-outline" 
+                required 
+              />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
