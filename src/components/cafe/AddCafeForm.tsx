@@ -5,19 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { mexicoLocations } from '@/data/mexicoLocations';
 import { toast } from 'sonner';
 import { useData } from '@/contexts/DataContext';
-import { Navigation } from 'lucide-react';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle 
-} from "@/components/ui/dialog";
+import { PhotoUpload } from './PhotoUpload';
+import { GPSCapture } from './GPSCapture';
+import { useGPSLocation } from '@/hooks/useGPSLocation';
 
 interface AddCafeFormProps {
   onCafeAdded: (cafeId: string, cafeData: any) => void;
@@ -26,6 +20,13 @@ interface AddCafeFormProps {
 const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
   const { getCafeSize } = useData();
   const { user } = useAuth();
+  const { 
+    coordinates, 
+    isCapturingLocation, 
+    showLocationDialog, 
+    setShowLocationDialog, 
+    handleCaptureGPS 
+  } = useGPSLocation();
   
   const [formState, setFormState] = useState({
     name: '',
@@ -40,14 +41,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
   });
   
   const [availableCities, setAvailableCities] = useState<string[]>([]);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [coordinates, setCoordinates] = useState<{latitude: number | null, longitude: number | null}>({
-    latitude: null,
-    longitude: null
-  });
-  const [showLocationDialog, setShowLocationDialog] = useState(false);
-  const [isCapturingLocation, setIsCapturingLocation] = useState(false);
 
   useEffect(() => {
     if (formState.governorate) {
@@ -80,68 +74,8 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
     setFormState(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPhotoPreview(reader.result as string);
-        setFormState(prev => ({ ...prev, photoUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleCaptureGPS = () => {
-    // First check if the browser supports geolocation
-    if (!('geolocation' in navigator)) {
-      toast.error('GPS is not supported on this device');
-      return;
-    }
-    
-    setIsCapturingLocation(true);
-    setShowLocationDialog(true);
-    
-    // Options for better accuracy
-    const options = {
-      enableHighAccuracy: true, // Request the most accurate position
-      timeout: 10000, // Time to wait for a position (10 seconds)
-      maximumAge: 0 // Force new location (don't use cached position)
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoordinates({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setIsCapturingLocation(false);
-        setShowLocationDialog(false);
-        toast.success('GPS location captured successfully');
-        console.log('Location captured:', position.coords);
-      },
-      (error) => {
-        setIsCapturingLocation(false);
-        setShowLocationDialog(false);
-        console.error('Error getting location:', error);
-        
-        // More specific error messages based on error code
-        switch(error.code) {
-          case 1:
-            toast.error('Location access was denied. Please check your browser settings and enable location access.');
-            break;
-          case 2:
-            toast.error('Unable to determine your location. Please try again or check your device settings.');
-            break;
-          case 3:
-            toast.error('Location request timed out. Please try again.');
-            break;
-          default:
-            toast.error('Failed to capture GPS location. Please ensure location access is enabled.');
-        }
-      },
-      options
-    );
+  const handlePhotoChange = (photoUrl: string) => {
+    setFormState(prev => ({ ...prev, photoUrl }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,9 +111,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       };
       
       const tempId = `temp-${Date.now()}`;
-      
       onCafeAdded(tempId, cafeData);
-      
       resetForm();
     } catch (error: any) {
       console.error('Error in form submission:', error);
@@ -200,11 +132,6 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       photoUrl: '',
       governorate: '',
       city: '',
-    });
-    setPhotoPreview(null);
-    setCoordinates({
-      latitude: null, 
-      longitude: null
     });
   };
 
@@ -352,57 +279,15 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="photo">Cafe Photo</Label>
-            <div className="flex items-center">
-              <Label 
-                htmlFor="photo" 
-                className="flex items-center justify-center h-10 px-4 border border-custom-red rounded-md cursor-pointer hover:bg-gray-100"
-              >
-                <Camera className="mr-2 h-5 w-5" />
-                <span>Choose Photo</span>
-              </Label>
-              <Input 
-                id="photo" 
-                type="file" 
-                accept="image/*" 
-                onChange={handlePhotoChange}
-                className="hidden" 
-              />
-            </div>
-            
-            {photoPreview && (
-              <div className="mt-2">
-                <div className="w-full h-40 bg-gray-100 rounded-md overflow-hidden">
-                  <img 
-                    src={photoPreview} 
-                    alt="Cafe preview" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          <PhotoUpload onPhotoChange={handlePhotoChange} />
 
-          <div className="space-y-2">
-            <Label>GPS Location</Label>
-            <div className="flex gap-4 items-center">
-              <Button 
-                type="button"
-                onClick={handleCaptureGPS}
-                className="flex items-center gap-2"
-                variant="secondary"
-              >
-                <Navigation className="h-4 w-4" />
-                Capture GPS
-              </Button>
-              {coordinates.latitude && coordinates.longitude && (
-                <span className="text-sm text-gray-600">
-                  ({coordinates.latitude.toFixed(6)}, {coordinates.longitude.toFixed(6)})
-                </span>
-              )}
-            </div>
-          </div>
+          <GPSCapture 
+            coordinates={coordinates}
+            onCaptureGPS={handleCaptureGPS}
+            isCapturingLocation={isCapturingLocation}
+            showLocationDialog={showLocationDialog}
+            setShowLocationDialog={setShowLocationDialog}
+          />
         </CardContent>
         <CardFooter>
           <Button 
@@ -414,37 +299,6 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
           </Button>
         </CardFooter>
       </form>
-
-      {/* Location permission dialog */}
-      <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Capturing Location</DialogTitle>
-            <DialogDescription>
-              {isCapturingLocation ? (
-                <div className="flex flex-col items-center py-4">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-custom-red mb-4"></div>
-                  <p>Please allow location access when prompted by your browser.</p>
-                  <p className="mt-2 text-sm text-gray-500">Make sure location services are enabled on your device.</p>
-                </div>
-              ) : (
-                <div className="py-4">
-                  <p>Location access was denied or encountered an error.</p>
-                  <p className="mt-2 text-sm text-gray-500">
-                    Please check your browser settings and ensure that location access is enabled for this site.
-                  </p>
-                  <Button 
-                    className="mt-4 w-full" 
-                    onClick={() => setShowLocationDialog(false)}
-                  >
-                    Close
-                  </Button>
-                </div>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 };
