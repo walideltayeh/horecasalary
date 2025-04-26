@@ -20,7 +20,9 @@ export function useAuthState() {
       console.log("Fetching users from Supabase Auth system");
       setIsLoading(true);
       
+      // Call the admin function to list users
       const { data, error } = await supabase.functions.invoke('admin', {
+        method: 'POST',
         body: { action: 'listUsers' }
       });
       
@@ -102,9 +104,12 @@ export function useAuthState() {
           console.log("useAuthState: Setting user from session data:", currentUser);
           setUser(currentUser);
           
-          setTimeout(() => {
-            fetchUsers();
-          }, 0);
+          // Use setTimeout to avoid recursive auth state changes
+          if (roleName === 'admin') {
+            setTimeout(() => {
+              fetchUsers();
+            }, 0);
+          }
           
           setIsLoading(false);
         } else {
@@ -160,9 +165,12 @@ export function useAuthState() {
           console.log("useAuthState: Setting user from session:", currentUser);
           setUser(currentUser);
           
-          setTimeout(() => {
-            fetchUsers();
-          }, 0);
+          // Use setTimeout to avoid recursive auth state changes
+          if (roleName === 'admin') {
+            setTimeout(() => {
+              fetchUsers();
+            }, 0);
+          }
         }
         
         setIsLoading(false);

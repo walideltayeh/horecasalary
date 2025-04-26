@@ -68,6 +68,7 @@ export function useAuthActions() {
       console.log("Adding new user:", userData.email);
       
       const { data, error } = await supabase.functions.invoke('admin', {
+        method: 'POST',
         body: {
           action: 'createUser',
           userData: {
@@ -117,6 +118,7 @@ export function useAuthActions() {
       console.log("Updating user:", userId, userData);
 
       const { data, error } = await supabase.functions.invoke('admin', {
+        method: 'POST',
         body: {
           action: 'updateUser',
           userData: {
@@ -162,6 +164,7 @@ export function useAuthActions() {
       console.log("Deleting user:", userId);
 
       const { data, error } = await supabase.functions.invoke('admin', {
+        method: 'POST',
         body: {
           action: 'deleteUser',
           userData: { id: userId }

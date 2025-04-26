@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -5,13 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Camera } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { mexicoLocations } from '@/data/mexicoLocations';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useData } from '@/contexts/DataContext';
 
 interface AddCafeFormProps {
   onCafeAdded: (cafeId: string) => void;
@@ -84,14 +85,18 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
   };
 
   const handleSurveyComplete = async () => {
+    if (!pendingCafeData) return;
     setShowSurvey(false);
     
     try {
-      const { data: newCafe } = await supabase
+      setIsSubmitting(true);
+      const { data: newCafe, error } = await supabase
         .from('cafes')
         .insert([pendingCafeData])
         .select()
         .single();
+
+      if (error) throw error;
 
       if (newCafe) {
         toast.success(`Cafe "${formState.name}" added successfully`);
@@ -101,6 +106,8 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
     } catch (error: any) {
       console.error('Error adding cafe:', error);
       toast.error(error.message || 'Failed to add cafe');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -118,6 +125,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       return;
     }
     
+    // First prepare the data
     const cafeData = {
       name: formState.name,
       owner_name: formState.ownerName,
@@ -131,7 +139,10 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       created_by: user?.id || 'unknown'
     };
 
+    // Store the data to be used after survey completion
     setPendingCafeData(cafeData);
+    
+    // Show the survey BEFORE saving to database
     setShowSurvey(true);
   };
 
@@ -155,7 +166,9 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
 
   return (
     <>
-      <Dialog open={showSurvey} onOpenChange={(open) => !open && setShowSurvey(false)}>
+      <Dialog open={showSurvey} onOpenChange={(open) => {
+        if (!open) setShowSurvey(false);
+      }}>
         <DialogContent className="max-w-md mx-auto">
           <CafeBrandSurvey onComplete={handleSurveyComplete} />
         </DialogContent>
@@ -339,7 +352,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
               className="w-full bg-custom-red hover:bg-red-700"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Save Cafe"}
+              {isSubmitting ? "Saving..." : "Continue to Brand Survey"}
             </Button>
           </CardFooter>
         </form>
