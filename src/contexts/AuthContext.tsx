@@ -12,7 +12,7 @@ type AuthContextType = {
   isAdmin: boolean;
   isLoading: boolean;
   session: any;
-  addUser: (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => Promise<void>;
+  addUser: (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => Promise<boolean>;
   deleteUser: (userId: string) => Promise<boolean>;
   updateUser: (userId: string, userData: { name?: string; email?: string; password?: string; role?: 'admin' | 'user' }) => Promise<boolean>;
 };
