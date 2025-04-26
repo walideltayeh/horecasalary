@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@/types';
 import { toast } from 'sonner';
@@ -11,6 +12,7 @@ type AuthContextType = {
   isAdmin: boolean;
   addUser: (userData: { name: string; password: string; role: 'admin' | 'user' }) => Promise<void>;
   deleteUser: (userId: string) => Promise<boolean>;
+  updateUser: (userId: string, userData: { name?: string; password?: string; role?: 'admin' | 'user' }) => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,27 +21,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   
-  // Load users from localStorage on initial load
+  // Load users from localStorage on initial load and set up real-time updates
   useEffect(() => {
-    const storedUsers = localStorage.getItem('horeca-users');
-    if (storedUsers) {
-      setUsers(JSON.parse(storedUsers));
-    } else {
-      // Default admin user
-      const defaultAdmin: User = {
-        id: 'admin',
-        email: 'admin@horeca.app',
-        name: 'Admin',
-        role: 'admin',
-        password: 'AlFakher2025',
-      };
-      setUsers([defaultAdmin]);
-      localStorage.setItem('horeca-users', JSON.stringify([defaultAdmin]));
-    }
-    
     // Setup Supabase auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
         if (session && session.user) {
           // Create a user object from Supabase session
           const userRole = session.user.user_metadata?.role || 'user';
@@ -70,8 +57,99 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    // Fetch users from Supabase
+    const fetchUsers = async () => {
+      try {
+        // First try to get users from Supabase
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('*');
+        
+        if (error) {
+          console.error('Error fetching users from Supabase:', error);
+          // Fall back to localStorage
+          const storedUsers = localStorage.getItem('horeca-users');
+          if (storedUsers) {
+            setUsers(JSON.parse(storedUsers));
+          } else {
+            // Default admin user
+            const defaultAdmin: User = {
+              id: 'admin',
+              email: 'admin@horeca.app',
+              name: 'Admin',
+              role: 'admin',
+              password: 'AlFakher2025',
+            };
+            setUsers([defaultAdmin]);
+            localStorage.setItem('horeca-users', JSON.stringify([defaultAdmin]));
+          }
+        } else if (userData && userData.length > 0) {
+          // Map Supabase data to User type
+          const mappedUsers = userData.map(u => ({
+            id: u.id,
+            email: u.email,
+            name: u.name,
+            role: u.role as 'admin' | 'user',
+            password: u.password
+          }));
+          
+          setUsers(mappedUsers);
+          // Also update localStorage for offline access
+          localStorage.setItem('horeca-users', JSON.stringify(mappedUsers));
+        } else {
+          // No users in Supabase, fall back to localStorage
+          const storedUsers = localStorage.getItem('horeca-users');
+          if (storedUsers) {
+            setUsers(JSON.parse(storedUsers));
+          } else {
+            // Default admin user
+            const defaultAdmin: User = {
+              id: 'admin',
+              email: 'admin@horeca.app',
+              name: 'Admin',
+              role: 'admin',
+              password: 'AlFakher2025',
+            };
+            setUsers([defaultAdmin]);
+            localStorage.setItem('horeca-users', JSON.stringify([defaultAdmin]));
+            
+            // Also try to save this user to Supabase
+            try {
+              await supabase.from('users').insert([{
+                id: 'admin',
+                email: 'admin@horeca.app',
+                name: 'Admin',
+                role: 'admin',
+                password: 'AlFakher2025',
+              }]);
+            } catch (err) {
+              console.error('Could not save default admin to Supabase:', err);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in user fetch process:', error);
+      }
+    };
+    
+    fetchUsers();
+    
+    // Subscribe to user changes
+    const channel = supabase
+      .channel('users_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'users' 
+      }, (payload) => {
+        console.log('Users changed in database:', payload);
+        fetchUsers();
+      })
+      .subscribe();
+
     return () => {
       subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -135,6 +213,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return false;
           }
           
+          // Also save to the users table
+          try {
+            const { error: insertError } = await supabase.from('users').insert([{
+              id: signUpData.user?.id || foundUser.id,
+              email: email,
+              name: foundUser.name,
+              role: foundUser.role,
+              password: password
+            }]);
+            
+            if (insertError) {
+              console.error('Error saving user to users table:', insertError);
+            }
+          } catch (err) {
+            console.error('Error in user table insert:', err);
+          }
+          
           toast.success(`Welcome, ${foundUser.name}! Your account has been migrated.`);
           return true;
         } else {
@@ -144,6 +239,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
+        // Make sure this user is also in our users table
+        try {
+          const { data: existingUser, error: queryError } = await supabase
+            .from('users')
+            .select()
+            .eq('id', data.user.id)
+            .single();
+            
+          if (queryError || !existingUser) {
+            // User doesn't exist in our table, add them
+            await supabase.from('users').insert([{
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+              role: data.user.user_metadata?.role || 'user',
+              password: password // Store password for backwards compatibility
+            }]);
+          }
+        } catch (err) {
+          console.error('Error checking/saving user to users table:', err);
+        }
+        
         toast.success(`Welcome, ${data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User'}!`);
         return true;
       }
@@ -180,9 +297,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // Also add to local storage for backward compatibility
+      const newUserId = data.user?.id || Date.now().toString();
+      
+      // Also add to users table for our application
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([{
+          id: newUserId,
+          email,
+          name: userData.name,
+          role: userData.role,
+          password: userData.password,
+        }]);
+        
+      if (insertError) {
+        console.error('Error adding user to users table:', insertError);
+        throw insertError;
+      }
+      
+      // Also add to local state
       const newUser: User = {
-        id: data.user?.id || Date.now().toString(),
+        id: newUserId,
         email,
         name: userData.name,
         role: userData.role,
@@ -196,6 +331,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUser = async (userId: string, userData: { name?: string; password?: string; role?: 'admin' | 'user' }): Promise<boolean> => {
+    try {
+      // Check if trying to update admin
+      if (userId === 'admin' && userData.role && userData.role !== 'admin') {
+        toast.error("Cannot change the role of the main admin user");
+        return false;
+      }
+      
+      // Find the current user data to merge with updates
+      const currentUser = users.find(u => u.id === userId);
+      if (!currentUser) {
+        toast.error("User not found");
+        return false;
+      }
+      
+      // Create updated user object
+      const updatedUser: User = {
+        ...currentUser,
+        ...(userData.name && { name: userData.name }),
+        ...(userData.password && { password: userData.password }),
+        ...(userData.role && { role: userData.role }),
+      };
+      
+      // Update in Supabase users table
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          name: updatedUser.name,
+          role: updatedUser.role,
+          ...(userData.password && { password: userData.password }),
+        })
+        .eq('id', userId);
+        
+      if (updateError) {
+        console.error("Error updating user in database:", updateError);
+        toast.error("Failed to update user in database");
+        return false;
+      }
+      
+      // Update local state
+      setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+      toast.success("User updated successfully");
+      return true;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("Failed to update user");
+      return false;
+    }
+  };
+
   const deleteUser = async (userId: string): Promise<boolean> => {
     try {
       // Check if trying to delete admin
@@ -204,15 +389,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // First, delete from Supabase (if it's a Supabase user)
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Delete from Supabase users table
+      const { error: deleteError } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
       
-      if (error) {
-        // If the error is a 404, the user might not exist in Supabase yet (local only)
-        // or it might be a permissions issue (not an admin)
-        console.error("Failed to delete from Supabase:", error);
-        
-        // We'll still delete from local storage if the user exists there
+      if (deleteError) {
+        console.error("Error deleting from users table:", deleteError);
+        toast.error("Error removing user from database");
+        return false;
+      }
+      
+      // Try to delete the auth user if this is a Supabase user
+      try {
+        const { error } = await supabase.auth.admin.deleteUser(userId);
+        if (error) {
+          console.error("Failed to delete from Supabase auth:", error);
+          // Continue anyway as we've already deleted from our users table
+        }
+      } catch (authError) {
+        console.error("Error during auth user deletion:", authError);
+        // Continue anyway
       }
       
       // Update local users list
@@ -238,6 +436,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         addUser,
         deleteUser,
+        updateUser,
       }}
     >
       {children}

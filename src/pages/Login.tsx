@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +27,7 @@ const Login: React.FC = () => {
       return <Navigate to="/user-app" />;
     }
   }
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -50,7 +53,6 @@ const Login: React.FC = () => {
         if (checkError) {
           console.log('Admin user not found or login error, creating account', checkError);
 
-          // Handle "Email not confirmed" error - attempt to create the account regardless
           // Create admin account in Supabase
           const {
             data: signUpData,
@@ -63,7 +65,7 @@ const Login: React.FC = () => {
                 name: 'Admin',
                 role: 'admin'
               },
-              emailRedirectTo: window.location.origin // Add redirect URL
+              emailRedirectTo: window.location.origin
             }
           });
           if (signUpError) {
@@ -115,6 +117,7 @@ const Login: React.FC = () => {
       setIsLoading(false);
     }
   };
+  
   return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -136,11 +139,10 @@ const Login: React.FC = () => {
             <Button type="submit" className="w-full bg-custom-red hover:bg-red-700" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Login"}
             </Button>
-            <p className="text-xs text-gray-500">
-          </p>
           </CardFooter>
         </form>
       </Card>
     </div>;
 };
+
 export default Login;

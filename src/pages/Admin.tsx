@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,9 +13,10 @@ import { Navigate } from 'react-router-dom';
 import PasswordProtection from '@/components/PasswordProtection';
 import { toast } from 'sonner';
 import { User } from '@/types';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Edit, Trash2 } from 'lucide-react';
 import UserDashboard from '@/components/UserDashboard';
 import CafeList from '@/components/CafeList';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // This is needed to fix the TypeScript error with the XLSX library
 declare global {
@@ -24,10 +26,11 @@ declare global {
 }
 
 const Admin: React.FC = () => {
-  const { isAdmin, addUser, deleteUser, users } = useAuth();
+  const { isAdmin, addUser, deleteUser, updateUser, users } = useAuth();
   const { cafes, getCafeSize } = useData();
   const [authenticated, setAuthenticated] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
+  const [isEditingUser, setIsEditingUser] = useState<string | null>(null);
   
   // State for new user form
   const [newUser, setNewUser] = useState({
@@ -35,8 +38,18 @@ const Admin: React.FC = () => {
     password: '',
     role: 'user' as 'admin' | 'user'
   });
+  
+  // State for editing user
+  const [editUser, setEditUser] = useState({
+    id: '',
+    name: '',
+    password: '',
+    role: 'user' as 'admin' | 'user'
+  });
+  
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [selectedTab, setSelectedTab] = useState<string>("all");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
@@ -51,8 +64,17 @@ const Admin: React.FC = () => {
     setNewUser(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditUser(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleRoleChange = (value: string) => {
     setNewUser(prev => ({ ...prev, role: value as 'admin' | 'user' }));
+  };
+
+  const handleEditRoleChange = (value: string) => {
+    setEditUser(prev => ({ ...prev, role: value as 'admin' | 'user' }));
   };
 
   const handleAddUser = () => {
@@ -83,6 +105,54 @@ const Admin: React.FC = () => {
     } finally {
       setIsAddingUser(false);
     }
+  };
+
+  const handleEditUser = async () => {
+    try {
+      // Validate form
+      if (!editUser.name) {
+        toast.error("Username is required");
+        return;
+      }
+      
+      const updateData: {
+        name: string;
+        role: 'admin' | 'user';
+        password?: string;
+      } = {
+        name: editUser.name,
+        role: editUser.role
+      };
+      
+      // Only include password if it was changed (not empty)
+      if (editUser.password) {
+        updateData.password = editUser.password;
+      }
+      
+      const success = await updateUser(editUser.id, updateData);
+      
+      if (success) {
+        setEditDialogOpen(false);
+        // If we're on the edited user's tab and the user's role changed to admin, switch to "all" tab
+        if (selectedTab === editUser.id && editUser.role === 'admin') {
+          setSelectedTab("all");
+        }
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("Failed to update user");
+    }
+  };
+
+  const openEditDialog = (user: User) => {
+    setEditUser({
+      id: user.id,
+      name: user.name,
+      password: '',  // Don't fill in existing password for security
+      role: user.role
+    });
+    setIsEditingUser(user.id);
+    setEditDialogOpen(true);
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
@@ -225,19 +295,31 @@ const Admin: React.FC = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        {/* Don't allow deleting the main admin account */}
-                        {!(user.name === 'Admin' && user.role === 'admin') && (
+                        <div className="flex justify-end space-x-2">
                           <Button
                             variant="ghost" 
                             size="sm"
-                            onClick={() => handleDeleteUser(user.id, user.name)}
-                            disabled={isDeletingUser === user.id}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                            onClick={() => openEditDialog(user)}
+                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
                           >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
                           </Button>
-                        )}
+                          
+                          {/* Don't allow deleting the main admin account */}
+                          {!(user.name === 'Admin' && user.role === 'admin') && (
+                            <Button
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id, user.name)}
+                              disabled={isDeletingUser === user.id}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -347,6 +429,76 @@ const Admin: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information. Leave password blank to keep the current password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input 
+                id="edit-name" 
+                name="name"
+                value={editUser.name}
+                onChange={handleEditInputChange}
+                placeholder="Enter user name" 
+                className="input-with-red-outline"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-password">Password</Label>
+              <Input 
+                id="edit-password" 
+                name="password"
+                type="password"
+                value={editUser.password}
+                onChange={handleEditInputChange}
+                placeholder="Enter new password (or leave blank)" 
+                className="input-with-red-outline"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">Role</Label>
+              <Select
+                value={editUser.role}
+                onValueChange={handleEditRoleChange}
+                disabled={editUser.id === 'admin'} // Don't allow changing admin role
+              >
+                <SelectTrigger id="edit-role" className="input-with-red-outline">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-custom-red hover:bg-red-700"
+              onClick={handleEditUser}
+              disabled={isEditingUser !== null && isEditingUser === editUser.id}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
