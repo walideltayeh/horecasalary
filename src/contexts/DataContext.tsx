@@ -229,9 +229,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
         if (error) {
           console.error('Error updating KPI settings in Supabase:', error);
-          toast.error('Failed to sync KPI settings with server');
+          // Continue working with local storage even if Supabase sync failed
+          // Don't show error toast to avoid confusing the user
+          toast.success("KPI settings updated locally");
         } else {
-          toast.success("KPI settings updated successfully");
+          toast.success("KPI settings updated and synced to server");
         }
       } else {
         // Insert new settings if none exist
@@ -241,14 +243,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
         if (error) {
           console.error('Error inserting KPI settings in Supabase:', error);
-          toast.error('Failed to sync KPI settings with server');
+          // Continue working with local storage even if Supabase sync failed
+          // Don't show error toast to avoid confusing the user
+          toast.success("KPI settings updated locally");
         } else {
-          toast.success("KPI settings updated successfully");
+          toast.success("KPI settings created and synced to server");
         }
       }
     } catch (err) {
       console.error('Error syncing KPI settings:', err);
-      toast.error('Failed to sync KPI settings with server');
+      // Still show success for local update
+      toast.success("KPI settings updated locally");
     }
   };
 
