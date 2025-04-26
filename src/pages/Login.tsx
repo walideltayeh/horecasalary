@@ -13,10 +13,7 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const {
-    user,
-    login
-  } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   // Redirect authenticated users
@@ -99,13 +96,17 @@ const Login: React.FC = () => {
           }
           toast.success('Welcome, Admin!');
           setIsLoading(false);
-          navigate('/dashboard');
+          
+          // Force navigation and reload to ensure auth state is updated
+          window.location.href = '/dashboard';
           return;
         } else if (authData && authData.user) {
           // Admin exists and login was successful
           toast.success('Welcome back, Admin!');
           setIsLoading(false);
-          navigate('/dashboard');
+          
+          // Force navigation and reload to ensure auth state is updated
+          window.location.href = '/dashboard';
           return;
         }
       }
@@ -132,11 +133,11 @@ const Login: React.FC = () => {
           .eq('id', data.user.id)
           .single();
 
-        // Redirect based on role
+        // Force navigation and reload to ensure auth state is updated
         if (userData && userData.role === 'admin') {
-          navigate('/dashboard');
+          window.location.href = '/dashboard';
         } else {
-          navigate('/user-app');
+          window.location.href = '/user-app';
         }
       }
       
