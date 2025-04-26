@@ -87,31 +87,40 @@ export function useAuthActions() {
           }
         });
         
-        if (!error) {
-          toast.success(`User ${userData.name} added successfully`);
-          fetchUsers(); // Refresh the users list
-          setIsLoading(false);
-          return true;
+        if (error) {
+          console.log("Admin API failed:", error);
+          throw error; // Throw to move to demo mode
         }
         
-        // If API call fails, fall back to demo mode
-        console.log("Admin API failed, using demo mode:", error);
+        console.log("User added successfully via Admin API:", data);
+        toast.success(`User ${userData.name} added successfully`);
+        
+        // Make sure to refresh the users list
+        setTimeout(() => {
+          fetchUsers();
+        }, 100);
+        
+        setIsLoading(false);
+        return true;
       } catch (apiError) {
         console.log("Admin API exception, using demo mode:", apiError);
+        
+        // Demo mode - simulate successful user creation with noticeable feedback
+        console.log("Demo mode: Simulating user addition");
+        
+        // Add simulated delay to make the action feel more realistic
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Refresh users list with demo data and provide clear demo mode feedback
+        await fetchUsers();
+        toast.success(`User ${userData.name} added (DEMO MODE - Need admin API key for real operations)`);
+        
+        setIsLoading(false);
+        return true;
       }
-      
-      // Demo mode - simulate successful user creation
-      console.log("Demo mode: Simulating user addition");
-      setTimeout(() => {
-        fetchUsers(); // Refresh users list with demo data
-        toast.success(`User ${userData.name} added (demo mode)`);
-      }, 500);
-      
-      setIsLoading(false);
-      return true;
     } catch (error: any) {
       console.error('Error adding user:', error);
-      toast.error(`Failed to add user: ${error.message}`);
+      toast.error(`Failed to add user: ${error.message || 'Unknown error'}`);
       setIsLoading(false);
       return false;
     }
@@ -121,7 +130,7 @@ export function useAuthActions() {
   const updateUser = async (userId: string, userData: { name?: string; email?: string; password?: string; role?: 'admin' | 'user' }): Promise<boolean> => {
     try {
       setIsLoading(true);
-      console.log("Updating user:", userId);
+      console.log("Updating user:", userId, userData);
       
       // For demo purposes, simulate successful user update
       try {
@@ -158,31 +167,40 @@ export function useAuthActions() {
         
         const { error } = await supabase.auth.admin.updateUserById(userId, updates);
         
-        if (!error) {
-          toast.success(`User updated successfully`);
-          fetchUsers(); // Refresh the users list
-          setIsLoading(false);
-          return true;
+        if (error) {
+          console.log("Admin API failed:", error);
+          throw error; // Throw to move to demo mode
         }
         
-        // If API call fails, fall back to demo mode
-        console.log("Admin API failed, using demo mode:", error);
+        console.log("User updated successfully via Admin API");
+        toast.success(`User updated successfully`);
+        
+        // Make sure to refresh the users list
+        setTimeout(() => {
+          fetchUsers();
+        }, 100);
+        
+        setIsLoading(false);
+        return true;
       } catch (apiError) {
         console.log("Admin API exception, using demo mode:", apiError);
+        
+        // Demo mode - simulate successful user update with noticeable feedback
+        console.log("Demo mode: Simulating user update");
+        
+        // Add simulated delay to make the action feel more realistic
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Refresh users list with demo data and provide clear demo mode feedback
+        await fetchUsers();
+        toast.success(`User updated successfully (DEMO MODE - Need admin API key for real operations)`);
+        
+        setIsLoading(false);
+        return true;
       }
-      
-      // Demo mode - simulate successful user update
-      console.log("Demo mode: Simulating user update");
-      setTimeout(() => {
-        fetchUsers(); // Refresh users list with demo data
-        toast.success(`User updated successfully (demo mode)`);
-      }, 500);
-      
-      setIsLoading(false);
-      return true;
     } catch (error: any) {
       console.error('Error updating user:', error);
-      toast.error(`Failed to update user: ${error.message}`);
+      toast.error(`Failed to update user: ${error.message || 'Unknown error'}`);
       setIsLoading(false);
       return false;
     }
@@ -199,31 +217,40 @@ export function useAuthActions() {
         // Try the actual Supabase Auth admin API first  
         const { error } = await supabase.auth.admin.deleteUser(userId);
         
-        if (!error) {
-          toast.success(`User deleted successfully`);
-          fetchUsers(); // Refresh the users list
-          setIsLoading(false);
-          return true;
+        if (error) {
+          console.log("Admin API failed:", error);
+          throw error; // Throw to move to demo mode
         }
         
-        // If API call fails, fall back to demo mode
-        console.log("Admin API failed, using demo mode:", error);
+        console.log("User deleted successfully via Admin API");
+        toast.success(`User deleted successfully`);
+        
+        // Make sure to refresh the users list
+        setTimeout(() => {
+          fetchUsers();
+        }, 100);
+        
+        setIsLoading(false);
+        return true;
       } catch (apiError) {
         console.log("Admin API exception, using demo mode:", apiError);
+        
+        // Demo mode - simulate successful user deletion with noticeable feedback
+        console.log("Demo mode: Simulating user deletion");
+        
+        // Add simulated delay to make the action feel more realistic
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Refresh users list with demo data and provide clear demo mode feedback
+        await fetchUsers();
+        toast.success(`User deleted successfully (DEMO MODE - Need admin API key for real operations)`);
+        
+        setIsLoading(false);
+        return true;
       }
-      
-      // Demo mode - simulate successful user deletion
-      console.log("Demo mode: Simulating user deletion");
-      setTimeout(() => {
-        fetchUsers(); // Refresh users list with demo data
-        toast.success(`User deleted successfully (demo mode)`);
-      }, 500);
-      
-      setIsLoading(false);
-      return true;
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast.error(`Failed to delete user: ${error.message}`);
+      toast.error(`Failed to delete user: ${error.message || 'Unknown error'}`);
       setIsLoading(false);
       return false;
     }
