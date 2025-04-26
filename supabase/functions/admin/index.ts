@@ -13,33 +13,43 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Admin function called with method:", req.method);
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const { action, userData } = await req.json()
+    console.log("Action requested:", action);
+    console.log("User data:", userData);
+    
     const authClient = supabase.auth.admin
 
     let result
     switch (action) {
       case 'listUsers':
+        console.log("Listing users");
         result = await authClient.listUsers()
         break
       case 'createUser':
+        console.log("Creating user with email:", userData.email);
         result = await authClient.createUser(userData)
         break
       case 'updateUser':
         const { id, ...updateData } = userData
+        console.log("Updating user with id:", id);
         result = await authClient.updateUserById(id, updateData)
         break
       case 'deleteUser':
+        console.log("Deleting user with id:", userData.id);
         result = await authClient.deleteUser(userData.id)
         break
       default:
         throw new Error('Invalid action')
     }
 
+    console.log("Operation result:", result);
     return new Response(
       JSON.stringify(result),
       { 
@@ -48,6 +58,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error("Admin function error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -81,15 +82,24 @@ export function useAuthActions() {
         }
       });
 
+      console.log("Add user response:", data, error);
+
       if (error) {
         console.error('Error adding user:', error);
         toast.error(error.message || 'Failed to add user');
         return false;
       }
 
+      if (data?.error) {
+        console.error('Error from admin function:', data.error);
+        toast.error(data.error || 'Failed to add user');
+        return false;
+      }
+
       console.log("User added successfully:", data);
       toast.success(`User ${userData.name} added successfully`);
       
+      // Refresh user list
       await fetchUsers();
       return true;
     } catch (error: any) {

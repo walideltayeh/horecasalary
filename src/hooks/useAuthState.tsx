@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +23,8 @@ export function useAuthState() {
       const { data, error } = await supabase.functions.invoke('admin', {
         body: { action: 'listUsers' }
       });
+      
+      console.log("Fetch users response:", data, error);
       
       if (error) {
         console.error("Error fetching users:", error);
