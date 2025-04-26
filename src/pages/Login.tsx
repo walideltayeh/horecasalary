@@ -42,7 +42,7 @@ const Login: React.FC = () => {
 
         // First check if admin user exists in Supabase
         const {
-          data: adminUser,
+          data: authData,
           error: checkError
         } = await supabase.auth.signInWithPassword({
           email: 'admin@horeca.app',
@@ -98,19 +98,49 @@ const Login: React.FC = () => {
             return;
           }
           toast.success('Welcome, Admin!');
-        } else {
+          setIsLoading(false);
+          navigate('/dashboard');
+          return;
+        } else if (authData && authData.user) {
           // Admin exists and login was successful
           toast.success('Welcome back, Admin!');
+          setIsLoading(false);
+          navigate('/dashboard');
+          return;
         }
-        setIsLoading(false);
-        return; // Auth state change will handle redirect
       }
 
       // For all other users, use the standard login flow
-      const success = await login(username, password);
-      if (!success) {
+      const email = username.includes('@') ? username : `${username}@horeca.app`;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        console.error('Login error:', error);
+        toast.error(error.message || 'Invalid credentials');
         setIsLoading(false);
+        return;
       }
+      
+      if (data.user) {
+        toast.success(`Welcome, ${data.user.email}!`);
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        // Redirect based on role
+        if (userData && userData.role === 'admin') {
+          navigate('/dashboard');
+        } else {
+          navigate('/user-app');
+        }
+      }
+      
+      setIsLoading(false);
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred');
