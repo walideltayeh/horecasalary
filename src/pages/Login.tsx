@@ -27,10 +27,19 @@ const Login: React.FC = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!username || !password) {
+      toast.error('Please enter both username and password');
+      return;
+    }
+    
     setIsLoading(true);
     try {
+      console.log('Login attempt for:', username);
+      
       // Special case for Admin user
       if (username.toLowerCase() === 'admin') {
+        console.log('Attempting admin login');
         if (password !== 'AlFakher2025') {
           toast.error('Invalid admin password');
           setIsLoading(false);
@@ -45,6 +54,8 @@ const Login: React.FC = () => {
           email: 'admin@horeca.app',
           password: 'AlFakher2025'
         });
+
+        console.log('Admin login response:', authData, checkError);
 
         // If admin doesn't exist or there was an error logging in, create the admin account
         if (checkError) {
@@ -65,6 +76,9 @@ const Login: React.FC = () => {
               emailRedirectTo: window.location.origin
             }
           });
+          
+          console.log('Admin signup response:', signUpData, signUpError);
+          
           if (signUpError) {
             toast.error('Failed to create admin account: ' + signUpError.message);
             console.error('Admin signup error:', signUpError);
@@ -81,6 +95,9 @@ const Login: React.FC = () => {
             email: 'admin@horeca.app',
             password: 'AlFakher2025'
           });
+          
+          console.log('Admin login after creation response:', adminData, adminLoginError);
+          
           if (adminLoginError) {
             if (adminLoginError.message.includes('Email not confirmed')) {
               toast.warning('Admin account created but email confirmation is required. Please check Supabase Auth settings to disable email confirmation for testing.');
@@ -97,6 +114,7 @@ const Login: React.FC = () => {
           toast.success('Welcome, Admin!');
           setIsLoading(false);
           
+          console.log('Admin creation successful, redirecting to dashboard');
           // Force navigation and reload to ensure auth state is updated
           window.location.href = '/dashboard';
           return;
@@ -105,6 +123,7 @@ const Login: React.FC = () => {
           toast.success('Welcome back, Admin!');
           setIsLoading(false);
           
+          console.log('Admin login successful, redirecting to dashboard');
           // Force navigation and reload to ensure auth state is updated
           window.location.href = '/dashboard';
           return;
@@ -113,10 +132,14 @@ const Login: React.FC = () => {
 
       // For all other users, use the standard login flow
       const email = username.includes('@') ? username : `${username}@horeca.app`;
+      console.log('Standard user login attempt with email:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      console.log('Standard login response:', data, error);
       
       if (error) {
         console.error('Login error:', error);
@@ -127,16 +150,21 @@ const Login: React.FC = () => {
       
       if (data.user) {
         toast.success(`Welcome, ${data.user.email}!`);
+        
         const { data: userData } = await supabase
           .from('users')
           .select('role')
           .eq('id', data.user.id)
           .single();
+          
+        console.log('User data from database:', userData);
 
         // Force navigation and reload to ensure auth state is updated
         if (userData && userData.role === 'admin') {
+          console.log('Standard user with admin role, redirecting to dashboard');
           window.location.href = '/dashboard';
         } else {
+          console.log('Standard user, redirecting to user-app');
           window.location.href = '/user-app';
         }
       }
@@ -149,7 +177,8 @@ const Login: React.FC = () => {
     }
   };
   
-  return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-custom-red">HoReCa Salary App</CardTitle>
@@ -173,7 +202,8 @@ const Login: React.FC = () => {
           </CardFooter>
         </form>
       </Card>
-    </div>;
+    </div>
+  );
 };
 
 export default Login;
