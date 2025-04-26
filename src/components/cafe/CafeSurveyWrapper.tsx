@@ -2,52 +2,43 @@
 import React, { useState } from 'react';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import AddCafeForm from './AddCafeForm';
-import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useCafes } from '@/contexts/CafeContext';
 
 const CafeSurveyWrapper: React.FC = () => {
+  const { addCafe } = useCafes();
   const [showSurvey, setShowSurvey] = useState(false);
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
   const [pendingCafeData, setPendingCafeData] = useState<any>(null);
 
-  const handleCafeAdded = (cafeId: string, cafeData: any) => {
-    console.log("Survey dialog should show - cafeId:", cafeId);
-    setNewCafeId(cafeId);
-    setPendingCafeData(cafeData);
-    setShowSurvey(true);
-  };
-
-  const handleSurveyComplete = async () => {
-    setShowSurvey(false);
+  const handleCafeAdded = async (cafeId: string, cafeData: any) => {
+    console.log("Cafe added, showing survey dialog - cafeId:", cafeId);
     
     try {
-      if (!pendingCafeData) {
-        toast.error("No cafe data to save");
-        return;
+      // Use the context's addCafe method to ensure real-time updates
+      const savedCafeId = await addCafe(cafeData);
+      
+      if (savedCafeId) {
+        setNewCafeId(savedCafeId);
+        setShowSurvey(true);
+      } else {
+        toast.error("Failed to add cafe");
       }
-      
-      console.log("Saving cafe after survey completion:", pendingCafeData);
-      
-      const { data: newCafe, error } = await supabase
-        .from('cafes')
-        .insert([pendingCafeData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast.success(`Cafe "${pendingCafeData.name}" added successfully`);
-      
-      // Reset form after successful save
-      setNewCafeId(null);
-      setPendingCafeData(null);
-      
     } catch (error: any) {
       console.error('Error adding cafe:', error);
       toast.error(error.message || 'Failed to add cafe');
     }
+  };
+
+  const handleSurveyComplete = () => {
+    setShowSurvey(false);
+    setNewCafeId(null);
+    setPendingCafeData(null);
+    
+    // The cafe has already been added through the context's addCafe method
+    // which triggers the real-time updates automatically
   };
 
   return (

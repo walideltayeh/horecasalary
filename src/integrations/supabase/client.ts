@@ -27,11 +27,74 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Enable realtime for cafes table
+// Enable realtime for database tables
 const enableRealtimeTables = async () => {
   try {
-    await supabase.channel('cafes-changes').subscribe();
-    console.log('Realtime enabled for cafe tables');
+    // Create and subscribe to a channel for the cafes table with explicit events
+    const cafesChannel = supabase.channel('cafes-channel')
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'cafes' 
+        }, 
+        (payload) => {
+          console.log('New cafe inserted:', payload);
+        }
+      )
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'cafes' 
+        }, 
+        (payload) => {
+          console.log('Cafe updated:', payload);
+        }
+      )
+      .on('postgres_changes', 
+        { 
+          event: 'DELETE', 
+          schema: 'public', 
+          table: 'cafes' 
+        }, 
+        (payload) => {
+          console.log('Cafe deleted:', payload);
+        }
+      );
+
+    // Create and subscribe to a channel for the cafe_surveys table
+    const surveysChannel = supabase.channel('surveys-channel')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'cafe_surveys' 
+        }, 
+        (payload) => {
+          console.log('Cafe survey changed:', payload);
+        }
+      );
+    
+    // Create and subscribe to a channel for the brand_sales table
+    const brandSalesChannel = supabase.channel('brand-sales-channel')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'brand_sales' 
+        }, 
+        (payload) => {
+          console.log('Brand sales changed:', payload);
+        }
+      );
+
+    // Subscribe to all channels
+    await cafesChannel.subscribe();
+    await surveysChannel.subscribe();
+    await brandSalesChannel.subscribe();
+    
+    console.log('Realtime enabled for all database tables');
   } catch (error) {
     console.error('Error enabling realtime:', error);
   }

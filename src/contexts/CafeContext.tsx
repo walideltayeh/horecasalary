@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Cafe, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -22,85 +21,125 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch cafes when user changes
-  useEffect(() => {
-    const fetchCafes = async () => {
-      if (!user) {
-        setCafes([]);
-        setLoading(false);
-        return;
-      }
-      
-      setLoading(true);
-      
-      try {
-        console.log("Fetching cafes from database...");
-        const { data, error } = await supabase
-          .from('cafes')
-          .select(`
-            *,
-            cafe_surveys (
-              id,
-              brand_sales (
-                brand,
-                packs_per_week
-              )
+  const fetchCafes = useCallback(async () => {
+    if (!user) {
+      setCafes([]);
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      console.log("Fetching cafes from database...");
+      const { data, error } = await supabase
+        .from('cafes')
+        .select(`
+          *,
+          cafe_surveys (
+            id,
+            brand_sales (
+              brand,
+              packs_per_week
             )
-          `);
-          
-        if (error) throw error;
+          )
+        `);
         
-        if (data) {
-          console.log("Cafes fetched:", data);
-          setCafes(data.map(cafe => ({
-            id: cafe.id,
-            name: cafe.name,
-            ownerName: cafe.owner_name,
-            ownerNumber: cafe.owner_number,
-            numberOfHookahs: cafe.number_of_hookahs,
-            numberOfTables: cafe.number_of_tables,
-            status: cafe.status as 'Pending' | 'Visited' | 'Contracted',
-            photoUrl: cafe.photo_url,
-            governorate: cafe.governorate,
-            city: cafe.city,
-            createdAt: cafe.created_at,
-            createdBy: cafe.created_by
-          })));
-        }
-      } catch (err: any) {
-        console.error('Error fetching cafes:', err);
-        toast.error(err.message || 'Failed to fetch cafes');
-      } finally {
-        setLoading(false);
+      if (error) throw error;
+      
+      if (data) {
+        console.log("Cafes fetched:", data);
+        setCafes(data.map(cafe => ({
+          id: cafe.id,
+          name: cafe.name,
+          ownerName: cafe.owner_name,
+          ownerNumber: cafe.owner_number,
+          numberOfHookahs: cafe.number_of_hookahs,
+          numberOfTables: cafe.number_of_tables,
+          status: cafe.status as 'Pending' | 'Visited' | 'Contracted',
+          photoUrl: cafe.photo_url,
+          governorate: cafe.governorate,
+          city: cafe.city,
+          createdAt: cafe.created_at,
+          createdBy: cafe.created_by,
+          latitude: cafe.latitude,
+          longitude: cafe.longitude
+        })));
       }
-    };
-
-    fetchCafes();
-
-    // Set up realtime subscription when user is logged in
-    if (user) {
-      console.log("Setting up realtime subscription for cafes...");
-      const channel = supabase
-        .channel('cafes-changes')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'cafes' 
-          }, 
-          (payload) => {
-            console.log("Real-time update received:", payload);
-            fetchCafes(); // Refetch all cafes when any change happens
-          }
-        )
-        .subscribe();
-
-      return () => {
-        console.log("Removing realtime subscription...");
-        supabase.removeChannel(channel);
-      };
+    } catch (err: any) {
+      console.error('Error fetching cafes:', err);
+      toast.error(err.message || 'Failed to fetch cafes');
+    } finally {
+      setLoading(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    fetchCafes();
+  }, [fetchCafes]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    console.log("Setting up realtime subscription for cafes...");
+    
+    const cafesChannel = supabase
+      .channel('user-cafes-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'cafes' 
+        }, 
+        (payload) => {
+          console.log("Real-time cafe update received:", payload);
+          fetchCafes();
+        }
+      );
+      
+    const surveysChannel = supabase
+      .channel('user-cafe-surveys-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'cafe_surveys' 
+        }, 
+        (payload) => {
+          console.log("Real-time cafe survey update received:", payload);
+          fetchCafes();
+        }
+      );
+      
+    const brandSalesChannel = supabase
+      .channel('user-brand-sales-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'brand_sales' 
+        }, 
+        (payload) => {
+          console.log("Real-time brand sales update received:", payload);
+          fetchCafes();
+        }
+      );
+
+    Promise.all([
+      cafesChannel.subscribe(),
+      surveysChannel.subscribe(),
+      brandSalesChannel.subscribe()
+    ])
+      .then(() => console.log("All realtime subscriptions activated"))
+      .catch(err => console.error("Error setting up realtime subscriptions:", err));
+
+    return () => {
+      console.log("Removing realtime subscriptions...");
+      supabase.removeChannel(cafesChannel);
+      supabase.removeChannel(surveysChannel);
+      supabase.removeChannel(brandSalesChannel);
+    };
+  }, [user, fetchCafes]);
 
   const addCafe = async (cafeData: Omit<Cafe, 'id' | 'createdAt'>): Promise<string | null> => {
     if (!user) return null;
