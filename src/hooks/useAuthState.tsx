@@ -102,14 +102,14 @@ export function useAuthState() {
           id: '9ed9791e-b2b3-4440-a434-673a9f2d06c7',
           email: 'sales@horeca.app',
           name: 'Sales Representative',
-          role: 'user',
+          role: 'user' as 'admin' | 'user',
           password: null
         },
         {
           id: '10ed9791e-b2b3-4440-a434-673a9f2d06c8',
           email: 'manager@horeca.app',
           name: 'Regional Manager',
-          role: 'user',
+          role: 'user' as 'admin' | 'user',
           password: null
         }
       ];
