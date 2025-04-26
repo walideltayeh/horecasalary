@@ -82,8 +82,8 @@ export function useAuthState() {
               
               console.log("useAuthState: Setting user state:", currentUser);
               setUser(currentUser);
-              setIsLoading(false);
             }
+            setIsLoading(false);
           } catch (err) {
             console.error("Error in auth state change handler:", err);
             setIsLoading(false);

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -37,7 +36,6 @@ export function useAuthActions() {
       toast.error('An unexpected error occurred');
       return false;
     } finally {
-      // Ensure loading state is reset regardless of success/failure
       setIsLoading(false);
     }
   };

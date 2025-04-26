@@ -59,7 +59,7 @@ const Login: React.FC = () => {
         if (success) {
           toast.success('Welcome back, Admin!');
           console.log('Admin login successful, redirecting...');
-          navigate('/dashboard');
+          // Don't navigate here, let the user effect handle it
         } else {
           toast.error('Failed to login. Please try again.');
           setIsSubmitting(false);
@@ -75,7 +75,7 @@ const Login: React.FC = () => {
         if (success) {
           toast.success(`Welcome, ${username}!`);
           console.log('Login successful, redirecting to user app');
-          navigate('/user-app');
+          // Don't navigate here, let the user effect handle it
         } else {
           toast.error('Invalid credentials');
           setIsSubmitting(false);
@@ -107,7 +107,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your username or email" 
                 className="input-with-red-outline" 
                 required 
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -120,7 +120,7 @@ const Login: React.FC = () => {
                 placeholder="Enter your password" 
                 className="input-with-red-outline" 
                 required 
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoading}
               />
             </div>
           </CardContent>
@@ -133,7 +133,7 @@ const Login: React.FC = () => {
               {isSubmitting ? "Logging in..." : "Login"}
             </Button>
             <div className="text-sm text-center mt-2">
-              {isLoading || isSubmitting ? "Please wait..." : ""}
+              {(isLoading || isSubmitting) && "Please wait..."}
             </div>
           </CardFooter>
         </form>
