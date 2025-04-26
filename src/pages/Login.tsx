@@ -19,6 +19,13 @@ const Login: React.FC = () => {
     console.log('Login component mounted, current user:', user);
   }, [user]);
   
+  useEffect(() => {
+    // Reset the submitting state when isLoading changes to false
+    if (!isLoading) {
+      setIsSubmitting(false);
+    }
+  }, [isLoading]);
+  
   // If user is already authenticated, redirect
   if (user) {
     console.log('User already authenticated, redirecting to:', user.role === 'admin' ? '/dashboard' : '/user-app');
@@ -125,6 +132,9 @@ const Login: React.FC = () => {
             >
               {isSubmitting ? "Logging in..." : "Login"}
             </Button>
+            <div className="text-sm text-center mt-2">
+              {isLoading || isSubmitting ? "Please wait..." : ""}
+            </div>
           </CardFooter>
         </form>
       </Card>
