@@ -1,7 +1,9 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Cafe, KPISettings, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DataContextType {
   cafes: Cafe[];
@@ -104,26 +106,151 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { user } = useAuth();
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [kpiSettings, setKpiSettings] = useState<KPISettings>(DEFAULT_KPI_SETTINGS);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Fetch KPI settings from Supabase
+  useEffect(() => {
+    const fetchKpiSettings = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('kpi_settings')
+          .select('*')
+          .limit(1)
+          .single();
+          
+        if (error) {
+          console.error('Error fetching KPI settings:', error);
+          // If we can't fetch from Supabase, use local storage as fallback
+          const storedKPISettings = localStorage.getItem('horeca-kpi-settings');
+          if (storedKPISettings) {
+            setKpiSettings(JSON.parse(storedKPISettings));
+          }
+        } else if (data) {
+          // Map Supabase data to our KPI settings format
+          const mappedSettings: KPISettings = {
+            totalPackage: data.total_package,
+            basicSalaryPercentage: data.basic_salary_percentage,
+            visitKpiPercentage: data.visit_kpi_percentage,
+            visitThresholdPercentage: data.visit_threshold_percentage,
+            targetVisitsLarge: data.target_visits_large,
+            targetVisitsMedium: data.target_visits_medium,
+            targetVisitsSmall: data.target_visits_small,
+            contractThresholdPercentage: data.contract_threshold_percentage,
+            targetContractsLarge: data.target_contracts_large,
+            targetContractsMedium: data.target_contracts_medium,
+            targetContractsSmall: data.target_contracts_small,
+            bonusLargeCafe: data.bonus_large_cafe,
+            bonusMediumCafe: data.bonus_medium_cafe,
+            bonusSmallCafe: data.bonus_small_cafe,
+          };
+          
+          setKpiSettings(mappedSettings);
+          
+          // Update local storage with remote data
+          localStorage.setItem('horeca-kpi-settings', JSON.stringify(mappedSettings));
+        }
+      } catch (err) {
+        console.error('Error in KPI settings fetch:', err);
+      }
+      
+      setIsInitialized(true);
+    };
+    
+    fetchKpiSettings();
+  }, [user]);
+
+  // Load cafes from localStorage on initial load
   useEffect(() => {
     const storedCafes = localStorage.getItem('horeca-cafes');
     if (storedCafes) {
       setCafes(JSON.parse(storedCafes));
     }
-
-    const storedKPISettings = localStorage.getItem('horeca-kpi-settings');
-    if (storedKPISettings) {
-      setKpiSettings(JSON.parse(storedKPISettings));
-    }
   }, []);
 
+  // Save cafes to localStorage when they change
   useEffect(() => {
     localStorage.setItem('horeca-cafes', JSON.stringify(cafes));
   }, [cafes]);
 
-  useEffect(() => {
-    localStorage.setItem('horeca-kpi-settings', JSON.stringify(kpiSettings));
-  }, [kpiSettings]);
+  // Update KPI settings in both Supabase and localStorage
+  const updateKPISettings = async (newSettings: Partial<KPISettings>) => {
+    if (!user) return;
+    
+    const updatedSettings = { ...kpiSettings, ...newSettings };
+
+    // Validate percentage values
+    if ('basicSalaryPercentage' in newSettings) {
+      updatedSettings.basicSalaryPercentage = Math.max(0, Math.min(100, updatedSettings.basicSalaryPercentage));
+    }
+
+    if ('visitKpiPercentage' in newSettings) {
+      updatedSettings.visitKpiPercentage = Math.max(0, Math.min(100, updatedSettings.visitKpiPercentage));
+    }
+    
+    setKpiSettings(updatedSettings);
+    
+    // Update local storage
+    localStorage.setItem('horeca-kpi-settings', JSON.stringify(updatedSettings));
+    
+    // Update Supabase
+    try {
+      // Map our KPI settings to Supabase table format
+      const mappedSettings = {
+        total_package: updatedSettings.totalPackage,
+        basic_salary_percentage: updatedSettings.basicSalaryPercentage,
+        visit_kpi_percentage: updatedSettings.visitKpiPercentage,
+        visit_threshold_percentage: updatedSettings.visitThresholdPercentage,
+        target_visits_large: updatedSettings.targetVisitsLarge,
+        target_visits_medium: updatedSettings.targetVisitsMedium,
+        target_visits_small: updatedSettings.targetVisitsSmall,
+        contract_threshold_percentage: updatedSettings.contractThresholdPercentage,
+        target_contracts_large: updatedSettings.targetContractsLarge,
+        target_contracts_medium: updatedSettings.targetContractsMedium,
+        target_contracts_small: updatedSettings.targetContractsSmall,
+        bonus_large_cafe: updatedSettings.bonusLargeCafe,
+        bonus_medium_cafe: updatedSettings.bonusMediumCafe,
+        bonus_small_cafe: updatedSettings.bonusSmallCafe,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { data: existingSettings } = await supabase
+        .from('kpi_settings')
+        .select('id')
+        .limit(1);
+        
+      if (existingSettings && existingSettings.length > 0) {
+        // Update existing settings
+        const { error } = await supabase
+          .from('kpi_settings')
+          .update(mappedSettings)
+          .eq('id', existingSettings[0].id);
+          
+        if (error) {
+          console.error('Error updating KPI settings in Supabase:', error);
+          toast.error('Failed to sync KPI settings with server');
+        } else {
+          toast.success("KPI settings updated successfully");
+        }
+      } else {
+        // Insert new settings if none exist
+        const { error } = await supabase
+          .from('kpi_settings')
+          .insert([mappedSettings]);
+          
+        if (error) {
+          console.error('Error inserting KPI settings in Supabase:', error);
+          toast.error('Failed to sync KPI settings with server');
+        } else {
+          toast.success("KPI settings updated successfully");
+        }
+      }
+    } catch (err) {
+      console.error('Error syncing KPI settings:', err);
+      toast.error('Failed to sync KPI settings with server');
+    }
+  };
 
   const addCafe = (cafeData: Omit<Cafe, 'id' | 'createdAt'>) => {
     if (!user) return;
@@ -147,23 +274,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return cafe;
       })
     );
-  };
-
-  const updateKPISettings = (newSettings: Partial<KPISettings>) => {
-    setKpiSettings(prev => {
-      const updated = { ...prev, ...newSettings };
-      
-      if ('basicSalaryPercentage' in newSettings) {
-        updated.basicSalaryPercentage = Math.max(0, Math.min(100, updated.basicSalaryPercentage));
-      }
-
-      if ('visitKpiPercentage' in newSettings) {
-        updated.visitKpiPercentage = Math.max(0, Math.min(100, updated.visitKpiPercentage));
-      }
-
-      return updated;
-    });
-    toast.success("KPI settings updated successfully");
   };
 
   const getCafeSize = (numberOfHookahs: number): CafeSize => {

@@ -9,7 +9,66 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      kpi_settings: {
+        Row: {
+          basic_salary_percentage: number
+          bonus_large_cafe: number
+          bonus_medium_cafe: number
+          bonus_small_cafe: number
+          contract_threshold_percentage: number
+          created_at: string | null
+          id: string
+          target_contracts_large: number
+          target_contracts_medium: number
+          target_contracts_small: number
+          target_visits_large: number
+          target_visits_medium: number
+          target_visits_small: number
+          total_package: number
+          updated_at: string | null
+          visit_kpi_percentage: number
+          visit_threshold_percentage: number
+        }
+        Insert: {
+          basic_salary_percentage?: number
+          bonus_large_cafe?: number
+          bonus_medium_cafe?: number
+          bonus_small_cafe?: number
+          contract_threshold_percentage?: number
+          created_at?: string | null
+          id?: string
+          target_contracts_large?: number
+          target_contracts_medium?: number
+          target_contracts_small?: number
+          target_visits_large?: number
+          target_visits_medium?: number
+          target_visits_small?: number
+          total_package?: number
+          updated_at?: string | null
+          visit_kpi_percentage?: number
+          visit_threshold_percentage?: number
+        }
+        Update: {
+          basic_salary_percentage?: number
+          bonus_large_cafe?: number
+          bonus_medium_cafe?: number
+          bonus_small_cafe?: number
+          contract_threshold_percentage?: number
+          created_at?: string | null
+          id?: string
+          target_contracts_large?: number
+          target_contracts_medium?: number
+          target_contracts_small?: number
+          target_visits_large?: number
+          target_visits_medium?: number
+          target_visits_small?: number
+          total_package?: number
+          updated_at?: string | null
+          visit_kpi_percentage?: number
+          visit_threshold_percentage?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
