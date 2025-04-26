@@ -1,15 +1,12 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface CafeBrandSurveyProps {
-  cafeId: string;
   onComplete: () => void;
 }
 
@@ -20,7 +17,7 @@ interface BrandSale {
 
 const BRANDS = ['Al Fakher', 'Adalya', 'Fumari', 'Star Buzz'] as const;
 
-export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ cafeId, onComplete }) => {
+export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete }) => {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,33 +43,9 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ cafeId, onComp
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
-
-      // Create survey
-      const { data: surveyData, error: surveyError } = await supabase
-        .from('cafe_surveys')
-        .insert([{ cafe_id: cafeId }])
-        .select()
-        .single();
-
-      if (surveyError) throw surveyError;
-
-      // Insert brand sales data
-      const { error: salesError } = await supabase
-        .from('brand_sales')
-        .insert(
-          brandSales.map(sale => ({
-            survey_id: surveyData.id,
-            brand: sale.brand,
-            packs_per_week: sale.packsPerWeek
-          }))
-        );
-
-      if (salesError) throw salesError;
-
-      toast.success('Survey submitted successfully');
       onComplete();
     } catch (error: any) {
-      console.error('Error submitting survey:', error);
+      console.error('Error in survey:', error);
       toast.error(error.message || 'Failed to submit survey');
     } finally {
       setIsSubmitting(false);
@@ -80,7 +53,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ cafeId, onComp
   };
 
   return (
-    <Card>
+    <>
       <CardHeader>
         <CardTitle>Brand Sales Survey</CardTitle>
       </CardHeader>
@@ -131,7 +104,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ cafeId, onComp
           {isSubmitting ? 'Submitting...' : 'Submit Survey'}
         </Button>
       </CardContent>
-    </Card>
+    </>
   );
 };
 
