@@ -11,30 +11,69 @@ export function useAuthState() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [session, setSession] = useState<any>(null);
   
-  // Fetch all users from Supabase
+  // Fetch all users from Supabase Auth users
   const fetchUsers = async () => {
     try {
-      console.log("Fetching users from session metadata instead of users table");
+      console.log("Fetching users from Supabase Auth system");
       
-      // For demonstration purposes, we'll use hardcoded users
-      // In a real app, this would query a profiles table instead of users table
-      // to avoid the infinite recursion error with RLS policies
+      // We can't directly query auth.users using the JS client due to RLS limitations
+      // Instead, we'll use the admin session to fetch the list of users
+      const { data: authUsersList, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) {
+        console.error("Error fetching auth users:", authError);
+        toast.error("Failed to load users. Please try again.");
+        return;
+      }
+      
+      if (!authUsersList || !authUsersList.users) {
+        console.log("No auth users found");
+        setUsers([]);
+        return;
+      }
+      
+      // Map the auth users to our User type
+      const mappedUsers = authUsersList.users.map(authUser => {
+        const metadata = authUser.user_metadata || {};
+        const email = authUser.email || '';
+        
+        // For demo purposes, check if this is our known admin user
+        let roleName = 'user';
+        let name = metadata.name || 'User';
+        
+        if (email === 'admin@horeca.app' || email === 'admin') {
+          roleName = 'admin';
+          name = 'Admin';
+        }
+        
+        return {
+          id: authUser.id,
+          email: email,
+          name: name,
+          role: validateRole(roleName),
+          password: null // We never store passwords client-side in real apps
+        };
+      });
+      
+      console.log("Fetched users:", mappedUsers);
+      setUsers(mappedUsers);
+      
+    } catch (err: any) {
+      console.error("Error fetching users:", err);
+      
+      // Fallback to hardcoded admin for demo purposes when facing permission issues
       const adminUser: User = {
-        id: '6ed9791e-b2b3-4440-a434-673a9f2d06c4', // Known admin ID from auth.users
+        id: '6ed9791e-b2b3-4440-a434-673a9f2d06c4', // Known admin ID
         email: 'admin@horeca.app',
         name: 'Admin',
         role: 'admin',
-        password: null // We never store passwords client-side in real apps
+        password: null
       };
       
-      // Here we'd normally fetch additional users from a profiles table
-      // that doesn't have the RLS recursion issue
+      console.log("Setting up fallback users");
       setUsers([adminUser]);
       
-      console.log("Set up users from session data");
-    } catch (err: any) {
-      console.error("Error fetching users:", err);
-      toast.error("Failed to load users. Please try refreshing the page.");
+      toast.error("Failed to load all users. Using fallback data.");
     }
   };
 

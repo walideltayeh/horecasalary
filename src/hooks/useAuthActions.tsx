@@ -68,36 +68,87 @@ export function useAuthActions() {
     }
   };
 
-  // For demo purposes, we'll have simplified versions of these functions
-  // that work with our hardcoded users approach
-
-  // Add user function (simplified for demo)
+  // Add user function
   const addUser = async (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => {
     try {
       setIsLoading(true);
-      toast.info("In demo mode - Can't add real users due to database constraints");
-      // In a real app, we would add the user to the database here using Supabase Auth API
+      console.log("Adding new user:", userData.email);
       
-      // For a full implementation, we would use:
-      // const { data, error } = await supabase.auth.admin.createUser({
-      //   email: userData.email,
-      //   password: userData.password,
-      //   user_metadata: { name: userData.name, role: userData.role }
-      // });
+      // Create the user in Supabase Auth
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: userData.email,
+        password: userData.password,
+        email_confirm: true,
+        user_metadata: { 
+          name: userData.name,
+          role: userData.role
+        }
+      });
+      
+      if (error) {
+        console.error('Error adding user:', error);
+        toast.error(`Failed to add user: ${error.message}`);
+        return false;
+      }
+      
+      toast.success(`User ${userData.name} added successfully`);
+      fetchUsers(); // Refresh the users list
+      return true;
     } catch (error: any) {
       console.error('Error adding user:', error);
       toast.error(`Failed to add user: ${error.message}`);
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Update user function (simplified for demo)
+  // Update user function
   const updateUser = async (userId: string, userData: { name?: string; email?: string; password?: string; role?: 'admin' | 'user' }): Promise<boolean> => {
     try {
       setIsLoading(true);
-      toast.info("In demo mode - Can't update real users due to database constraints");
-      // In a real app, we would update the user in the database here using Supabase Admin API
+      console.log("Updating user:", userId);
+      
+      const updates: any = {};
+      
+      if (userData.email) {
+        updates.email = userData.email;
+      }
+      
+      if (userData.password) {
+        updates.password = userData.password;
+      }
+      
+      const userMetadata: any = {};
+      
+      if (userData.name) {
+        userMetadata.name = userData.name;
+      }
+      
+      if (userData.role) {
+        userMetadata.role = userData.role;
+      }
+      
+      if (Object.keys(userMetadata).length > 0) {
+        updates.user_metadata = userMetadata;
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        toast.info("No changes to update");
+        setIsLoading(false);
+        return true;
+      }
+      
+      const { error } = await supabase.auth.admin.updateUserById(userId, updates);
+      
+      if (error) {
+        console.error('Error updating user:', error);
+        toast.error(`Failed to update user: ${error.message}`);
+        return false;
+      }
+      
+      toast.success(`User updated successfully`);
+      fetchUsers(); // Refresh the users list
       return true;
     } catch (error: any) {
       console.error('Error updating user:', error);
@@ -108,12 +159,22 @@ export function useAuthActions() {
     }
   };
 
-  // Delete user function (simplified for demo)
+  // Delete user function
   const deleteUser = async (userId: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      toast.info("In demo mode - Can't delete real users due to database constraints");
-      // In a real app, we would delete the user from the database here using Supabase Admin API
+      console.log("Deleting user:", userId);
+      
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        console.error('Error deleting user:', error);
+        toast.error(`Failed to delete user: ${error.message}`);
+        return false;
+      }
+      
+      toast.success(`User deleted successfully`);
+      fetchUsers(); // Refresh the users list
       return true;
     } catch (error: any) {
       console.error('Error deleting user:', error);
