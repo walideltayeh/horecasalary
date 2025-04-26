@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,6 +34,7 @@ const Admin: React.FC = () => {
   // State for new user form
   const [newUser, setNewUser] = useState({
     name: '',
+    email: '', // Added email field
     password: '',
     role: 'user' as 'admin' | 'user'
   });
@@ -82,7 +82,7 @@ const Admin: React.FC = () => {
     
     try {
       // Validate form
-      if (!newUser.name || !newUser.password) {
+      if (!newUser.name || !newUser.email || !newUser.password) {
         toast.error("Please fill in all fields");
         return;
       }
@@ -90,6 +90,7 @@ const Admin: React.FC = () => {
       // Add user
       addUser({
         name: newUser.name,
+        email: newUser.email, // Include email when adding user
         password: newUser.password,
         role: newUser.role
       });
@@ -97,6 +98,7 @@ const Admin: React.FC = () => {
       // Reset form
       setNewUser({
         name: '',
+        email: '', // Reset email
         password: '',
         role: 'user'
       });
@@ -218,6 +220,18 @@ const Admin: React.FC = () => {
                 value={newUser.name}
                 onChange={handleInputChange}
                 placeholder="Enter user name" 
+                className="input-with-red-outline"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                name="email"
+                value={newUser.email}
+                onChange={handleInputChange}
+                placeholder="Enter user email" 
                 className="input-with-red-outline"
               />
             </div>
