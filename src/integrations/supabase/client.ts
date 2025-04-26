@@ -26,3 +26,16 @@ export const supabase = createClient<Database>(
     }
   }
 );
+
+// Enable realtime for cafes table
+const enableRealtimeTables = async () => {
+  try {
+    await supabase.channel('cafes-changes').subscribe();
+    console.log('Realtime enabled for cafe tables');
+  } catch (error) {
+    console.error('Error enabling realtime:', error);
+  }
+};
+
+// Call the function when the client is initialized
+enableRealtimeTables();

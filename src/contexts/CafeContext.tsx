@@ -8,10 +8,11 @@ import { getCafeSize } from '@/utils/cafeUtils';
 
 interface CafeContextType {
   cafes: Cafe[];
-  addCafe: (cafe: Omit<Cafe, 'id' | 'createdAt'>) => void;
-  updateCafeStatus: (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => void;
+  addCafe: (cafe: Omit<Cafe, 'id' | 'createdAt'>) => Promise<string | null>;
+  updateCafeStatus: (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => Promise<boolean>;
   getCafeSize: (numberOfHookahs: number) => CafeSize;
-  deleteCafe: (cafeId: string) => void;
+  deleteCafe: (cafeId: string) => Promise<boolean>;
+  loading: boolean;
 }
 
 const CafeContext = createContext<CafeContextType | undefined>(undefined);
@@ -19,12 +20,21 @@ const CafeContext = createContext<CafeContextType | undefined>(undefined);
 export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [cafes, setCafes] = useState<Cafe[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch cafes when user changes
   useEffect(() => {
     const fetchCafes = async () => {
-      if (!user) return;
+      if (!user) {
+        setCafes([]);
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(true);
       
       try {
+        console.log("Fetching cafes from database...");
         const { data, error } = await supabase
           .from('cafes')
           .select(`
@@ -41,6 +51,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) throw error;
         
         if (data) {
+          console.log("Cafes fetched:", data);
           setCafes(data.map(cafe => ({
             id: cafe.id,
             name: cafe.name,
@@ -59,39 +70,112 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err: any) {
         console.error('Error fetching cafes:', err);
         toast.error(err.message || 'Failed to fetch cafes');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchCafes();
+
+    // Set up realtime subscription when user is logged in
+    if (user) {
+      console.log("Setting up realtime subscription for cafes...");
+      const channel = supabase
+        .channel('cafes-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'cafes' 
+          }, 
+          (payload) => {
+            console.log("Real-time update received:", payload);
+            fetchCafes(); // Refetch all cafes when any change happens
+          }
+        )
+        .subscribe();
+
+      return () => {
+        console.log("Removing realtime subscription...");
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
-  const addCafe = (cafeData: Omit<Cafe, 'id' | 'createdAt'>) => {
-    if (!user) return;
+  const addCafe = async (cafeData: Omit<Cafe, 'id' | 'createdAt'>): Promise<string | null> => {
+    if (!user) return null;
 
-    const newCafe: Cafe = {
-      ...cafeData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      console.log("Adding cafe to database:", cafeData);
+      
+      const { data, error } = await supabase
+        .from('cafes')
+        .insert({
+          name: cafeData.name,
+          owner_name: cafeData.ownerName,
+          owner_number: cafeData.ownerNumber,
+          number_of_hookahs: cafeData.numberOfHookahs,
+          number_of_tables: cafeData.numberOfTables,
+          status: cafeData.status,
+          photo_url: cafeData.photoUrl,
+          governorate: cafeData.governorate,
+          city: cafeData.city,
+          created_by: user.id,
+          latitude: cafeData.latitude,
+          longitude: cafeData.longitude
+        })
+        .select('id')
+        .single();
 
-    setCafes(prev => [...prev, newCafe]);
-    toast.success(`Cafe "${cafeData.name}" added successfully`);
+      if (error) throw error;
+      
+      toast.success(`Cafe "${cafeData.name}" added successfully`);
+      return data.id;
+    } catch (err: any) {
+      console.error('Error adding cafe:', err);
+      toast.error(err.message || 'Failed to add cafe');
+      return null;
+    }
   };
 
-  const updateCafeStatus = (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => {
-    setCafes(prev => 
-      prev.map(cafe => {
-        if (cafe.id === cafeId) {
-          return { ...cafe, status };
-        }
-        return cafe;
-      })
-    );
+  const updateCafeStatus = async (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted'): Promise<boolean> => {
+    try {
+      console.log(`Updating cafe ${cafeId} status to ${status}`);
+      
+      const { error } = await supabase
+        .from('cafes')
+        .update({ status })
+        .eq('id', cafeId);
+
+      if (error) throw error;
+      
+      toast.success(`Cafe status updated to ${status}`);
+      return true;
+    } catch (err: any) {
+      console.error('Error updating cafe status:', err);
+      toast.error(err.message || 'Failed to update cafe status');
+      return false;
+    }
   };
 
-  const deleteCafe = (cafeId: string) => {
-    setCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
-    toast.success("Cafe deleted successfully");
+  const deleteCafe = async (cafeId: string): Promise<boolean> => {
+    try {
+      console.log(`Deleting cafe ${cafeId}`);
+      
+      const { error } = await supabase
+        .from('cafes')
+        .delete()
+        .eq('id', cafeId);
+
+      if (error) throw error;
+      
+      toast.success("Cafe deleted successfully");
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting cafe:', err);
+      toast.error(err.message || 'Failed to delete cafe');
+      return false;
+    }
   };
 
   return (
@@ -101,7 +185,8 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addCafe,
         updateCafeStatus,
         getCafeSize,
-        deleteCafe
+        deleteCafe,
+        loading
       }}
     >
       {children}
@@ -116,4 +201,3 @@ export const useCafes = () => {
   }
   return context;
 };
-
