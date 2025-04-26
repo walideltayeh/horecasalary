@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const Login: React.FC = () => {
@@ -13,6 +13,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, login, isLoading } = useAuth();
+  const navigate = useNavigate();
   
   useEffect(() => {
     console.log('Login component mounted, current user:', user);
@@ -51,10 +52,7 @@ const Login: React.FC = () => {
         if (success) {
           toast.success('Welcome back, Admin!');
           console.log('Admin login successful, redirecting...');
-          // Force refresh to ensure clean state
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 500);
+          navigate('/dashboard');
         } else {
           toast.error('Failed to login. Please try again.');
           setIsSubmitting(false);
@@ -70,10 +68,7 @@ const Login: React.FC = () => {
         if (success) {
           toast.success(`Welcome, ${username}!`);
           console.log('Login successful, redirecting to user app');
-          // Force refresh to ensure clean state
-          setTimeout(() => {
-            window.location.href = '/user-app';
-          }, 500);
+          navigate('/user-app');
         } else {
           toast.error('Invalid credentials');
           setIsSubmitting(false);

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -28,7 +27,6 @@ export function useAuthActions() {
       
       if (data.user) {
         console.log("useAuthActions: Login successful for user:", data.user.id);
-        toast.success(`Welcome!`);
         return true;
       }
       
@@ -45,14 +43,20 @@ export function useAuthActions() {
   // Logout function
   const logout = async () => {
     try {
+      setIsLoading(true);
       console.log("useAuthActions: Logging out");
       await supabase.auth.signOut();
       toast.info('Logged out successfully');
-      // Force reload to ensure clean state
-      window.location.href = '/login';
+      
+      // Give time for auth state to update before redirecting
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 500);
     } catch (err) {
       console.error('Logout error:', err);
       toast.error('Failed to log out');
+    } finally {
+      setIsLoading(false);
     }
   };
 

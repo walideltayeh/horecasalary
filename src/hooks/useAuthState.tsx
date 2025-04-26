@@ -44,13 +44,63 @@ export function useAuthState() {
     console.log("useAuthState: Setting up auth state listener");
     setIsLoading(true);
     
-    let authStateSubscription: { unsubscribe: () => void } | null = null;
+    // First set up the auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        console.log("useAuthState: Auth state changed:", event, newSession?.user?.id);
+        
+        if (event === 'SIGNED_OUT') {
+          console.log("useAuthState: User signed out, clearing user state");
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (newSession && newSession.user) {
+          try {
+            // Fetch user details from the users table
+            console.log("useAuthState: Fetching user details for:", newSession.user.id);
+            
+            const { data, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', newSession.user.id)
+              .single();
+            
+            if (error) {
+              console.error('Error fetching user details:', error);
+              setUser(null);
+              setIsLoading(false);
+            } else if (data) {
+              const currentUser: User = {
+                id: data.id,
+                email: data.email,
+                name: data.name,
+                role: data.role as 'admin' | 'user',
+                password: data.password
+              };
+              
+              console.log("useAuthState: Setting user state:", currentUser);
+              setUser(currentUser);
+              setIsLoading(false);
+            }
+          } catch (err) {
+            console.error("Error in auth state change handler:", err);
+            setIsLoading(false);
+          }
+        } else {
+          console.log("useAuthState: No session in state change");
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
+    );
     
-    // First check for existing session
+    // Then check for existing session
     const checkExistingSession = async () => {
-      console.log("useAuthState: Checking for existing session");
-      
       try {
+        console.log("useAuthState: Checking for existing session");
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -94,43 +144,6 @@ export function useAuthState() {
           }
         }
         
-        // Set up auth state change listener after checking session
-        authStateSubscription = supabase.auth.onAuthStateChange(
-          async (event, newSession) => {
-            console.log("useAuthState: Auth state changed:", event, newSession?.user?.id);
-            
-            if (newSession && newSession.user) {
-              // Fetch user details from the users table
-              console.log("useAuthState: Fetching user details for:", newSession.user.id);
-              
-              const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', newSession.user.id)
-                .single();
-              
-              if (error) {
-                console.error('Error fetching user details:', error);
-                setUser(null);
-              } else if (data) {
-                const currentUser: User = {
-                  id: data.id,
-                  email: data.email,
-                  name: data.name,
-                  role: data.role as 'admin' | 'user',
-                  password: data.password
-                };
-                
-                console.log("useAuthState: Setting user state:", currentUser);
-                setUser(currentUser);
-              }
-            } else {
-              console.log("useAuthState: No session in state change, clearing user state");
-              setUser(null);
-            }
-          }
-        ).data.subscription;
-        
         setIsLoading(false);
       } catch (err) {
         console.error("Unexpected error in auth setup:", err);
@@ -143,9 +156,7 @@ export function useAuthState() {
 
     return () => {
       console.log("useAuthState: Cleaning up auth state subscription");
-      if (authStateSubscription) {
-        authStateSubscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, []);
   

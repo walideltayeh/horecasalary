@@ -21,7 +21,7 @@ const Index = () => {
   }, [user, isLoading]);
   
   // Show loading state while checking auth
-  if (isLoading && localLoading) {
+  if (isLoading || localLoading) {
     console.log("Index page - Auth is still loading, showing loading state");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -39,8 +39,9 @@ const Index = () => {
   
   // Once loaded or timeout reached, redirect based on auth state
   if (user) {
-    console.log("Index page - User authenticated, redirecting to:", user.role === 'admin' ? '/dashboard' : '/user-app');
-    return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} replace />;
+    const redirectPath = user.role === 'admin' ? '/dashboard' : '/user-app';
+    console.log("Index page - User authenticated, redirecting to:", redirectPath);
+    return <Navigate to={redirectPath} replace />;
   } else {
     console.log("Index page - No authenticated user, redirecting to login");
     return <Navigate to="/login" replace />;
