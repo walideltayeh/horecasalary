@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { mexicoLocations } from '@/data/mexicoLocations';
 import { toast } from 'sonner';
 import { useData } from '@/contexts/DataContext';
+import { Navigation } from 'lucide-react';
 
 interface AddCafeFormProps {
   onCafeAdded: (cafeId: string, cafeData: any) => void;
@@ -33,6 +34,10 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [coordinates, setCoordinates] = useState<{latitude: number | null, longitude: number | null}>({
+    latitude: null,
+    longitude: null
+  });
 
   useEffect(() => {
     if (formState.governorate) {
@@ -77,6 +82,26 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
     }
   };
 
+  const handleCaptureGPS = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCoordinates({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          toast.success('GPS location captured successfully');
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          toast.error('Failed to capture GPS location. Please ensure location access is enabled.');
+        }
+      );
+    } else {
+      toast.error('GPS is not supported on this device');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -104,7 +129,9 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
         photo_url: formState.photoUrl,
         governorate: formState.governorate,
         city: formState.city,
-        created_by: user?.id || 'unknown'
+        created_by: user?.id || 'unknown',
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude
       };
       
       const tempId = `temp-${Date.now()}`;
@@ -136,6 +163,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
   };
 
   const cafeSize = getCafeSize(formState.numberOfHookahs);
+  const shouldShowBrandSurvey = formState.numberOfHookahs > 0;
 
   return (
     <Card>
@@ -309,12 +337,31 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
               </div>
             )}
           </div>
+
+          <div className="space-y-2">
+            <Label>GPS Location</Label>
+            <div className="flex gap-4 items-center">
+              <Button 
+                type="button"
+                onClick={handleCaptureGPS}
+                className="flex items-center gap-2"
+              >
+                <Navigation className="h-4 w-4" />
+                Capture GPS
+              </Button>
+              {coordinates.latitude && coordinates.longitude && (
+                <span className="text-sm text-gray-600">
+                  ({coordinates.latitude.toFixed(6)}, {coordinates.longitude.toFixed(6)})
+                </span>
+              )}
+            </div>
+          </div>
         </CardContent>
         <CardFooter>
           <Button 
             type="submit" 
             className="w-full bg-custom-red hover:bg-red-700"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !shouldShowBrandSurvey}
           >
             {isSubmitting ? "Processing..." : "Continue to Brand Survey"}
           </Button>
