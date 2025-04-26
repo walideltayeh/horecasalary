@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,13 @@ import { mexicoLocations } from '@/data/mexicoLocations';
 import { toast } from 'sonner';
 import { useData } from '@/contexts/DataContext';
 import { Navigation } from 'lucide-react';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle 
+} from "@/components/ui/dialog";
 
 interface AddCafeFormProps {
   onCafeAdded: (cafeId: string, cafeData: any) => void;
@@ -38,6 +46,8 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
     latitude: null,
     longitude: null
   });
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [isCapturingLocation, setIsCapturingLocation] = useState(false);
 
   useEffect(() => {
     if (formState.governorate) {
@@ -83,23 +93,55 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
   };
 
   const handleCaptureGPS = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCoordinates({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-          toast.success('GPS location captured successfully');
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          toast.error('Failed to capture GPS location. Please ensure location access is enabled.');
-        }
-      );
-    } else {
+    // First check if the browser supports geolocation
+    if (!('geolocation' in navigator)) {
       toast.error('GPS is not supported on this device');
+      return;
     }
+    
+    setIsCapturingLocation(true);
+    setShowLocationDialog(true);
+    
+    // Options for better accuracy
+    const options = {
+      enableHighAccuracy: true, // Request the most accurate position
+      timeout: 10000, // Time to wait for a position (10 seconds)
+      maximumAge: 0 // Force new location (don't use cached position)
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+        setIsCapturingLocation(false);
+        setShowLocationDialog(false);
+        toast.success('GPS location captured successfully');
+        console.log('Location captured:', position.coords);
+      },
+      (error) => {
+        setIsCapturingLocation(false);
+        setShowLocationDialog(false);
+        console.error('Error getting location:', error);
+        
+        // More specific error messages based on error code
+        switch(error.code) {
+          case 1:
+            toast.error('Location access was denied. Please check your browser settings and enable location access.');
+            break;
+          case 2:
+            toast.error('Unable to determine your location. Please try again or check your device settings.');
+            break;
+          case 3:
+            toast.error('Location request timed out. Please try again.');
+            break;
+          default:
+            toast.error('Failed to capture GPS location. Please ensure location access is enabled.');
+        }
+      },
+      options
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,6 +202,10 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       city: '',
     });
     setPhotoPreview(null);
+    setCoordinates({
+      latitude: null, 
+      longitude: null
+    });
   };
 
   const cafeSize = getCafeSize(formState.numberOfHookahs);
@@ -345,6 +391,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
                 type="button"
                 onClick={handleCaptureGPS}
                 className="flex items-center gap-2"
+                variant="secondary"
               >
                 <Navigation className="h-4 w-4" />
                 Capture GPS
@@ -367,6 +414,37 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
           </Button>
         </CardFooter>
       </form>
+
+      {/* Location permission dialog */}
+      <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Capturing Location</DialogTitle>
+            <DialogDescription>
+              {isCapturingLocation ? (
+                <div className="flex flex-col items-center py-4">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-custom-red mb-4"></div>
+                  <p>Please allow location access when prompted by your browser.</p>
+                  <p className="mt-2 text-sm text-gray-500">Make sure location services are enabled on your device.</p>
+                </div>
+              ) : (
+                <div className="py-4">
+                  <p>Location access was denied or encountered an error.</p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Please check your browser settings and ensure that location access is enabled for this site.
+                  </p>
+                  <Button 
+                    className="mt-4 w-full" 
+                    onClick={() => setShowLocationDialog(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
