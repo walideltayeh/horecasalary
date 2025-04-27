@@ -14,6 +14,8 @@ import UserList from '@/components/admin/UserList';
 import SystemStats from '@/components/admin/SystemStats';
 import EditUserDialog from '@/components/admin/EditUserDialog';
 import { User } from '@/types';
+import { getCafeSize } from '@/utils/cafeUtils';
+import { toast } from '@/hooks/use-toast';
 
 const Admin: React.FC = () => {
   const { isAdmin, addUser, deleteUser, updateUser, users } = useAuth();
