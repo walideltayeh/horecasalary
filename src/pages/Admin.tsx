@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +12,8 @@ import EditUserDialog from '@/components/admin/EditUserDialog';
 import { UserPerformance } from '@/components/admin/UserPerformance';
 import { CafeDatabase } from '@/components/admin/CafeDatabase';
 import { User } from '@/types';
+import { toast } from '@/hooks/use-toast';
+import { getCafeSize } from '@/utils/cafeUtils';
 
 const Admin: React.FC = () => {
   const { isAdmin, addUser, deleteUser, updateUser, users } = useAuth();
@@ -19,6 +22,7 @@ const Admin: React.FC = () => {
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("all");
   const [editUser, setEditUser] = useState({
     id: '',
     name: '',
@@ -113,7 +117,6 @@ const Admin: React.FC = () => {
     // Generate Excel file and download
     window.XLSX.writeFile(workbook, "HoReCa_Cafes_Export.xlsx");
     
-    // Use toast with title and description instead of .success()
     toast({
       title: "Export Successful",
       description: "Cafes data exported successfully",
