@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Cafe } from "@/types";
 import { getCafeSize } from "@/utils/cafeUtils";
@@ -78,7 +78,7 @@ const ExportToExcel: React.FC<ExportToExcelProps> = ({ cafes }) => {
       onClick={exportToExcel}
       disabled={isExporting || loading}
     >
-      <Download className="h-4 w-4" /> 
+      <FileSpreadsheet className="h-4 w-4" /> 
       {isExporting ? "Exporting..." : "Export to Excel"}
     </Button>
   );

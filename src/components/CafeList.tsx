@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { toast } from 'sonner';
 import { Check, Clock, RefreshCcw, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { refreshCafeData } from '@/integrations/supabase/client';
+import ExportToExcel from './admin/ExportToExcel';
 
 interface CafeListProps {
   adminView?: boolean;
@@ -80,16 +80,19 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
             <p className="text-gray-500 text-sm">{filteredCafes.length} cafes found</p>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-1"
-          onClick={handleRefresh}
-          disabled={loading}
-        >
-          <RefreshCcw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> 
-          {loading ? 'Refreshing...' : 'Refresh Data'}
-        </Button>
+        <div className="flex gap-2">
+          <ExportToExcel cafes={filteredCafes} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCcw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> 
+            {loading ? 'Refreshing...' : 'Refresh Data'}
+          </Button>
+        </div>
       </div>
       
       <div className="rounded-md border overflow-x-auto">
