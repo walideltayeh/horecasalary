@@ -31,7 +31,7 @@ const Admin: React.FC = () => {
   }
   
   if (!authenticated) {
-    return <PasswordProtection onAuthenticate={() => setAuthenticated(true)} />;
+    return <PasswordProtection onAuthenticate={() => setAuthenticated(true)} title="Admin Panel" />;
   }
 
   const handleAddUser = async (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => {
