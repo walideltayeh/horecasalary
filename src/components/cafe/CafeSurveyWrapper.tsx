@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useCafes } from '@/contexts/CafeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CafeFormState } from './types/CafeFormTypes';
+import { Button } from '@/components/ui/button';
 
 const CafeSurveyWrapper: React.FC = () => {
   const { addCafe } = useCafes();
@@ -14,13 +15,14 @@ const CafeSurveyWrapper: React.FC = () => {
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
   const [pendingCafeData, setPendingCafeData] = useState<any>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
-  const [formKey, setFormKey] = useState(0); // For form reset
+  const [formKey, setFormKey] = useState(0);
 
   // Content for the Cafe tab
   const handleCafePreSubmit = useCallback(async (cafeData: any) => {
+    console.log("Pre-submit handler called with data:", cafeData);
+    setPendingCafeData(cafeData);
+    
     if (cafeData.numberOfHookahs >= 1) {
-      console.log("Survey needed, showing dialog for cafe:", cafeData);
-      setPendingCafeData(cafeData);
       setShowSurvey(true);
       setSurveyCompleted(false);
       return false;
@@ -29,7 +31,6 @@ const CafeSurveyWrapper: React.FC = () => {
     // If no survey needed, proceed with direct cafe addition
     const savedCafeId = await addCafe(cafeData);
     if (savedCafeId) {
-      // Reset form by updating the key
       setFormKey(prevKey => prevKey + 1);
       toast.success(`Cafe "${cafeData.name}" added successfully`);
     }
@@ -92,7 +93,7 @@ const CafeSurveyWrapper: React.FC = () => {
     setPendingCafeData(null);
     setShowSurvey(false);
     setSurveyCompleted(false);
-    setFormKey(prevKey => prevKey + 1); // Reset form on cancel
+    setFormKey(prevKey => prevKey + 1);
     toast.info('Cafe submission canceled');
   };
 
@@ -101,7 +102,6 @@ const CafeSurveyWrapper: React.FC = () => {
     const handleCafeAdded = (event: MessageEvent) => {
       if (event.data && event.data.type === "CAFE_ADDED") {
         console.log("Received cafe added event:", event.data);
-        // No need to do anything here as the subscription will handle it
       }
     };
 
@@ -118,6 +118,17 @@ const CafeSurveyWrapper: React.FC = () => {
         onPreSubmit={handleCafePreSubmit}
         surveyCompleted={surveyCompleted}
       />
+      
+      {pendingCafeData && pendingCafeData.numberOfHookahs >= 1 && !showSurvey && (
+        <div className="mt-4">
+          <Button 
+            onClick={() => setShowSurvey(true)}
+            className="w-full bg-custom-red hover:bg-red-700"
+          >
+            Open Brand Survey
+          </Button>
+        </div>
+      )}
       
       <Dialog 
         open={showSurvey} 
