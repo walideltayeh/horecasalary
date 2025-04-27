@@ -25,7 +25,10 @@ const AddCafeForm: React.FC = () => {
     handleSubmit,
     handleCaptureGPS,
     coordinates,
-    getCafeSize
+    getCafeSize,
+    isCapturingLocation,
+    showLocationDialog,
+    setShowLocationDialog
   } = useCafeForm(async (cafeData) => {
     // Prepare data for submission
     const completeData = {
@@ -90,6 +93,9 @@ const AddCafeForm: React.FC = () => {
           <GPSCapture 
             coordinates={coordinates}
             onCaptureGPS={handleCaptureGPS}
+            isCapturingLocation={isCapturingLocation}
+            showLocationDialog={showLocationDialog}
+            setShowLocationDialog={setShowLocationDialog}
           />
         </CardContent>
         <CardFooter>

@@ -11,24 +11,8 @@ const CafeSurveyWrapper: React.FC = () => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
 
-  const handleCafeAdded = async (cafeId: string, cafeData: any) => {
-    console.log("Cafe added, showing survey dialog - cafeId:", cafeId);
-    
-    try {
-      // Use the context's addCafe method to ensure real-time updates
-      const savedCafeId = await addCafe(cafeData);
-      
-      if (savedCafeId) {
-        setNewCafeId(savedCafeId);
-        setShowSurvey(true);
-      } else {
-        toast.error("Failed to add cafe");
-      }
-    } catch (error: any) {
-      console.error('Error adding cafe:', error);
-      toast.error(error.message || 'Failed to add cafe');
-    }
-  };
+  // Since we're not directly using onCafeAdded anymore, we'll need to subscribe to cafe creation events 
+  // This can be handled through the CafeContext
 
   const handleSurveyComplete = () => {
     setShowSurvey(false);
@@ -37,7 +21,7 @@ const CafeSurveyWrapper: React.FC = () => {
 
   return (
     <>
-      <AddCafeForm onCafeAdded={handleCafeAdded} />
+      <AddCafeForm />
       
       <Dialog 
         open={showSurvey} 

@@ -9,6 +9,8 @@ export interface CafeFormState {
   photoUrl: string;
   governorate: string;
   city: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface CafeFormProps {

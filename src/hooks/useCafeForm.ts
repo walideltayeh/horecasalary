@@ -5,7 +5,14 @@ import { useGPSLocation } from './useGPSLocation';
 import { toast } from 'sonner';
 
 export const useCafeForm = (onSubmit: (formData: CafeFormState) => Promise<void>) => {
-  const { coordinates, handleCaptureGPS } = useGPSLocation();
+  const { 
+    coordinates, 
+    handleCaptureGPS, 
+    isCapturingLocation, 
+    showLocationDialog, 
+    setShowLocationDialog 
+  } = useGPSLocation();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<CafeFormState>({
     name: '',
@@ -82,11 +89,15 @@ export const useCafeForm = (onSubmit: (formData: CafeFormState) => Promise<void>
 
     try {
       setIsSubmitting(true);
-      await onSubmit({
+      
+      // Add coordinates to the form state
+      const submissionData = {
         ...formState,
         latitude: coordinates.latitude!,
         longitude: coordinates.longitude!
-      });
+      };
+      
+      await onSubmit(submissionData);
       
       // Reset form after successful submission
       setFormState({
@@ -116,6 +127,9 @@ export const useCafeForm = (onSubmit: (formData: CafeFormState) => Promise<void>
     handleSubmit,
     handleCaptureGPS,
     coordinates,
+    isCapturingLocation,
+    showLocationDialog,
+    setShowLocationDialog,
     getCafeSize: (numberOfHookahs: number) => {
       if (numberOfHookahs === 0) return 'In Negotiation';
       if (numberOfHookahs >= 1 && numberOfHookahs <= 3) return 'Small';
