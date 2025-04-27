@@ -1,4 +1,3 @@
-
 export interface CafeFormState {
   name: string;
   ownerName: string;
@@ -16,7 +15,7 @@ export interface CafeFormState {
 export interface CafeFormProps {
   formState: CafeFormState;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSelectChange: (name: string, value: string) => void;
-  availableCities: string[];
-  cafeSize: string;
+  onSelectChange?: (name: string, value: string) => void;
+  cafeSize?: string;
+  availableCities?: string[];
 }

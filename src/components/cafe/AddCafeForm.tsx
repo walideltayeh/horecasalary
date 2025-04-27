@@ -12,8 +12,13 @@ import { CafeLocationInfo } from './CafeLocationInfo';
 import { PhotoUpload } from './PhotoUpload';
 import { GPSCapture } from './GPSCapture';
 import { useCafeForm } from '@/hooks/useCafeForm';
+import { CafeFormState } from './types/CafeFormTypes';
 
-const AddCafeForm: React.FC = () => {
+interface AddCafeFormProps {
+  onSubmitCafe?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<void>;
+}
+
+const AddCafeForm: React.FC<AddCafeFormProps> = ({ onSubmitCafe }) => {
   const { user } = useAuth();
   const { addCafe } = useCafes();
 
@@ -37,8 +42,13 @@ const AddCafeForm: React.FC = () => {
       status: 'Pending' as const
     };
     
-    // Use the addCafe method from CafeContext
-    await addCafe(completeData);
+    if (onSubmitCafe) {
+      // Let the parent component handle the submission
+      await onSubmitCafe(completeData);
+    } else {
+      // Use the default addCafe method from CafeContext
+      await addCafe(completeData);
+    }
   });
 
   const [availableCities, setAvailableCities] = React.useState<string[]>([]);

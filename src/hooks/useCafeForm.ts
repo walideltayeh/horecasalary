@@ -4,7 +4,7 @@ import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { useGPSLocation } from './useGPSLocation';
 import { toast } from 'sonner';
 
-export const useCafeForm = (onSubmit: (formData: CafeFormState) => Promise<void>) => {
+export const useCafeForm = (onSubmit: (formData: CafeFormState & { latitude: number, longitude: number }) => Promise<void>) => {
   const { 
     coordinates, 
     handleCaptureGPS, 
@@ -33,8 +33,6 @@ export const useCafeForm = (onSubmit: (formData: CafeFormState) => Promise<void>
       ownerNumber, 
       governorate, 
       city, 
-      numberOfHookahs, 
-      numberOfTables,
       photoUrl
     } = formState;
 
@@ -91,10 +89,15 @@ export const useCafeForm = (onSubmit: (formData: CafeFormState) => Promise<void>
       setIsSubmitting(true);
       
       // Add coordinates to the form state
+      if (!coordinates.latitude || !coordinates.longitude) {
+        toast.error('GPS location is required');
+        return;
+      }
+      
       const submissionData = {
         ...formState,
-        latitude: coordinates.latitude!,
-        longitude: coordinates.longitude!
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude
       };
       
       await onSubmit(submissionData);

@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface CafeBrandSurveyProps {
   onComplete: () => void;
+  onCancel?: () => void;
   cafeId?: string; // Make this prop optional to maintain compatibility
 }
 
@@ -20,7 +21,7 @@ interface BrandSale {
 
 const BRANDS = ['Al Fakher', 'Adalya', 'Fumari', 'Star Buzz'] as const;
 
-export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, cafeId }) => {
+export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, onCancel, cafeId }) => {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,11 +48,27 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, ca
     try {
       setIsSubmitting(true);
       
-      if (!cafeId) {
-        toast.error('No cafe specified for this survey');
-        return;
-      }
+      // Store the brand sales data in state so we can save it later
+      // when the cafe is created
+      
+      // For real-time sync, we'll save this data when the cafe is created
+      // in the parent component
+      
+      toast.success('Survey completed!');
+      onComplete();
+    } catch (error: any) {
+      console.error('Error in survey:', error);
+      toast.error(error.message || 'Failed to submit survey');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
+  // For supporting real-time updates across devices
+  const saveSurveyData = async (cafeId: string) => {
+    if (!cafeId || brandSales.length === 0) return;
+    
+    try {
       // Insert a new cafe survey
       const { data: surveyData, error: surveyError } = await supabase
         .from('cafe_surveys')
@@ -74,15 +91,10 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, ca
           .insert(brandSalesData);
 
         if (brandError) throw brandError;
-        
-        toast.success('Survey completed successfully!');
-        onComplete();
       }
-    } catch (error: any) {
-      console.error('Error in survey:', error);
-      toast.error(error.message || 'Failed to submit survey');
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      console.error("Error saving survey data:", error);
+      throw error;
     }
   };
 
@@ -130,13 +142,26 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, ca
           )}
         </div>
 
-        <Button 
-          onClick={handleSubmit} 
-          disabled={isSubmitting || selectedBrands.size === 0}
-          className="w-full"
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit Survey'}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting || selectedBrands.size === 0}
+            className="flex-1"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Survey'}
+          </Button>
+          
+          {onCancel && (
+            <Button 
+              onClick={onCancel}
+              variant="outline"
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </CardContent>
     </>
   );

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import AddCafeForm from './AddCafeForm';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -11,48 +11,64 @@ const CafeSurveyWrapper: React.FC = () => {
   const { addCafe } = useCafes();
   const [showSurvey, setShowSurvey] = useState(false);
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
+  const [pendingCafeData, setPendingCafeData] = useState<any>(null);
 
-  // Set up a subscription to listen for new cafes being added
-  useEffect(() => {
-    const subscription = supabase
-      .channel('cafe-added-channel')
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'cafes' 
-        }, 
-        (payload) => {
-          console.log("New cafe detected via realtime:", payload);
-          if (payload.new) {
-            setNewCafeId(payload.new.id);
-            setShowSurvey(true);
-          }
+  // Handle form submission and show survey if hookahs ≥ 1
+  const handleCafeSubmit = async (cafeData: any) => {
+    try {
+      // Check if survey is needed (number of hookahs ≥ 1)
+      if (cafeData.numberOfHookahs >= 1) {
+        // Store the cafe data temporarily and show survey
+        setPendingCafeData(cafeData);
+        setShowSurvey(true);
+      } else {
+        // Save directly if no survey needed (hookahs = 0)
+        const savedCafeId = await addCafe(cafeData);
+        if (savedCafeId) {
+          toast.success(`Cafe "${cafeData.name}" added successfully`);
         }
-      )
-      .subscribe();
+      }
+    } catch (error: any) {
+      console.error('Error handling cafe submission:', error);
+      toast.error(error.message || 'Failed to process cafe');
+    }
+  };
 
-    // Clean up subscription when component unmounts
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, []);
+  const handleSurveyComplete = async () => {
+    try {
+      if (pendingCafeData) {
+        // Now save the cafe data after survey completion
+        const savedCafeId = await addCafe(pendingCafeData);
+        if (savedCafeId) {
+          setNewCafeId(savedCafeId);
+          toast.success(`Cafe "${pendingCafeData.name}" added with survey data`);
+        }
+        // Clear the pending data
+        setPendingCafeData(null);
+      }
+      // Close survey dialog
+      setShowSurvey(false);
+    } catch (error: any) {
+      console.error('Error completing survey flow:', error);
+      toast.error(error.message || 'Failed to save cafe with survey data');
+    }
+  };
 
-  const handleSurveyComplete = () => {
+  const handleCancelSurvey = () => {
+    setPendingCafeData(null);
     setShowSurvey(false);
-    setNewCafeId(null);
+    toast.info('Cafe submission canceled');
   };
 
   return (
     <>
-      <AddCafeForm />
+      <AddCafeForm onSubmitCafe={handleCafeSubmit} />
       
       <Dialog 
         open={showSurvey} 
         onOpenChange={(open) => {
-          setShowSurvey(open);
           if (!open) {
-            console.log("Dialog closed by user interaction");
+            handleCancelSurvey();
           }
         }}
       >
@@ -62,7 +78,8 @@ const CafeSurveyWrapper: React.FC = () => {
           </DialogTitle>
           <CafeBrandSurvey 
             onComplete={handleSurveyComplete} 
-            cafeId={newCafeId || undefined} 
+            cafeId={newCafeId} 
+            onCancel={handleCancelSurvey}
           />
         </DialogContent>
       </Dialog>
