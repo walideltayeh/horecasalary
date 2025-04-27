@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CirclePlus } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import CafeBrandSurvey from '../CafeBrandSurvey';
 import { CafeFormState } from './types/CafeFormTypes';
 import { toast } from 'sonner';
@@ -78,7 +78,7 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
                 </>
               ) : (
                 <>
-                  <CirclePlus className="mr-2" />
+                  <ClipboardList className="mr-2" />
                   <span className="font-bold text-white">
                     {isDisabled ? 'Survey Not Required' : 'Complete Brand Survey'}
                   </span>
@@ -111,4 +111,3 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
 };
 
 export default CafeSurveyWrapper;
-

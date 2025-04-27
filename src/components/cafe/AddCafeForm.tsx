@@ -13,6 +13,7 @@ import CafeBrandSurvey from '../CafeBrandSurvey';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import CafeSurveyWrapper from './CafeSurveyWrapper';
 
 interface AddCafeFormProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -114,6 +115,19 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         isCapturingLocation={isCapturingLocation}
         showLocationDialog={showLocationDialog}
         setShowLocationDialog={setShowLocationDialog}
+      />
+
+      {/* Add the CafeSurveyWrapper component here - directly after GPS Capture */}
+      <CafeSurveyWrapper
+        surveyCompleted={localSurveyCompleted}
+        onFormChange={(formData) => {
+          if (onFormChange) {
+            onFormChange(formData);
+          }
+        }}
+        currentFormData={formState}
+        onSurveyComplete={handleSurveyComplete}
+        onPreSubmit={onPreSubmit}
       />
 
       {showSurvey && (
