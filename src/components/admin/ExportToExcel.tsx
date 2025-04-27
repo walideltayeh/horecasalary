@@ -4,7 +4,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Cafe } from "@/types";
 import { getCafeSize } from "@/utils/cafeUtils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCafeSurveys } from "@/hooks/useCafeSurveys";
 
 interface ExportToExcelProps {
@@ -13,11 +13,43 @@ interface ExportToExcelProps {
 
 const ExportToExcel: React.FC<ExportToExcelProps> = ({ cafes }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [xlsxLoaded, setXlsxLoaded] = useState(false);
   const { cafeSurveys, loading, fetchAllSurveys } = useCafeSurveys();
 
+  // Load the XLSX library when component mounts
+  useEffect(() => {
+    const loadXLSX = async () => {
+      try {
+        // Check if XLSX is already loaded in window
+        if (window.XLSX) {
+          setXlsxLoaded(true);
+          return;
+        }
+
+        // Load XLSX script if not already loaded
+        const script = document.createElement('script');
+        script.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
+        script.async = true;
+        script.onload = () => setXlsxLoaded(true);
+        script.onerror = (e) => console.error('Error loading XLSX library:', e);
+        document.body.appendChild(script);
+      } catch (error) {
+        console.error("Failed to load XLSX library:", error);
+      }
+    };
+
+    loadXLSX();
+  }, []);
+  
   const exportToExcel = async () => {
     setIsExporting(true);
     try {
+      // Check if XLSX is loaded
+      if (!window.XLSX) {
+        toast.error("Excel export library not loaded. Please try again in a few moments.");
+        throw new Error("XLSX library not loaded");
+      }
+      
       // Refresh survey data before exporting
       await fetchAllSurveys();
       
@@ -76,10 +108,10 @@ const ExportToExcel: React.FC<ExportToExcelProps> = ({ cafes }) => {
       variant="outline" 
       className="flex items-center gap-2 border-custom-red text-custom-red hover:bg-red-50"
       onClick={exportToExcel}
-      disabled={isExporting || loading}
+      disabled={isExporting || loading || !xlsxLoaded}
     >
       <FileSpreadsheet className="h-4 w-4" /> 
-      {isExporting ? "Exporting..." : "Export to Excel"}
+      {isExporting ? "Exporting..." : xlsxLoaded ? "Export to Excel" : "Loading Excel..."}
     </Button>
   );
 };
