@@ -34,20 +34,20 @@ export const supabase = createClient<Database>(
 const initializeDatabase = async () => {
   try {
     // Call the rls_helper function to set up the database structure
-    await supabase.functions.invoke('rls_helper')
-      .then(response => {
-        console.log('Database initialization completed successfully:', response);
-      })
-      .catch(error => {
-        console.error('Failed to initialize database:', error);
-      });
+    const { data, error } = await supabase.functions.invoke('rls_helper');
+    
+    if (error) {
+      console.error('Failed to initialize database:', error);
+    } else {
+      console.log('Database initialization completed successfully:', data);
+    }
   } catch (error) {
     console.error('Error initializing database structure:', error);
   }
 };
 
 // Call database initialization on client load
-initializeDatabase().catch(console.error);
+initializeDatabase();
 
 // Enable realtime for tables specifically related to cafes
 export const enableRealtimeForTables = async () => {
@@ -59,27 +59,23 @@ export const enableRealtimeForTables = async () => {
     // Enable realtime for each table via edge function
     for (const table of tables) {
       try {
-        const { error } = await supabase.functions.invoke('rls_helper')
-          .then(result => {
-            console.log(`[Realtime] Successfully enabled realtime via edge function for ${table}:`, result);
-            return { error: null };
-          })
-          .catch(err => {
-            console.error(`[Realtime] Error enabling realtime for ${table}:`, err);
-            return { error: err };
-          });
+        const { data, error } = await supabase.functions.invoke('rls_helper');
         
         if (error) {
+          console.error(`[Realtime] Error enabling realtime via edge function for ${table}:`, error);
+          
           // Try fallback to direct function if edge function fails
-          const { error: fallbackError } = await supabase.functions.invoke('enable-realtime', {
+          const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('enable-realtime', {
             body: { table_name: table }
           });
           
           if (fallbackError) {
             console.error(`[Realtime] Fallback also failed for ${table}:`, fallbackError);
           } else {
-            console.log(`[Realtime] Successfully enabled realtime via fallback for ${table}`);
+            console.log(`[Realtime] Successfully enabled realtime via fallback for ${table}`, fallbackData);
           }
+        } else {
+          console.log(`[Realtime] Successfully enabled realtime via edge function for ${table}:`, data);
         }
       } catch (err) {
         console.error(`[Realtime] Failed to enable realtime for ${table}:`, err);

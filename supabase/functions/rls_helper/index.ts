@@ -20,71 +20,68 @@ serve(async (req) => {
   )
   
   try {
-    // Create helper functions in the database if they don't exist
-    const { error: fnError } = await supabase.rpc(
-      'execute_sql',
-      {
-        sql: `
-        -- Create a function to execute arbitrary SQL securely
-        CREATE OR REPLACE FUNCTION public.execute_sql(sql text) RETURNS jsonb
-        LANGUAGE plpgsql
-        SECURITY DEFINER
-        AS $function$
-        DECLARE
-          result jsonb;
-        BEGIN
-          EXECUTE sql;
-          result := '{"success": true}'::jsonb;
-          RETURN result;
-        EXCEPTION
-          WHEN OTHERS THEN
-            result := jsonb_build_object(
-              'success', false,
-              'error', SQLERRM,
-              'code', SQLSTATE
-            );
-            RETURN result;
-        END;
-        $function$;
-        
-        -- Create a function to enable realtime for a specific table
-        CREATE OR REPLACE FUNCTION public.enable_realtime_for_table(table_name text)
-        RETURNS boolean
-        LANGUAGE plpgsql
-        SECURITY DEFINER
-        AS $function$
-        BEGIN
-          -- Set the replica identity to full for the specified table
-          EXECUTE format('ALTER TABLE public.%I REPLICA IDENTITY FULL;', table_name);
-          
-          -- Check if the table is already added to the realtime publication
-          IF NOT EXISTS (
-            SELECT 1 FROM pg_publication_tables 
-            WHERE pubname = 'supabase_realtime' 
-            AND schemaname = 'public'
-            AND tablename = table_name
-          ) THEN
-            -- Add the table to the realtime publication
-            EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I;', table_name);
-          END IF;
-          
-          RETURN true;
-        END;
-        $function$;
-        `
-      }
-    )
-      .catch(err => {
-        console.error("Error creating helper functions:", err);
-        return { error: err };
-      });
+    console.log("Creating helper functions and enabling realtime");
     
-    if (fnError) {
-      console.error("Error creating helper functions:", fnError);
-      return new Response(
-        JSON.stringify({ error: fnError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+    // Create helper functions
+    const createHelperFunctionsSql = `
+      -- Create a function to execute arbitrary SQL securely
+      CREATE OR REPLACE FUNCTION public.execute_sql(sql text) RETURNS jsonb
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $function$
+      DECLARE
+        result jsonb;
+      BEGIN
+        EXECUTE sql;
+        result := '{"success": true}'::jsonb;
+        RETURN result;
+      EXCEPTION
+        WHEN OTHERS THEN
+          result := jsonb_build_object(
+            'success', false,
+            'error', SQLERRM,
+            'code', SQLSTATE
+          );
+          RETURN result;
+      END;
+      $function$;
+      
+      -- Create a function to enable realtime for a specific table
+      CREATE OR REPLACE FUNCTION public.enable_realtime_for_table(table_name text)
+      RETURNS boolean
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $function$
+      BEGIN
+        -- Set the replica identity to full for the specified table
+        EXECUTE format('ALTER TABLE public.%I REPLICA IDENTITY FULL;', table_name);
+        
+        -- Check if the table is already added to the realtime publication
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_publication_tables 
+          WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public'
+          AND tablename = table_name
+        ) THEN
+          -- Add the table to the realtime publication
+          EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I;', table_name);
+        END IF;
+        
+        RETURN true;
+      END;
+      $function$;
+    `;
+
+    // Execute the SQL to create helper functions
+    const { data: helperData, error: helperError } = await supabase.rpc('execute_sql', { 
+      sql: createHelperFunctionsSql 
+    });
+    
+    if (helperError) {
+      console.error("Error creating helper functions:", helperError);
+      // Continue anyway as they might already exist
+    } else {
+      console.log("Helper functions created or already exist:", helperData);
     }
     
     // Enable realtime for important tables
@@ -93,13 +90,25 @@ serve(async (req) => {
     
     for (const table of tables) {
       try {
-        const { data, error } = await supabase.rpc('enable_realtime_for_table', { table_name: table });
-        
-        results.push({
-          table,
-          success: !error,
-          error: error ? error.message : null
+        // Call the function we just created
+        const { data, error } = await supabase.rpc('enable_realtime_for_table', { 
+          table_name: table 
         });
+        
+        if (error) {
+          console.error(`Error enabling realtime for table ${table}:`, error);
+          results.push({
+            table,
+            success: false,
+            error: error.message
+          });
+        } else {
+          console.log(`Realtime enabled for ${table}:`, data);
+          results.push({
+            table,
+            success: true
+          });
+        }
       } catch (err) {
         console.error(`Error enabling realtime for table ${table}:`, err);
         results.push({
