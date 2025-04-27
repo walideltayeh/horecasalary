@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +34,6 @@ const Admin: React.FC = () => {
     role: 'user' as 'admin' | 'user'
   });
   
-  // Ensure users are loaded when admin page is mounted
   useEffect(() => {
     if (isAdmin && authenticated) {
       console.log("Admin page mounted, refreshing user data");
@@ -65,7 +63,6 @@ const Admin: React.FC = () => {
     setIsAddingUser(true);
     try {
       await addUser(userData);
-      // Refresh users list after adding a user
       await fetchUsers();
     } finally {
       setIsAddingUser(false);
@@ -80,7 +77,6 @@ const Admin: React.FC = () => {
         if (selectedTab === editUser.id && editUser.role === 'admin') {
           setSelectedTab("all");
         }
-        // Refresh users list after editing
         await fetchUsers();
       }
     } catch (error) {
@@ -96,7 +92,6 @@ const Admin: React.FC = () => {
         if (success && selectedTab === userId) {
           setSelectedTab("all");
         }
-        // Refresh users list after deleting
         await fetchUsers();
       } finally {
         setIsDeletingUser(null);
@@ -124,7 +119,6 @@ const Admin: React.FC = () => {
   };
 
   const exportToExcel = () => {
-    // Prepare cafe data for export
     const cafesData = cafes.map(cafe => ({
       "Name": cafe.name,
       "Size": getCafeSize(cafe.numberOfHookahs),
@@ -138,18 +132,14 @@ const Admin: React.FC = () => {
       "Date Added": new Date(cafe.createdAt).toLocaleDateString()
     }));
 
-    // Create worksheet
     const worksheet = window.XLSX.utils.json_to_sheet(cafesData);
     const workbook = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(workbook, worksheet, "Cafes");
     
-    // Generate Excel file and download
     window.XLSX.writeFile(workbook, "HoReCa_Cafes_Export.xlsx");
     
     toast({
-      title: "Export Successful",
-      description: "Cafes data exported successfully",
-      variant: "default"
+      description: "Cafes data exported successfully"
     });
   };
 
@@ -160,7 +150,6 @@ const Admin: React.FC = () => {
         <p className="text-gray-600">Monitor user activity and cafe data</p>
       </div>
       
-      {/* User Management Section */}
       <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>
@@ -174,7 +163,6 @@ const Admin: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* User List Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -216,13 +204,10 @@ const Admin: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* User Performance Dashboard */}
       <UserPerformance users={users} cafes={cafes} />
       
-      {/* Cafe Database Section */}
       <CafeDatabase cafes={cafes} />
       
-      {/* System Information */}
       <Card>
         <CardHeader>
           <CardTitle>System Information</CardTitle>
@@ -232,7 +217,6 @@ const Admin: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Edit User Dialog */}
       <EditUserDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
