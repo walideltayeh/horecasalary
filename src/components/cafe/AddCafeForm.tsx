@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +8,10 @@ import { toast } from 'sonner';
 import { PhotoUpload } from './PhotoUpload';
 import { GPSCapture } from './GPSCapture';
 import { useGPSLocation } from '@/hooks/useGPSLocation';
+import { CafeBasicInfo } from './CafeBasicInfo';
+import { CafeCapacityInfo } from './CafeCapacityInfo';
+import { CafeLocationInfo } from './CafeLocationInfo';
+import { CafeFormState } from './types/CafeFormTypes';
 
 interface AddCafeFormProps {
   onCafeAdded: (cafeId: string, cafeData: any) => void;
@@ -25,7 +27,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
     handleCaptureGPS 
   } = useGPSLocation();
   
-  const [formState, setFormState] = useState({
+  const [formState, setFormState] = useState<CafeFormState>({
     name: '',
     ownerName: '',
     ownerNumber: '',
@@ -157,138 +159,22 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name of Cafe</Label>
-              <Input 
-                id="name" 
-                name="name"
-                value={formState.name}
-                onChange={handleInputChange}
-                placeholder="Enter cafe name" 
-                className="input-with-red-outline"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="ownerName">Owner's Name</Label>
-              <Input 
-                id="ownerName" 
-                name="ownerName"
-                value={formState.ownerName}
-                onChange={handleInputChange}
-                placeholder="Enter owner's name" 
-                className="input-with-red-outline"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="ownerNumber">Owner's Phone Number</Label>
-              <Input 
-                id="ownerNumber" 
-                name="ownerNumber"
-                value={formState.ownerNumber}
-                onChange={handleInputChange}
-                placeholder="Enter owner's phone number" 
-                className="input-with-red-outline"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select 
-                value={formState.status} 
-                onValueChange={(value) => handleSelectChange('status', value)}
-              >
-                <SelectTrigger id="status" className="input-with-red-outline">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Visited">Visited</SelectItem>
-                  <SelectItem value="Contracted">Contracted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <CafeBasicInfo 
+            formState={formState} 
+            onInputChange={handleInputChange} 
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="numberOfHookahs">Number of Hookahs</Label>
-              <Input 
-                id="numberOfHookahs" 
-                name="numberOfHookahs"
-                type="number"
-                min="0"
-                value={formState.numberOfHookahs}
-                onChange={handleInputChange}
-                className="input-with-red-outline"
-              />
-              <div className="mt-2">
-                <div>Current Size: <span className="cafe-size-value">{cafeSize}</span></div>
-                <div className="cafe-size-legend">
-                  1-3 hookahs: Small | 4-7 hookahs: Medium | 7+ hookahs: Large | 0 hookahs: In Negotiation
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="numberOfTables">Number of Tables</Label>
-              <Input 
-                id="numberOfTables" 
-                name="numberOfTables"
-                type="number"
-                min="0"
-                value={formState.numberOfTables}
-                onChange={handleInputChange}
-                className="input-with-red-outline"
-              />
-            </div>
-          </div>
+          <CafeCapacityInfo 
+            formState={formState} 
+            onInputChange={handleInputChange}
+            cafeSize={cafeSize}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="governorate">Governorate</Label>
-              <Select 
-                value={formState.governorate} 
-                onValueChange={(value) => handleSelectChange('governorate', value)}
-              >
-                <SelectTrigger id="governorate" className="input-with-red-outline">
-                  <SelectValue placeholder="Select governorate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mexicoLocations.map((location) => (
-                    <SelectItem key={location.governorate} value={location.governorate}>
-                      {location.governorate}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Select 
-                value={formState.city} 
-                onValueChange={(value) => handleSelectChange('city', value)}
-                disabled={availableCities.length === 0}
-              >
-                <SelectTrigger id="city" className="input-with-red-outline">
-                  <SelectValue placeholder={availableCities.length ? "Select city" : "Select governorate first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCities.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <CafeLocationInfo 
+            formState={formState} 
+            onSelectChange={handleSelectChange}
+            availableCities={availableCities}
+          />
 
           <PhotoUpload onPhotoChange={handlePhotoChange} />
 

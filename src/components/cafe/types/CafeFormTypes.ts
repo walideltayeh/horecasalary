@@ -1,0 +1,20 @@
+
+export interface CafeFormState {
+  name: string;
+  ownerName: string;
+  ownerNumber: string;
+  numberOfHookahs: number;
+  numberOfTables: number;
+  status: 'Pending' | 'Visited' | 'Contracted';
+  photoUrl: string;
+  governorate: string;
+  city: string;
+}
+
+export interface CafeFormProps {
+  formState: CafeFormState;
+  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSelectChange: (name: string, value: string) => void;
+  availableCities: string[];
+  cafeSize: string;
+}
