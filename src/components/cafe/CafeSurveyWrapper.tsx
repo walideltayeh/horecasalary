@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,15 +9,30 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, CirclePlus } from 'lucide-react';
 
-const CafeSurveyWrapper: React.FC = () => {
+interface CafeSurveyWrapperProps {
+  onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
+  surveyCompleted?: boolean;
+  onFormChange?: (formData: CafeFormState) => void;
+}
+
+const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
+  onPreSubmit,
+  surveyCompleted: externalSurveyCompleted = false,
+  onFormChange
+}) => {
   const [showSurvey, setShowSurvey] = useState(false);
-  const [surveyCompleted, setSurveyCompleted] = useState(false);
+  const [surveyCompleted, setSurveyCompleted] = useState(externalSurveyCompleted);
   const [currentFormData, setCurrentFormData] = useState<CafeFormState | null>(null);
   const { user } = useAuth();
 
   const handleFormChange = (formData: CafeFormState) => {
     console.log("Form data changed:", formData);
     setCurrentFormData(formData);
+    
+    // Pass the form data up to the parent component if needed
+    if (onFormChange) {
+      onFormChange(formData);
+    }
     
     // Reset survey state when hookahs change to 0
     if (formData.numberOfHookahs === 0) {
@@ -33,6 +49,11 @@ const CafeSurveyWrapper: React.FC = () => {
       return false;
     }
     
+    // If there's an external pre-submit handler, call it too
+    if (onPreSubmit) {
+      return await onPreSubmit(cafeData);
+    }
+    
     return true;
   };
 
@@ -47,11 +68,16 @@ const CafeSurveyWrapper: React.FC = () => {
     setShowSurvey(false);
   };
 
+  // Update local state when external surveyCompleted prop changes
+  React.useEffect(() => {
+    setSurveyCompleted(externalSurveyCompleted);
+  }, [externalSurveyCompleted]);
+
   // Render the survey button with conditional styling
   const renderSurveyButton = () => {
-    if (!currentFormData) return null;
+    if (!currentFormData && !onFormChange) return null;
 
-    const isDisabled = currentFormData.numberOfHookahs === 0;
+    const isDisabled = currentFormData?.numberOfHookahs === 0;
     const isCompleted = surveyCompleted;
 
     return (
