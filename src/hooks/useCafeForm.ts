@@ -4,7 +4,7 @@ import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { useGPSLocation } from './useGPSLocation';
 import { toast } from 'sonner';
 
-export const useCafeForm = (onSubmit: (formData: CafeFormState & { latitude: number, longitude: number }) => Promise<string | null | void>) => {
+export const useCafeForm = (onSubmit?: (formData: CafeFormState & { latitude: number, longitude: number }) => Promise<string | null | void>) => {
   const { 
     coordinates, 
     handleCaptureGPS, 
@@ -85,42 +85,45 @@ export const useCafeForm = (onSubmit: (formData: CafeFormState & { latitude: num
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      console.log("Form validation successful, proceeding with submission");
-      
-      // Add coordinates to the form state
-      if (!coordinates.latitude || !coordinates.longitude) {
-        toast.error('GPS location is required');
-        return;
+    // Only proceed with submission if onSubmit callback was provided
+    if (onSubmit) {
+      try {
+        setIsSubmitting(true);
+        console.log("Form validation successful, proceeding with submission");
+        
+        // Add coordinates to the form state
+        if (!coordinates.latitude || !coordinates.longitude) {
+          toast.error('GPS location is required');
+          return;
+        }
+        
+        const submissionData = {
+          ...formState,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude
+        };
+        
+        console.log("Submitting cafe data:", submissionData);
+        await onSubmit(submissionData);
+        
+        // Reset form after successful submission
+        setFormState({
+          name: '',
+          ownerName: '',
+          ownerNumber: '',
+          numberOfHookahs: 0,
+          numberOfTables: 0,
+          status: 'Pending',
+          photoUrl: '',
+          governorate: '',
+          city: '',
+        });
+      } catch (error: any) {
+        console.error('Error submitting cafe:', error);
+        toast.error(error.message || 'Failed to submit cafe');
+      } finally {
+        setIsSubmitting(false);
       }
-      
-      const submissionData = {
-        ...formState,
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude
-      };
-      
-      console.log("Submitting cafe data:", submissionData);
-      await onSubmit(submissionData);
-      
-      // Reset form after successful submission
-      setFormState({
-        name: '',
-        ownerName: '',
-        ownerNumber: '',
-        numberOfHookahs: 0,
-        numberOfTables: 0,
-        status: 'Pending',
-        photoUrl: '',
-        governorate: '',
-        city: '',
-      });
-    } catch (error: any) {
-      console.error('Error submitting cafe:', error);
-      toast.error(error.message || 'Failed to submit cafe');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

@@ -32,7 +32,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     isCapturingLocation,
     showLocationDialog,
     setShowLocationDialog
-  } = useCafeForm();
+  } = useCafeForm(); // Now this works correctly without arguments
 
   const { isSubmitting, handleSubmit: submitCafe } = useSubmitCafe({
     onPreSubmit,
