@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import AddCafeForm from './AddCafeForm';
@@ -6,6 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { useCafes } from '@/contexts/CafeContext';
 import { supabase } from '@/integrations/supabase/client';
+import { CafeFormState } from './types/CafeFormTypes';
 
 const CafeSurveyWrapper: React.FC = () => {
   const { addCafe } = useCafes();
@@ -13,33 +13,36 @@ const CafeSurveyWrapper: React.FC = () => {
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
   const [pendingCafeData, setPendingCafeData] = useState<any>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
+  const [formKey, setFormKey] = useState(0); // Add this to force form reset
 
-  // Trigger survey when hookah count is 1 or more
+  // Content for the Cafe tab
   const handleCafePreSubmit = useCallback(async (cafeData: any) => {
-    // Check if survey is needed (number of hookahs ≥ 1)
     if (cafeData.numberOfHookahs >= 1) {
-      // Store the cafe data temporarily and show survey
       console.log("Survey needed, showing dialog for cafe:", cafeData);
       setPendingCafeData(cafeData);
       setShowSurvey(true);
       setSurveyCompleted(false);
-      return false; // Prevent form submission
+      return false;
     }
     
     // If no survey needed, proceed with direct cafe addition
+    const savedCafeId = await addCafe(cafeData);
+    if (savedCafeId) {
+      // Reset form by updating the key
+      setFormKey(prevKey => prevKey + 1);
+      toast.success(`Cafe "${cafeData.name}" added successfully`);
+    }
     return true;
-  }, []);
+  }, [addCafe]);
 
   const handleSurveyComplete = async (brandSales: any[]) => {
     try {
       if (pendingCafeData && brandSales.length > 0) {
         console.log("Submitting cafe with survey data:", pendingCafeData, brandSales);
         
-        // Save cafe data and survey data
         const savedCafeId = await addCafe(pendingCafeData);
         
         if (savedCafeId) {
-          // Save survey data to Supabase
           const { data: surveyData, error: surveyError } = await supabase
             .from('cafe_surveys')
             .insert({ cafe_id: savedCafeId })
@@ -49,7 +52,6 @@ const CafeSurveyWrapper: React.FC = () => {
           if (surveyError) throw surveyError;
 
           if (surveyData) {
-            // Insert brand sales data
             const brandSalesData = brandSales.map(sale => ({
               survey_id: surveyData.id,
               brand: sale.brand,
@@ -63,7 +65,8 @@ const CafeSurveyWrapper: React.FC = () => {
             if (brandError) throw brandError;
           }
 
-          // Reset states
+          // Reset form by updating the key
+          setFormKey(prevKey => prevKey + 1);
           setNewCafeId(savedCafeId);
           setPendingCafeData(null);
           setShowSurvey(false);
@@ -82,12 +85,14 @@ const CafeSurveyWrapper: React.FC = () => {
     setPendingCafeData(null);
     setShowSurvey(false);
     setSurveyCompleted(false);
+    setFormKey(prevKey => prevKey + 1); // Reset form on cancel
     toast.info('Cafe submission canceled');
   };
 
   return (
     <>
       <AddCafeForm 
+        key={formKey}
         onPreSubmit={handleCafePreSubmit}
         surveyCompleted={surveyCompleted}
       />
