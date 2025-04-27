@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,13 @@ const Admin: React.FC = () => {
     
     // Generate Excel file and download
     window.XLSX.writeFile(workbook, "HoReCa_Cafes_Export.xlsx");
-    toast.success("Cafes data exported successfully");
+    
+    // Use toast with title and description instead of .success()
+    toast({
+      title: "Export Successful",
+      description: "Cafes data exported successfully",
+      variant: "default"
+    });
   };
   
   return (
