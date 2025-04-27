@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CafeFormProps } from './types/CafeFormTypes';
@@ -10,6 +10,30 @@ export const CafeLocationInfo = ({
   onSelectChange,
   availableCities 
 }: Pick<CafeFormProps, 'formState' | 'onSelectChange' | 'availableCities'>) => {
+  const [cities, setCities] = useState<string[]>([]);
+
+  // Update cities when governorate changes
+  useEffect(() => {
+    if (formState.governorate) {
+      const locationData = mexicoLocations.find(
+        location => location.governorate === formState.governorate
+      );
+      
+      if (locationData) {
+        setCities(locationData.cities);
+        
+        // If current city is not in the new cities list, clear it
+        if (formState.city && !locationData.cities.includes(formState.city)) {
+          onSelectChange('city', '');
+        }
+      } else {
+        setCities([]);
+      }
+    } else {
+      setCities([]);
+    }
+  }, [formState.governorate]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
@@ -36,13 +60,13 @@ export const CafeLocationInfo = ({
         <Select 
           value={formState.city} 
           onValueChange={(value) => onSelectChange('city', value)}
-          disabled={availableCities.length === 0}
+          disabled={cities.length === 0}
         >
           <SelectTrigger id="city" className="input-with-red-outline">
-            <SelectValue placeholder={availableCities.length ? "Select city" : "Select governorate first"} />
+            <SelectValue placeholder={cities.length ? "Select city" : "Select governorate first"} />
           </SelectTrigger>
           <SelectContent>
-            {availableCities.map((city) => (
+            {cities.map((city) => (
               <SelectItem key={city} value={city}>
                 {city}
               </SelectItem>

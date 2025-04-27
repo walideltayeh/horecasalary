@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
     const isDisabled = !currentFormData || currentFormData.numberOfHookahs === 0;
     const isCompleted = surveyCompleted;
     return <div className="w-full mt-4">
-        <Card className="bg-[#1a365d]">
+        <Card className="bg-white">
           <CardContent className="p-6 py-0 px-0">
             <Button type="button" variant={isCompleted ? "outline" : "default"} className={`w-full font-bold text-white ${isDisabled ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : isCompleted ? 'border-green-500 text-green-500 hover:bg-green-50' : 'bg-[#1a365d] text-white hover:bg-[#2a4365]'}`} disabled={isDisabled} onClick={() => setShowSurvey(true)}>
               {isCompleted ? <>
@@ -67,7 +68,7 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
                 </>}
             </Button>
 
-            {showSurvey && currentFormData && <div className="mt-4">
+            {showSurvey && currentFormData && <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
                 <CafeBrandSurvey cafeFormData={{
               ...currentFormData,
               createdBy: user?.id || 'unknown',

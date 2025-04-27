@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
@@ -67,7 +68,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
   };
 
   return (
-    <>
+    <div className="bg-white rounded-lg">
       <CardHeader>
         <CardTitle>Brand Sales Survey</CardTitle>
       </CardHeader>
@@ -131,7 +132,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
           )}
         </div>
       </CardContent>
-    </>
+    </div>
   );
 };
 
