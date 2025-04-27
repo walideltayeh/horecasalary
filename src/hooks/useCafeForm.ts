@@ -4,7 +4,7 @@ import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { useGPSLocation } from './useGPSLocation';
 import { toast } from 'sonner';
 
-export const useCafeForm = (onSubmit: (formData: CafeFormState & { latitude: number, longitude: number }) => Promise<void>) => {
+export const useCafeForm = (onSubmit: (formData: CafeFormState & { latitude: number, longitude: number }) => Promise<string | null | void>) => {
   const { 
     coordinates, 
     handleCaptureGPS, 
