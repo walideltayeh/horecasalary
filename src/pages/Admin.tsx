@@ -26,6 +26,8 @@ const Admin: React.FC = () => {
   useEffect(() => {
     if (isAdmin && authenticated) {
       console.log("Admin page mounted, refreshing ALL data");
+      
+      // Force fetch users immediately
       fetchUsers();
       
       // Force enable realtime for tables
@@ -45,6 +47,7 @@ const Admin: React.FC = () => {
       
       // Immediate refresh
       refreshCafes();
+      fetchUsers();
       
       // Then periodic refresh - more frequent for admin page
       const cafeRefreshInterval = setInterval(() => {
@@ -52,12 +55,18 @@ const Admin: React.FC = () => {
         refreshCafes();
       }, 5000); // Refresh every 5 seconds while on Admin page
       
+      const userRefreshInterval = setInterval(() => {
+        console.log("Admin periodic user refresh");
+        fetchUsers();
+      }, 10000); // Refresh users every 10 seconds
+      
       return () => {
         console.log("Clearing Admin page refresh intervals");
         clearInterval(cafeRefreshInterval);
+        clearInterval(userRefreshInterval);
       };
     }
-  }, [isAdmin, authenticated, refreshCafes]);
+  }, [isAdmin, authenticated, refreshCafes, fetchUsers]);
 
   // Reset refresh and force update when authenticated
   const handleAuthenticated = () => {
@@ -65,6 +74,7 @@ const Admin: React.FC = () => {
     // Force refresh after authentication with a short delay to ensure everything is set up
     setTimeout(() => {
       console.log("Admin authenticated, forcing data refresh");
+      fetchUsers();
       refreshCafes();
       handleRefreshCafes();
       // Trigger global refresh event
@@ -82,6 +92,8 @@ const Admin: React.FC = () => {
       title="Admin Panel" 
     />;
   }
+
+  console.log("Admin render with users:", users);
 
   const handleAddUser = async (userData: any) => {
     setIsAddingUser(true);

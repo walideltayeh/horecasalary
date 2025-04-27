@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from "@/types";
 import UserManagementSection from './UserManagementSection';
 import UserListSection from './UserListSection';
@@ -31,6 +31,12 @@ const UserManagement: React.FC<UserManagementProps> = ({
   isDeletingUser: propIsDeletingUser
 }) => {
   const [selectedTab, setSelectedTab] = useState("all");
+  
+  // Force data refresh on mount
+  useEffect(() => {
+    console.log("UserManagement mounted, refreshing users data");
+    onRefreshUsers();
+  }, [onRefreshUsers]);
   
   const {
     editDialogOpen,
@@ -68,6 +74,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const effectiveIsAddingUser = propIsAddingUser !== undefined ? propIsAddingUser : isAddingUser;
   const effectiveIsDeletingUser = propIsDeletingUser !== undefined ? propIsDeletingUser : isDeletingUser;
 
+  console.log("UserManagement render with users:", users);
+  
   return (
     <>
       <UserManagementSection

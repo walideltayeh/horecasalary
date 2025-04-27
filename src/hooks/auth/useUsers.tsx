@@ -12,6 +12,11 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
 
   // Fetch users from Supabase Auth system
   const fetchUsers = useCallback(async () => {
+    if (!isAdmin || !authenticated) {
+      console.log("[useUsers] Not fetching users - not admin or not authenticated");
+      return;
+    }
+
     try {
       console.log("[useUsers] Starting user fetch, isAdmin:", isAdmin, "authenticated:", authenticated);
       setIsLoadingUsers(true);
@@ -74,7 +79,7 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
     }
   }, [isAdmin, authenticated]);
 
-  // Poll for users every minute if admin and authenticated
+  // Poll for users when admin and authenticated
   useEffect(() => {
     if (isAdmin && authenticated) {
       console.log("[useUsers] Setting up polling, isAdmin:", isAdmin, "authenticated:", authenticated);
@@ -85,7 +90,7 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
       const intervalId = setInterval(() => {
         console.log("[useUsers] Polling for user updates");
         fetchUsers();
-      }, 60000); // Poll every minute
+      }, 30000); // Poll every 30 seconds
       
       return () => {
         console.log("[useUsers] Cleaning up polling interval");
