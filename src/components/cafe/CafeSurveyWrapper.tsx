@@ -55,13 +55,13 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
     const isCompleted = surveyCompleted;
 
     return (
-      <div className="w-full">
+      <div className="w-full mt-4">
         <Card className="bg-[#1a365d]">
           <CardContent className="p-6">
             <Button
               type="button"
               variant={isCompleted ? "outline" : "default"}
-              className={`w-full font-bold ${
+              className={`w-full font-bold text-white ${
                 isDisabled 
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   : isCompleted
@@ -79,7 +79,7 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
               ) : (
                 <>
                   <CirclePlus className="mr-2" />
-                  <span className="font-bold">
+                  <span className="font-bold text-white">
                     {isDisabled ? 'Survey Not Required' : 'Complete Brand Survey'}
                   </span>
                 </>
@@ -111,3 +111,4 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
 };
 
 export default CafeSurveyWrapper;
+
