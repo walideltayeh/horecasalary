@@ -52,10 +52,11 @@ export function useAuthState() {
           };
         });
         
-        console.log("Fetched users:", mappedUsers);
+        console.log("Fetched users:", mappedUsers.length, "users");
         setUsers(mappedUsers);
       } else {
         console.error("No users data in response:", data);
+        toast.error("Could not retrieve user data");
       }
     } catch (err: any) {
       console.error("Error fetching users:", err);
@@ -71,7 +72,7 @@ export function useAuthState() {
     
     // First set up the auth state listener before checking for existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
         console.log("useAuthState: Auth state changed:", event, newSession?.user?.id);
         
         if (event === 'SIGNED_OUT') {
@@ -107,11 +108,10 @@ export function useAuthState() {
           console.log("useAuthState: Setting user from session data:", currentUser);
           setUser(currentUser);
           
-          // Use setTimeout to avoid recursive auth state changes
+          // If admin, fetch all users immediately
           if (roleName === 'admin') {
-            setTimeout(() => {
-              fetchUsers();
-            }, 0);
+            console.log("Admin user detected, fetching all users");
+            await fetchUsers();
           }
           
           setIsLoading(false);
@@ -168,11 +168,10 @@ export function useAuthState() {
           console.log("useAuthState: Setting user from session:", currentUser);
           setUser(currentUser);
           
-          // Use setTimeout to avoid recursive auth state changes
+          // If admin, fetch all users immediately
           if (roleName === 'admin') {
-            setTimeout(() => {
-              fetchUsers();
-            }, 0);
+            console.log("Admin user detected, fetching all users");
+            await fetchUsers();
           }
         }
         

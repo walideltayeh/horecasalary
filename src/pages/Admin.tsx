@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
@@ -16,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { getCafeSize } from '@/utils/cafeUtils';
 
 const Admin: React.FC = () => {
-  const { isAdmin, addUser, deleteUser, updateUser, users } = useAuth();
+  const { isAdmin, addUser, deleteUser, updateUser, users, fetchUsers } = useAuth();
   const { cafes } = useData();
   const [authenticated, setAuthenticated] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
@@ -30,6 +30,14 @@ const Admin: React.FC = () => {
     role: 'user' as 'admin' | 'user'
   });
   
+  // Ensure users are loaded when admin page is mounted
+  useEffect(() => {
+    if (isAdmin && authenticated) {
+      console.log("Admin page mounted, refreshing user data");
+      fetchUsers();
+    }
+  }, [isAdmin, authenticated, fetchUsers]);
+  
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
   }
@@ -42,6 +50,8 @@ const Admin: React.FC = () => {
     setIsAddingUser(true);
     try {
       await addUser(userData);
+      // Refresh users list after adding a user
+      await fetchUsers();
     } finally {
       setIsAddingUser(false);
     }
@@ -55,6 +65,8 @@ const Admin: React.FC = () => {
         if (selectedTab === editUser.id && editUser.role === 'admin') {
           setSelectedTab("all");
         }
+        // Refresh users list after editing
+        await fetchUsers();
       }
     } catch (error) {
       console.error("Error updating user:", error);
@@ -69,6 +81,8 @@ const Admin: React.FC = () => {
         if (success && selectedTab === userId) {
           setSelectedTab("all");
         }
+        // Refresh users list after deleting
+        await fetchUsers();
       } finally {
         setIsDeletingUser(null);
       }
@@ -149,7 +163,7 @@ const Admin: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>User List</CardTitle>
-          <CardDescription>Users registered in the system</CardDescription>
+          <CardDescription>Users registered in the system ({users.length})</CardDescription>
         </CardHeader>
         <CardContent>
           <UserList

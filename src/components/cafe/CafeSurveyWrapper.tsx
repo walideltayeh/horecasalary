@@ -13,9 +13,20 @@ const CafeSurveyWrapper: React.FC = () => {
   const { addCafe } = useCafes();
   const [showSurvey, setShowSurvey] = useState(false);
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
-  const [pendingCafeData, setPendingCafeData] = useState<any>(null);
+  const [pendingCafeData, setPendingCafeData] = useState<CafeFormState & { latitude?: number, longitude?: number } | null>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [hookahCount, setHookahCount] = useState(0);
+
+  // Track form changes to show/hide survey button before submission
+  const handleFormChange = useCallback((formData: CafeFormState) => {
+    setHookahCount(formData.numberOfHookahs);
+    // Store the current form data for potential submission
+    setPendingCafeData(prev => ({
+      ...prev,
+      ...formData
+    }));
+  }, []);
 
   // Content for the Cafe tab
   const handleCafePreSubmit = useCallback(async (cafeData: any) => {
@@ -74,6 +85,7 @@ const CafeSurveyWrapper: React.FC = () => {
           setFormKey(prevKey => prevKey + 1);
           setNewCafeId(savedCafeId);
           setPendingCafeData(null);
+          setHookahCount(0);
           setShowSurvey(false);
           setSurveyCompleted(true);
 
@@ -112,23 +124,23 @@ const CafeSurveyWrapper: React.FC = () => {
   }, []);
 
   return (
-    <>
+    <div className="space-y-4">
       <AddCafeForm 
         key={formKey}
         onPreSubmit={handleCafePreSubmit}
         surveyCompleted={surveyCompleted}
+        onFormChange={handleFormChange}
       />
       
-      {pendingCafeData && pendingCafeData.numberOfHookahs >= 1 && !showSurvey && (
-        <div className="mt-4">
-          <Button 
-            onClick={() => setShowSurvey(true)}
-            className="w-full bg-custom-red hover:bg-red-700"
-          >
-            Open Brand Survey
-          </Button>
-        </div>
-      )}
+      <div className="mt-4">
+        <Button 
+          onClick={() => setShowSurvey(true)}
+          className="w-full bg-custom-red hover:bg-red-700"
+          disabled={hookahCount < 1}
+        >
+          {hookahCount < 1 ? "Brand Survey (Requires Hookahs)" : "Open Brand Survey"}
+        </Button>
+      </div>
       
       <Dialog 
         open={showSurvey} 
@@ -149,7 +161,7 @@ const CafeSurveyWrapper: React.FC = () => {
           />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,11 +17,13 @@ import { CafeFormState } from './types/CafeFormTypes';
 interface AddCafeFormProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
   surveyCompleted?: boolean;
+  onFormChange?: (formData: CafeFormState) => void;
 }
 
 const AddCafeForm: React.FC<AddCafeFormProps> = ({ 
   onPreSubmit, 
-  surveyCompleted = false 
+  surveyCompleted = false,
+  onFormChange
 }) => {
   const { user } = useAuth();
   const { addCafe } = useCafes();
@@ -75,6 +77,37 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     }
   };
 
+  // Custom input change handler that reports changes to parent
+  const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange(e);
+    if (onFormChange) {
+      const { name, value, type } = e.target;
+      const updatedFormState = { 
+        ...formState, 
+        [name]: type === 'number' ? (value === '' ? 0 : Number(value)) : value 
+      };
+      onFormChange(updatedFormState);
+    }
+  };
+
+  // Custom select change handler that reports changes to parent
+  const handleFormSelectChange = (name: string, value: string) => {
+    handleSelectChange(name, value);
+    if (onFormChange) {
+      onFormChange({
+        ...formState,
+        [name]: value
+      });
+    }
+  };
+
+  // Report initial form state to parent
+  useEffect(() => {
+    if (onFormChange) {
+      onFormChange(formState);
+    }
+  }, [onFormChange]);
+
   const [availableCities, setAvailableCities] = React.useState<string[]>([]);
 
   React.useEffect(() => {
@@ -109,23 +142,23 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         <CardContent className="space-y-6">
           <CafeBasicInfo 
             formState={formState} 
-            onInputChange={handleInputChange} 
+            onInputChange={handleFormInputChange} 
           />
 
           <CafeCapacityInfo 
             formState={formState} 
-            onInputChange={handleInputChange}
+            onInputChange={handleFormInputChange}
             cafeSize={cafeSize}
           />
 
           <CafeLocationInfo 
             formState={formState} 
-            onSelectChange={handleSelectChange}
+            onSelectChange={handleFormSelectChange}
             availableCities={availableCities}
           />
 
           <PhotoUpload onPhotoChange={(photoUrl) => 
-            handleSelectChange('photoUrl', photoUrl)
+            handleFormSelectChange('photoUrl', photoUrl)
           } />
 
           <GPSCapture 
