@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import AddCafeForm from './AddCafeForm';
 import CafeBrandSurvey from '../CafeBrandSurvey';
 import { CafeFormState } from './types/CafeFormTypes';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { Check, CirclePlus } from 'lucide-react';
 
 const CafeSurveyWrapper: React.FC = () => {
   const [showSurvey, setShowSurvey] = useState(false);
@@ -17,10 +19,9 @@ const CafeSurveyWrapper: React.FC = () => {
     console.log("Form data changed:", formData);
     setCurrentFormData(formData);
     
-    // Reset survey if hookahs change to 0
+    // Reset survey state when hookahs change to 0
     if (formData.numberOfHookahs === 0) {
-      setShowSurvey(false);
-      setSurveyCompleted(true);
+      setSurveyCompleted(true); // Auto-complete for 0 hookahs
     }
   };
 
@@ -28,8 +29,8 @@ const CafeSurveyWrapper: React.FC = () => {
     console.log("Pre-submit handler called with data:", cafeData);
     
     if (cafeData.numberOfHookahs >= 1 && !surveyCompleted) {
-      console.log("Showing survey before final submission");
-      setShowSurvey(true);
+      console.log("Survey required but not completed");
+      toast.error("Please complete the brand survey before submitting");
       return false;
     }
     
@@ -45,18 +46,43 @@ const CafeSurveyWrapper: React.FC = () => {
 
   const handleCancelSurvey = () => {
     setShowSurvey(false);
-    // Don't mark as completed, so form submission will still be blocked
   };
-  
-  // Debug logging
-  useEffect(() => {
-    console.log("CafeSurveyWrapper render state:", { 
-      showSurvey, 
-      surveyCompleted, 
-      hasFormData: !!currentFormData,
-      numberOfHookahs: currentFormData?.numberOfHookahs
-    });
-  }, [showSurvey, surveyCompleted, currentFormData]);
+
+  // Render the survey button with conditional styling
+  const renderSurveyButton = () => {
+    if (!currentFormData) return null;
+
+    const isDisabled = currentFormData.numberOfHookahs === 0;
+    const isCompleted = surveyCompleted;
+
+    return (
+      <Button
+        type="button"
+        variant={isCompleted ? "outline" : "default"}
+        className={`w-full mb-4 ${
+          isDisabled 
+            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            : isCompleted
+            ? 'border-green-500 text-green-500 hover:bg-green-50'
+            : 'bg-custom-red hover:bg-red-700'
+        }`}
+        disabled={isDisabled}
+        onClick={() => setShowSurvey(true)}
+      >
+        {isCompleted ? (
+          <>
+            <Check className="mr-2" />
+            Survey Completed
+          </>
+        ) : (
+          <>
+            <CirclePlus className="mr-2" />
+            {isDisabled ? 'Survey Not Required' : 'Complete Brand Survey'}
+          </>
+        )}
+      </Button>
+    );
+  };
 
   return (
     <Card className="relative">
@@ -74,11 +100,14 @@ const CafeSurveyWrapper: React.FC = () => {
             onCancel={handleCancelSurvey}
           />
         ) : (
-          <AddCafeForm
-            onPreSubmit={handlePreSubmit}
-            surveyCompleted={surveyCompleted}
-            onFormChange={handleFormChange}
-          />
+          <>
+            {renderSurveyButton()}
+            <AddCafeForm
+              onPreSubmit={handlePreSubmit}
+              surveyCompleted={surveyCompleted}
+              onFormChange={handleFormChange}
+            />
+          </>
         )}
       </CardContent>
     </Card>
