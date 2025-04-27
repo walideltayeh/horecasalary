@@ -15,10 +15,14 @@ import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
 
 interface AddCafeFormProps {
-  onSubmitCafe?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<void>;
+  onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
+  surveyCompleted?: boolean;
 }
 
-const AddCafeForm: React.FC<AddCafeFormProps> = ({ onSubmitCafe }) => {
+const AddCafeForm: React.FC<AddCafeFormProps> = ({ 
+  onPreSubmit, 
+  surveyCompleted = false 
+}) => {
   const { user } = useAuth();
   const { addCafe } = useCafes();
 
@@ -42,13 +46,14 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onSubmitCafe }) => {
       status: 'Pending' as const
     };
     
-    if (onSubmitCafe) {
-      // Let the parent component handle the submission
-      await onSubmitCafe(completeData);
-    } else {
-      // Use the default addCafe method from CafeContext
-      await addCafe(completeData);
+    // If onPreSubmit is provided, use it to control submission
+    if (onPreSubmit) {
+      const canSubmit = await onPreSubmit(completeData);
+      if (!canSubmit) return null;
     }
+    
+    // Default submission if no pre-submit handler or it allows submission
+    return await addCafe(completeData);
   });
 
   const [availableCities, setAvailableCities] = React.useState<string[]>([]);
@@ -70,6 +75,10 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onSubmitCafe }) => {
   }, [formState.governorate]);
 
   const cafeSize = getCafeSize(formState.numberOfHookahs);
+
+  // Determine if form submission should be disabled
+  const isSubmitDisabled = isSubmitting || 
+    (formState.numberOfHookahs >= 1 && !surveyCompleted);
 
   return (
     <Card>
@@ -112,7 +121,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onSubmitCafe }) => {
           <Button 
             type="submit" 
             className="w-full bg-custom-red hover:bg-red-700"
-            disabled={isSubmitting}
+            disabled={isSubmitDisabled}
           >
             {isSubmitting ? "Processing..." : "Add Cafe"}
           </Button>

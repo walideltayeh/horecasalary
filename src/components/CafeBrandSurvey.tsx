@@ -6,12 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { supabase } from '@/integrations/supabase/client';
 
 interface CafeBrandSurveyProps {
-  onComplete: () => void;
+  onComplete: (brandSales: any[]) => void;
   onCancel?: () => void;
-  cafeId?: string; // Make this prop optional to maintain compatibility
+  cafeId?: string;
 }
 
 interface BrandSale {
@@ -21,7 +20,11 @@ interface BrandSale {
 
 const BRANDS = ['Al Fakher', 'Adalya', 'Fumari', 'Star Buzz'] as const;
 
-export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, onCancel, cafeId }) => {
+export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ 
+  onComplete, 
+  onCancel, 
+  cafeId 
+}) => {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,53 +51,19 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, on
     try {
       setIsSubmitting(true);
       
-      // Store the brand sales data in state so we can save it later
-      // when the cafe is created
+      if (selectedBrands.size === 0) {
+        toast.error('Please select at least one brand');
+        return;
+      }
       
-      // For real-time sync, we'll save this data when the cafe is created
-      // in the parent component
-      
+      // Pass brand sales data back to parent
+      onComplete(brandSales);
       toast.success('Survey completed!');
-      onComplete();
     } catch (error: any) {
       console.error('Error in survey:', error);
       toast.error(error.message || 'Failed to submit survey');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // For supporting real-time updates across devices
-  const saveSurveyData = async (cafeId: string) => {
-    if (!cafeId || brandSales.length === 0) return;
-    
-    try {
-      // Insert a new cafe survey
-      const { data: surveyData, error: surveyError } = await supabase
-        .from('cafe_surveys')
-        .insert({ cafe_id: cafeId })
-        .select('id')
-        .single();
-
-      if (surveyError) throw surveyError;
-
-      if (surveyData) {
-        // Insert brand sales data
-        const brandSalesData = brandSales.map(sale => ({
-          survey_id: surveyData.id,
-          brand: sale.brand,
-          packs_per_week: sale.packsPerWeek
-        }));
-
-        const { error: brandError } = await supabase
-          .from('brand_sales')
-          .insert(brandSalesData);
-
-        if (brandError) throw brandError;
-      }
-    } catch (error) {
-      console.error("Error saving survey data:", error);
-      throw error;
     }
   };
 
