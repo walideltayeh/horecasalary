@@ -6,6 +6,13 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://fxphpfvfcogalwtbishv.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4cGhwZnZmY29nYWx3dGJpc2h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0NTQyNDksImV4cCI6MjA2MTAzMDI0OX0.9sxvHMcbdX8n0VY_3sNF9qL7i5EN8FAMOHWy738reh0";
 
+// Declare custom window property for TypeScript
+declare global {
+  interface Window {
+    cafeDataLastRefreshed?: number;
+  }
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
