@@ -43,24 +43,46 @@ export function useLogin() {
   const logout = async () => {
     try {
       setIsLoading(true);
-      console.log("useLogin: Logging out");
+      console.log("useLogin: Starting logout process");
       
-      // First clear any session data
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error("Logout error:", error);
-        toast.error('Failed to log out');
-        return;
+      // First manually clear session from local storage to handle potential Auth Session Missing errors
+      try {
+        localStorage.removeItem('supabase-horeca-app-auth');
+        console.log("useLogin: Cleared local storage auth data");
+      } catch (storageErr) {
+        console.warn("useLogin: Failed to clear local storage:", storageErr);
       }
       
+      // Then call the official signOut method
+      const { error } = await supabase.auth.signOut({
+        scope: 'local' // Only clear local session, not on server
+      });
+      
+      if (error) {
+        // If we get an error but it's about missing session, we can ignore it
+        if (error.message?.includes('Auth session missing')) {
+          console.log("useLogin: Auth session was already missing, continuing logout");
+        } else {
+          console.error("useLogin: Logout error:", error);
+          toast.error('Failed to log out');
+          return false;
+        }
+      }
+      
+      console.log("useLogin: Logout successful, redirecting to login page");
       toast.info('Logged out successfully');
       
-      // Force a page reload to clear any cached state
-      window.location.href = '/login';
+      // Allow time for state changes to propagate
+      setTimeout(() => {
+        // Force a page reload to clear any cached state and redirect
+        window.location.replace('/login');
+      }, 100);
+      
+      return true;
     } catch (err) {
       console.error('Logout error:', err);
       toast.error('Failed to log out');
+      return false;
     } finally {
       setIsLoading(false);
     }

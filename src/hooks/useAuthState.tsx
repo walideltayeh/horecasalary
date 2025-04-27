@@ -69,6 +69,7 @@ export function useAuthState() {
     console.log("useAuthState: Setting up auth state listener");
     setIsLoading(true);
     
+    // First set up the auth state listener before checking for existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         console.log("useAuthState: Auth state changed:", event, newSession?.user?.id);
@@ -182,6 +183,7 @@ export function useAuthState() {
       }
     };
     
+    // Check for existing session after setting up the listener
     checkExistingSession();
 
     return () => {

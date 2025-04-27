@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 const UserApp: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = React.useState('dashboard');
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   
   if (!user || user.role === 'admin') {
     return <Navigate to="/login" />;
@@ -18,11 +19,23 @@ const UserApp: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      console.log("User App: Logging out user");
+      if (isLoggingOut) {
+        console.log("Already processing logout, ignoring duplicate request");
+        return;
+      }
+      
+      setIsLoggingOut(true);
+      console.log("UserApp: Starting logout process");
+      
+      // Call the logout function from auth context
       await logout();
-      // The redirect is handled in the logout function
+      
+      // Note: The actual navigation happens in the useLogin hook
+      // This is just a fallback
+      console.log("UserApp: Logout complete, fallback redirect");
     } catch (error) {
       console.error("Error during logout:", error);
+      setIsLoggingOut(false);
     }
   };
 
@@ -78,6 +91,7 @@ const UserApp: React.FC = () => {
           <button 
             className={`flex flex-col items-center p-4 ${activeTab === 'dashboard' ? 'text-custom-red' : 'text-gray-600'}`}
             onClick={() => setActiveTab('dashboard')}
+            disabled={isLoggingOut}
           >
             <BarChart2 />
             <span className="text-xs mt-1">Dashboard</span>
@@ -86,6 +100,7 @@ const UserApp: React.FC = () => {
           <button 
             className={`flex flex-col items-center p-4 ${activeTab === 'cafe' ? 'text-custom-red' : 'text-gray-600'}`}
             onClick={() => setActiveTab('cafe')}
+            disabled={isLoggingOut}
           >
             <Building />
             <span className="text-xs mt-1">Cafes</span>
@@ -94,9 +109,10 @@ const UserApp: React.FC = () => {
           <button 
             className="flex flex-col items-center p-4 text-gray-600"
             onClick={handleLogout}
+            disabled={isLoggingOut}
           >
             <LogOut />
-            <span className="text-xs mt-1">Logout</span>
+            <span className="text-xs mt-1">{isLoggingOut ? "Logging out..." : "Logout"}</span>
           </button>
         </div>
       </nav>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,8 +71,9 @@ const Login: React.FC = () => {
     }
   };
   
-  // If already logged in, redirect immediately
+  // If already logged in and not in the process of logging out, redirect immediately
   if (user && !isLoading && !isSubmitting) {
+    console.log('User already logged in, redirecting from Login page');
     return <Navigate to={user.role === 'admin' ? '/dashboard' : '/user-app'} replace />;
   }
   
