@@ -67,12 +67,15 @@ export function useAuthActions() {
       setIsLoading(true);
       console.log("Adding new user:", userData.email);
       
+      // Ensure the email is properly formatted
+      const email = userData.email.includes('@') ? userData.email : `${userData.email}@horeca.app`;
+      
       const { data, error } = await supabase.functions.invoke('admin', {
         method: 'POST',
         body: {
           action: 'createUser',
           userData: {
-            email: userData.email,
+            email: email,
             password: userData.password,
             email_confirm: true,
             user_metadata: { 
@@ -100,8 +103,11 @@ export function useAuthActions() {
       console.log("User added successfully:", data);
       toast.success(`User ${userData.name} added successfully`);
       
-      // Refresh user list
-      await fetchUsers();
+      // Refresh user list after a short delay to ensure Supabase has processed the change
+      setTimeout(async () => {
+        await fetchUsers();
+      }, 1000);
+      
       return true;
     } catch (error: any) {
       console.error('Error adding user:', error);
@@ -117,18 +123,27 @@ export function useAuthActions() {
       setIsLoading(true);
       console.log("Updating user:", userId, userData);
 
+      // Prepare update data with proper structure for Supabase Auth
+      const updatePayload: any = {
+        id: userId
+      };
+      
+      // Only add these fields if they exist
+      if (userData.email) updatePayload.email = userData.email;
+      if (userData.password) updatePayload.password = userData.password;
+      
+      // Add metadata if name or role is provided
+      if (userData.name || userData.role) {
+        updatePayload.user_metadata = {};
+        if (userData.name) updatePayload.user_metadata.name = userData.name;
+        if (userData.role) updatePayload.user_metadata.role = userData.role;
+      }
+
       const { data, error } = await supabase.functions.invoke('admin', {
         method: 'POST',
         body: {
           action: 'updateUser',
-          userData: {
-            id: userId,
-            ...userData,
-            user_metadata: {
-              name: userData.name,
-              role: userData.role
-            }
-          }
+          userData: updatePayload
         }
       });
 
@@ -147,7 +162,11 @@ export function useAuthActions() {
       console.log("User updated successfully:", data);
       toast.success('User updated successfully');
       
-      await fetchUsers();
+      // Refresh user list after a short delay
+      setTimeout(async () => {
+        await fetchUsers();
+      }, 1000);
+      
       return true;
     } catch (error: any) {
       console.error('Error updating user:', error);
@@ -186,7 +205,11 @@ export function useAuthActions() {
       console.log("User deleted successfully");
       toast.success('User deleted successfully');
       
-      await fetchUsers();
+      // Refresh user list after a short delay
+      setTimeout(async () => {
+        await fetchUsers();
+      }, 1000);
+      
       return true;
     } catch (error: any) {
       console.error('Error deleting user:', error);

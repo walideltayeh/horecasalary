@@ -35,7 +35,17 @@ serve(async (req) => {
         break
       case 'createUser':
         console.log("Creating user with email:", userData.email);
-        result = await authClient.createUser(userData)
+        // Ensure we're sending the correct format for createUser
+        const createUserData = {
+          email: userData.email,
+          password: userData.password,
+          email_confirm: true,
+          user_metadata: { 
+            name: userData.name,
+            role: userData.role
+          }
+        }
+        result = await authClient.createUser(createUserData)
         break
       case 'updateUser':
         const { id, ...updateData } = userData
