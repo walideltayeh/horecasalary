@@ -34,7 +34,7 @@ const Index = () => {
           </div>
           <p className="mt-4 text-sm text-gray-500">If loading takes too long, please refresh the page</p>
           <div className="text-xs text-center mt-4 text-gray-500">
-            Demo mode: Use "admin" / "AlFakher2025" to login
+            Good Luck
           </div>
         </div>
       </div>
