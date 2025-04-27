@@ -1,8 +1,8 @@
-
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { KPISettings } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { RealtimePostgresUpdatePayload } from '@supabase/supabase-js';
 
 const DEFAULT_KPI_SETTINGS: KPISettings = {
   totalPackage: 2000,
@@ -31,6 +31,96 @@ const KPIContext = createContext<KPIContextType | undefined>(undefined);
 export const KPIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [kpiSettings, setKpiSettings] = useState<KPISettings>(DEFAULT_KPI_SETTINGS);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    const fetchKPISettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('kpi_settings')
+          .select('*')
+          .limit(1)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setKpiSettings({
+            totalPackage: data.total_package,
+            basicSalaryPercentage: data.basic_salary_percentage,
+            visitKpiPercentage: data.visit_kpi_percentage,
+            visitThresholdPercentage: data.visit_threshold_percentage,
+            targetVisitsLarge: data.target_visits_large,
+            targetVisitsMedium: data.target_visits_medium,
+            targetVisitsSmall: data.target_visits_small,
+            contractThresholdPercentage: data.contract_threshold_percentage,
+            targetContractsLarge: data.target_contracts_large,
+            targetContractsMedium: data.target_contracts_medium,
+            targetContractsSmall: data.target_contracts_small,
+            bonusLargeCafe: data.bonus_large_cafe,
+            bonusMediumCafe: data.bonus_medium_cafe,
+            bonusSmallCafe: data.bonus_small_cafe,
+          });
+        }
+      } catch (err: any) {
+        console.error('Error fetching KPI settings:', err);
+        toast.error('Failed to load KPI settings');
+      }
+    };
+
+    fetchKPISettings();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase.channel('kpi-settings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'kpi_settings'
+        },
+        (payload: RealtimePostgresUpdatePayload<{
+          total_package: number;
+          basic_salary_percentage: number;
+          visit_kpi_percentage: number;
+          visit_threshold_percentage: number;
+          target_visits_large: number;
+          target_visits_medium: number;
+          target_visits_small: number;
+          contract_threshold_percentage: number;
+          target_contracts_large: number;
+          target_contracts_medium: number;
+          target_contracts_small: number;
+          bonus_large_cafe: number;
+          bonus_medium_cafe: number;
+          bonus_small_cafe: number;
+        }>) => {
+          const newData = payload.new;
+          setKpiSettings({
+            totalPackage: newData.total_package,
+            basicSalaryPercentage: newData.basic_salary_percentage,
+            visitKpiPercentage: newData.visit_kpi_percentage,
+            visitThresholdPercentage: newData.visit_threshold_percentage,
+            targetVisitsLarge: newData.target_visits_large,
+            targetVisitsMedium: newData.target_visits_medium,
+            targetVisitsSmall: newData.target_visits_small,
+            contractThresholdPercentage: newData.contract_threshold_percentage,
+            targetContractsLarge: newData.target_contracts_large,
+            targetContractsMedium: newData.target_contracts_medium,
+            targetContractsSmall: newData.target_contracts_small,
+            bonusLargeCafe: newData.bonus_large_cafe,
+            bonusMediumCafe: newData.bonus_medium_cafe,
+            bonusSmallCafe: newData.bonus_small_cafe,
+          });
+          toast.info('KPI settings have been updated');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const updateKPISettings = async (newSettings: Partial<KPISettings>): Promise<void> => {
     const updatedSettings = { ...kpiSettings, ...newSettings };
@@ -111,4 +201,3 @@ export const useKPI = () => {
   }
   return context;
 };
-
