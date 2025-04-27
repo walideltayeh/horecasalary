@@ -1,13 +1,13 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CirclePlus } from 'lucide-react';
 import AddCafeForm from './AddCafeForm';
 import CafeBrandSurvey from '../CafeBrandSurvey';
 import { CafeFormState } from './types/CafeFormTypes';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { Check, CirclePlus } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 interface CafeSurveyWrapperProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;

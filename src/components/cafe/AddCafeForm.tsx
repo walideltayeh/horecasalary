@@ -8,7 +8,6 @@ import { CafeCapacityInfo } from './CafeCapacityInfo';
 import { CafeLocationInfo } from './CafeLocationInfo';
 import { PhotoUpload } from './PhotoUpload';
 import { GPSCapture } from './GPSCapture';
-import CafeSurveyWrapper from './CafeSurveyWrapper';
 import { useSubmitCafe } from '@/hooks/useSubmitCafe';
 
 interface AddCafeFormProps {
@@ -32,12 +31,19 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     isCapturingLocation,
     showLocationDialog,
     setShowLocationDialog
-  } = useCafeForm(); // Now this works correctly without arguments
+  } = useCafeForm();
 
   const { isSubmitting, handleSubmit: submitCafe } = useSubmitCafe({
     onPreSubmit,
     surveyCompleted
   });
+
+  // Call onFormChange whenever formState changes
+  React.useEffect(() => {
+    if (onFormChange) {
+      onFormChange(formState);
+    }
+  }, [formState, onFormChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,12 +84,6 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         isCapturingLocation={isCapturingLocation}
         showLocationDialog={showLocationDialog}
         setShowLocationDialog={setShowLocationDialog}
-      />
-
-      <CafeSurveyWrapper
-        onPreSubmit={onPreSubmit}
-        surveyCompleted={surveyCompleted}
-        onFormChange={onFormChange}
       />
     </CafeFormLayout>
   );
