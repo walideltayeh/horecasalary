@@ -138,9 +138,20 @@ export const enableRealtimeForTables = async () => {
 // Call the function when the client is initialized
 enableRealtimeForTables();
 
-// Force a data refresh
+// Force a data refresh - enhanced version with more notification channels
 export const refreshCafeData = () => {
   console.log('[refreshCafeData] Triggering manual refresh');
+  
+  // Dispatch event for same-tab communication
   window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
+  
+  // Update localStorage for cross-tab communication
   localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
+  
+  // Additional global flag to ensure all components can detect the refresh
+  try {
+    window.cafeDataLastRefreshed = Date.now();
+  } catch (e) {
+    console.warn("Could not set global refresh flag");
+  }
 };

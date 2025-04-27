@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -40,23 +41,24 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     refreshCafeData();
   };
   
-  // Set up periodic refresh
+  // Set up periodic refresh - using shorter intervals for admin view
   useEffect(() => {
+    // Force immediate refresh on mount
+    console.log("CafeList mounted, forcing data refresh");
+    handleRefresh();
+    
+    // Set different refresh intervals for admin vs regular view
+    const refreshInterval = adminView ? 5000 : 30000; // 5 seconds for admin, 30 for regular users
+    
     const refreshTimer = setInterval(() => {
-      console.log("Automatic refresh timer triggered in CafeList");
+      console.log(`Automatic refresh timer triggered in CafeList (${adminView ? 'admin view' : 'user view'})`);
       refreshCafes();
-    }, 30000); // Refresh every 30 seconds
+    }, refreshInterval);
     
     return () => {
       clearInterval(refreshTimer);
     };
-  }, [refreshCafes]);
-  
-  useEffect(() => {
-    // Force a refresh when the component mounts
-    console.log("CafeList mounted, forcing data refresh");
-    handleRefresh();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshCafes, adminView]);
   
   // Filter cafes based on filterByUser if provided
   const filteredCafes = filterByUser 

@@ -22,6 +22,7 @@ const Admin: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState("all");
   const { handleRefreshCafes, enableRealtimeForTable } = useAdminRefresh();
 
+  // Force an immediate data refresh when the component is mounted
   useEffect(() => {
     if (isAdmin && authenticated) {
       console.log("Admin page mounted, refreshing ALL data");
@@ -45,11 +46,11 @@ const Admin: React.FC = () => {
       // Immediate refresh
       refreshCafes();
       
-      // Then periodic refresh
+      // Then periodic refresh - more frequent for admin page
       const cafeRefreshInterval = setInterval(() => {
         console.log("Admin periodic cafe refresh");
         refreshCafes();
-      }, 10000); // Refresh every 10 seconds while on Admin page
+      }, 5000); // Refresh every 5 seconds while on Admin page
       
       return () => {
         console.log("Clearing Admin page refresh intervals");
@@ -58,20 +59,26 @@ const Admin: React.FC = () => {
     }
   }, [isAdmin, authenticated, refreshCafes]);
 
+  // Reset refresh and force update when authenticated
+  const handleAuthenticated = () => {
+    setAuthenticated(true);
+    // Force refresh after authentication with a short delay to ensure everything is set up
+    setTimeout(() => {
+      console.log("Admin authenticated, forcing data refresh");
+      refreshCafes();
+      handleRefreshCafes();
+      // Trigger global refresh event
+      window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
+    }, 500);
+  };
+
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
   }
   
   if (!authenticated) {
     return <PasswordProtection 
-      onAuthenticate={() => {
-        setAuthenticated(true);
-        // Force refresh after authentication
-        setTimeout(() => {
-          refreshCafes();
-          handleRefreshCafes();
-        }, 500);
-      }} 
+      onAuthenticate={handleAuthenticated} 
       title="Admin Panel" 
     />;
   }

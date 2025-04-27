@@ -27,12 +27,6 @@ export const useCafeSubscription = (
       return;
     }
     
-    if (!user) {
-      setCafes([]);
-      setLoading(false);
-      return;
-    }
-    
     try {
       fetchingRef.current = true;
       setLoading(true);
@@ -89,7 +83,7 @@ export const useCafeSubscription = (
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [user, setCafes, setLoading]);
+  }, [setCafes, setLoading]);
 
   // Set up all event listeners for data updates
   useEffect(() => {
@@ -129,7 +123,7 @@ export const useCafeSubscription = (
   }, [fetchCafes]);
 
   useEffect(() => {
-    console.log("Setting up cafe subscriptions for user:", user?.id);
+    console.log("Setting up cafe subscriptions...");
     
     // Clean up existing channels first
     if (channelsRef.current.length > 0) {
@@ -141,8 +135,6 @@ export const useCafeSubscription = (
     
     // Always fetch cafes on mount, user change, or after subscription setup
     fetchCafes(true);
-
-    if (!user) return;
 
     const setupChannel = async () => {
       try {
@@ -157,7 +149,7 @@ export const useCafeSubscription = (
             },
             (payload) => {
               console.log("Cafe change detected:", payload);
-              fetchCafes();
+              fetchCafes(true);
             }
           )
           .subscribe((status) => {
@@ -166,7 +158,27 @@ export const useCafeSubscription = (
           
         channelsRef.current.push(channel);
         
-        console.log("Realtime subscription activated for cafes");
+        // Also listen for changes in the cafe_surveys table
+        const surveysChannel = supabase
+          .channel('survey-changes')
+          .on('postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'cafe_surveys'
+            },
+            (payload) => {
+              console.log("Cafe survey change detected:", payload);
+              fetchCafes(true);
+            }
+          )
+          .subscribe((status) => {
+            console.log(`Survey channel subscribed with status: ${status}`);
+          });
+          
+        channelsRef.current.push(surveysChannel);
+        
+        console.log("Realtime subscription activated for cafes and surveys");
       } catch (err) {
         console.error("Error setting up realtime subscriptions:", err);
         toast.error('Failed to set up realtime updates');
@@ -185,7 +197,7 @@ export const useCafeSubscription = (
       });
       channelsRef.current = [];
     };
-  }, [user, fetchCafes]);
+  }, [fetchCafes]);
 
   return { fetchCafes };
 };
