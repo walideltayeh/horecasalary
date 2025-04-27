@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,13 +11,13 @@ import SystemStats from '@/components/admin/SystemStats';
 import EditUserDialog from '@/components/admin/EditUserDialog';
 import { UserPerformance } from '@/components/admin/UserPerformance';
 import { CafeDatabase } from '@/components/admin/CafeDatabase';
-import { User } from '@/types';
-import { toast } from 'sonner';
-import { getCafeSize } from '@/utils/cafeUtils';
-import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import ExportToExcel from '@/components/admin/ExportToExcel';
+import { useUserEditDialog } from '@/components/admin/useUserEditDialog';
+import { toast } from 'sonner';
 
 const Admin: React.FC = () => {
   const { isAdmin, addUser, deleteUser, updateUser, users, fetchUsers, isLoadingUsers, error } = useAuth();
@@ -24,15 +25,17 @@ const Admin: React.FC = () => {
   const [authenticated, setAuthenticated] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [editUser, setEditUser] = useState({
-    id: '',
-    name: '',
-    password: '',
-    role: 'user' as 'admin' | 'user'
-  });
+  
+  const {
+    editDialogOpen,
+    setEditDialogOpen,
+    editUser,
+    openEditDialog,
+    handleEditInputChange,
+    handleEditRoleChange
+  } = useUserEditDialog();
   
   useEffect(() => {
     if (isAdmin && authenticated) {
@@ -97,48 +100,6 @@ const Admin: React.FC = () => {
         setIsDeletingUser(null);
       }
     }
-  };
-
-  const openEditDialog = (user: User) => {
-    setEditUser({
-      id: user.id,
-      name: user.name,
-      password: '',
-      role: user.role
-    });
-    setEditDialogOpen(true);
-  };
-
-  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setEditUser(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleEditRoleChange = (value: string) => {
-    setEditUser(prev => ({ ...prev, role: value as 'admin' | 'user' }));
-  };
-
-  const exportToExcel = () => {
-    const cafesData = cafes.map(cafe => ({
-      "Name": cafe.name,
-      "Size": getCafeSize(cafe.numberOfHookahs),
-      "Location": `${cafe.governorate}, ${cafe.city}`,
-      "Status": cafe.status,
-      "Owner": cafe.ownerName,
-      "Owner Number": cafe.ownerNumber,
-      "Tables": cafe.numberOfTables,
-      "Hookahs": cafe.numberOfHookahs,
-      "Created By": cafe.createdBy,
-      "Date Added": new Date(cafe.createdAt).toLocaleDateString()
-    }));
-
-    const worksheet = window.XLSX.utils.json_to_sheet(cafesData);
-    const workbook = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(workbook, worksheet, "Cafes");
-    
-    window.XLSX.writeFile(workbook, "HoReCa_Cafes_Export.xlsx");
-    
-    toast.success("Cafes data exported successfully");
   };
 
   return (
