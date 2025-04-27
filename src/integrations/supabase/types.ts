@@ -216,7 +216,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      enable_realtime_for_table: {
+        Args: { table_name: string }
+        Returns: boolean
+      }
     }
     Enums: {
       tobacco_brand: "Al Fakher" | "Adalya" | "Fumari" | "Star Buzz"

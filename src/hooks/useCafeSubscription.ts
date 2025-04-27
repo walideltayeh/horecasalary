@@ -45,7 +45,6 @@ export const useCafeSubscription = (
       console.log("Cafes fetched:", data);
       
       if (data) {
-        // Map the data to our Cafe type
         const mappedCafes = data.map(cafe => ({
           id: cafe.id,
           name: cafe.name,
@@ -65,9 +64,6 @@ export const useCafeSubscription = (
         
         console.log("Mapped cafes:", mappedCafes);
         setCafes(mappedCafes);
-      } else {
-        console.log("No cafe data returned from database");
-        setCafes([]);
       }
     } catch (err: any) {
       console.error('Error fetching cafes:', err);
@@ -81,7 +77,6 @@ export const useCafeSubscription = (
     console.log("Setting up cafe subscriptions for user:", user?.id);
     
     if (channelsRef.current.length > 0) {
-      console.log("Cleaning up existing subscriptions before creating new ones");
       channelsRef.current.forEach(channel => {
         supabase.removeChannel(channel);
       });
@@ -92,13 +87,19 @@ export const useCafeSubscription = (
 
     if (!user) return;
 
-    const setupChannels = async () => {
+    const setupChannel = async () => {
       try {
-        // Enable realtime for the cafes table
-        await supabase.rpc('enable_realtime', { table_name: 'cafes' });
+        // Enable realtime for the cafes table using our new function
+        const { error } = await supabase.functions.invoke('enable-realtime', {
+          body: { table_name: 'cafes' }
+        });
+        
+        if (error) {
+          console.error("Error enabling realtime:", error);
+        }
         
         const channel = supabase
-          .channel('cafe-changes-' + Date.now())
+          .channel('table-db-changes')
           .on('postgres_changes', 
             {
               event: '*', 
@@ -119,27 +120,17 @@ export const useCafeSubscription = (
         console.log("Realtime subscription activated for cafes");
       } catch (err) {
         console.error("Error setting up realtime subscriptions:", err);
-        // Fallback to polling
       }
     };
 
-    setupChannels();
-
-    // Backup polling mechanism
-    const pollingInterval = setInterval(() => {
-      console.log("Backup polling: fetching cafes");
-      fetchCafes();
-    }, 30000); // Poll every 30 seconds
+    setupChannel();
 
     return () => {
-      console.log("Cleaning up realtime subscriptions and polling");
-      if (channelsRef.current.length > 0) {
-        channelsRef.current.forEach(channel => {
-          supabase.removeChannel(channel);
-        });
-        channelsRef.current = [];
-      }
-      clearInterval(pollingInterval);
+      console.log("Cleaning up realtime subscriptions");
+      channelsRef.current.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
+      channelsRef.current = [];
     };
   }, [user, fetchCafes]);
 

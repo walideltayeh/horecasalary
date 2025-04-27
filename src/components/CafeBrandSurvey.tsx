@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
@@ -6,11 +5,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CafeFormState } from './cafe/types/CafeFormTypes';
 
 interface CafeBrandSurveyProps {
+  cafeFormData: CafeFormState & { createdBy: string; latitude: number; longitude: number; status: string };
   onComplete: (brandSales: any[]) => void;
   onCancel?: () => void;
-  cafeId?: string;
 }
 
 interface BrandSale {
@@ -21,9 +21,9 @@ interface BrandSale {
 const BRANDS = ['Al Fakher', 'Adalya', 'Fumari', 'Star Buzz'] as const;
 
 export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ 
+  cafeFormData,
   onComplete, 
-  onCancel, 
-  cafeId 
+  onCancel 
 }) => {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
@@ -56,7 +56,6 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
         return;
       }
       
-      // Pass brand sales data back to parent
       onComplete(brandSales);
       toast.success('Survey completed!');
     } catch (error: any) {

@@ -25,14 +25,12 @@ const CafeSurveyWrapper: React.FC = () => {
   const handlePreSubmit = async (cafeData: CafeFormState & { latitude: number, longitude: number }) => {
     console.log("Pre-submit handler called with data:", cafeData);
     
-    // For cafes with hookahs, show the survey form first
     if (cafeData.numberOfHookahs >= 1 && !surveyCompleted) {
       console.log("Showing survey before final submission");
       setShowSurvey(true);
-      return false; // Pause submission
+      return false;
     }
     
-    // Otherwise allow submission
     return true;
   };
 
@@ -53,7 +51,7 @@ const CafeSurveyWrapper: React.FC = () => {
       <CardContent className="p-6">
         {showSurvey && currentFormData ? (
           <CafeBrandSurvey
-            cafeData={{
+            cafeFormData={{
               ...currentFormData,
               createdBy: user?.id || 'unknown',
               latitude: 0,
