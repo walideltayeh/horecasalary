@@ -17,16 +17,22 @@ const PasswordProtection: React.FC<PasswordProtectionProps> = ({ onAuthenticate,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[PasswordProtection] Attempting authentication");
     setIsSubmitting(true);
     
     try {
       // Check if password matches
       if (password === 'AlFakher2025') {
+        console.log("[PasswordProtection] Authentication successful");
         toast.success('Access granted');
         onAuthenticate();
       } else {
+        console.log("[PasswordProtection] Authentication failed - incorrect password");
         toast.error('Incorrect password');
       }
+    } catch (error) {
+      console.error("[PasswordProtection] Authentication error:", error);
+      toast.error('An error occurred during authentication');
     } finally {
       setIsSubmitting(false);
     }
