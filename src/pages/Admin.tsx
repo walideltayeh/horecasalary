@@ -76,42 +76,43 @@ const Admin: React.FC = () => {
     />;
   }
 
-  const handleUserActions = {
-    add: async (userData: any) => {
-      setIsAddingUser(true);
-      try {
-        await addUser(userData);
+  const handleAddUser = async (userData: any) => {
+    setIsAddingUser(true);
+    try {
+      await addUser(userData);
+      await fetchUsers();
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+  
+  const handleEditUser = async (userId: string, userData: any) => {
+    try {
+      const success = await updateUser(userId, userData);
+      if (success) {
+        if (userData.role === 'admin') {
+          setSelectedTab("all");
+        }
         await fetchUsers();
-      } finally {
-        setIsAddingUser(false);
       }
-    },
-    edit: async (userId: string, userData: any) => {
-      try {
-        const success = await updateUser(userId, userData);
-        if (success) {
-          if (selectedTab === userId && userData.role === 'admin') {
-            setSelectedTab("all");
-          }
-          await fetchUsers();
-        }
-      } catch (error) {
-        console.error("Error updating user:", error);
+      return success;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      return false;
+    }
+  };
+  
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    setIsDeletingUser(userId);
+    try {
+      const success = await deleteUser(userId);
+      if (success && selectedTab === userId) {
+        setSelectedTab("all");
       }
-    },
-    delete: async (userId: string, userName: string) => {
-      if (confirm(`Are you sure you want to delete the user "${userName}"? This action cannot be undone.`)) {
-        setIsDeletingUser(userId);
-        try {
-          const success = await deleteUser(userId);
-          if (success && selectedTab === userId) {
-            setSelectedTab("all");
-          }
-          await fetchUsers();
-        } finally {
-          setIsDeletingUser(null);
-        }
-      }
+      await fetchUsers();
+      return success;
+    } finally {
+      setIsDeletingUser(null);
     }
   };
 
@@ -124,12 +125,12 @@ const Admin: React.FC = () => {
         users={users}
         isLoadingUsers={isLoadingUsers}
         error={null}
+        onAddUser={handleAddUser}
+        onEditUser={handleEditUser}
+        onDeleteUser={handleDeleteUser}
+        onRefreshUsers={fetchUsers}
         isAddingUser={isAddingUser}
         isDeletingUser={isDeletingUser}
-        onAddUser={handleUserActions.add}
-        onEditUser={handleUserActions.edit}
-        onDeleteUser={handleUserActions.delete}
-        onRefreshUsers={fetchUsers}
       />
       
       <UserPerformance users={users} cafes={cafes} />

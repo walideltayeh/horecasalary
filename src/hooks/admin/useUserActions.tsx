@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 
 interface UseUserActionsProps {
   onAddUser: (userData: any) => Promise<void>;
-  onEditUser: (userId: string, userData: any) => Promise<void>;
-  onDeleteUser: (userId: string, userName: string) => Promise<void>;
+  onEditUser: (userId: string, userData: any) => Promise<boolean>;
+  onDeleteUser: (userId: string, userName: string) => Promise<boolean>;
   onRefreshUsers: () => Promise<void>;
   setSelectedTab: (tab: string) => void;
 }

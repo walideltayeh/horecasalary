@@ -12,9 +12,11 @@ interface UserManagementProps {
   isLoadingUsers: boolean;
   error: string | null;
   onAddUser: (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => Promise<void>;
-  onEditUser: (userId: string, userData: any) => Promise<void>;
-  onDeleteUser: (userId: string, userName: string) => Promise<void>;
+  onEditUser: (userId: string, userData: any) => Promise<boolean>;
+  onDeleteUser: (userId: string, userName: string) => Promise<boolean>;
   onRefreshUsers: () => Promise<void>;
+  isAddingUser?: boolean;
+  isDeletingUser?: string | null;
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({
@@ -24,7 +26,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
   onAddUser,
   onEditUser,
   onDeleteUser,
-  onRefreshUsers
+  onRefreshUsers,
+  isAddingUser: propIsAddingUser,
+  isDeletingUser: propIsDeletingUser
 }) => {
   const [selectedTab, setSelectedTab] = useState("all");
   
@@ -60,18 +64,22 @@ const UserManagement: React.FC<UserManagementProps> = ({
     }
   };
 
+  // Use prop values if provided, otherwise use values from the hook
+  const effectiveIsAddingUser = propIsAddingUser !== undefined ? propIsAddingUser : isAddingUser;
+  const effectiveIsDeletingUser = propIsDeletingUser !== undefined ? propIsDeletingUser : isDeletingUser;
+
   return (
     <>
       <UserManagementSection
         onAddUser={handleAddUser}
-        isAddingUser={isAddingUser}
+        isAddingUser={effectiveIsAddingUser}
       />
       
       <UserListSection
         users={users}
         isLoadingUsers={isLoadingUsers}
         error={error}
-        isDeletingUser={isDeletingUser}
+        isDeletingUser={effectiveIsDeletingUser}
         onEditUser={openEditDialog}
         onDeleteUser={handleDeleteUser}
         onRefreshUsers={onRefreshUsers}

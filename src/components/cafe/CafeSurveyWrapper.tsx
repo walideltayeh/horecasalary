@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import AddCafeForm from './AddCafeForm';
 import CafeBrandSurvey from '../CafeBrandSurvey';
@@ -13,6 +14,7 @@ const CafeSurveyWrapper: React.FC = () => {
   const { user } = useAuth();
 
   const handleFormChange = (formData: CafeFormState) => {
+    console.log("Form data changed:", formData);
     setCurrentFormData(formData);
     
     // Reset survey if hookahs change to 0
@@ -45,9 +47,19 @@ const CafeSurveyWrapper: React.FC = () => {
     setShowSurvey(false);
     // Don't mark as completed, so form submission will still be blocked
   };
+  
+  // Debug logging
+  useEffect(() => {
+    console.log("CafeSurveyWrapper render state:", { 
+      showSurvey, 
+      surveyCompleted, 
+      hasFormData: !!currentFormData,
+      numberOfHookahs: currentFormData?.numberOfHookahs
+    });
+  }, [showSurvey, surveyCompleted, currentFormData]);
 
   return (
-    <Card>
+    <Card className="relative">
       <CardContent className="p-6">
         {showSurvey && currentFormData ? (
           <CafeBrandSurvey

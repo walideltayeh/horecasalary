@@ -13,6 +13,7 @@ import { PhotoUpload } from './PhotoUpload';
 import { GPSCapture } from './GPSCapture';
 import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
+import { toast } from 'sonner';
 
 interface AddCafeFormProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -41,6 +42,11 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     showLocationDialog,
     setShowLocationDialog
   } = useCafeForm(async (cafeData) => {
+    // Check if form requires a survey (hookahs >= 1) and survey not completed
+    if (cafeData.numberOfHookahs >= 1 && !surveyCompleted) {
+      console.log("Cafe has hookahs but survey not completed, checking with onPreSubmit...");
+    }
+    
     // Prepare data for submission
     const completeData = {
       ...cafeData,
@@ -50,6 +56,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     
     // If onPreSubmit is provided, use it to control submission
     if (onPreSubmit) {
+      console.log("Calling onPreSubmit with data:", completeData);
       const canSubmit = await onPreSubmit(completeData);
       if (!canSubmit) {
         console.log("Submission paused for survey");
@@ -70,6 +77,12 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     if (formState.numberOfHookahs >= 1 && !surveyCompleted) {
       console.log("Starting submission process with survey check");
       await originalHandleSubmit(e);
+      
+      // If we got here with hookahs and survey not completed,
+      // we need to explicitly notify the user why submission is paused
+      if (formState.numberOfHookahs >= 1 && !surveyCompleted) {
+        toast.info("Please complete the brand survey before submitting");
+      }
     } else {
       // For cafes without hookahs, or if survey is already completed
       console.log("Direct submission without survey");
@@ -106,7 +119,13 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     if (onFormChange) {
       onFormChange(formState);
     }
-  }, [onFormChange]);
+    
+    // Debug logging
+    console.log("AddCafeForm render:", { 
+      numberOfHookahs: formState.numberOfHookahs, 
+      surveyCompleted 
+    });
+  }, [formState, onFormChange, surveyCompleted]);
 
   const [availableCities, setAvailableCities] = React.useState<string[]>([]);
 
@@ -169,7 +188,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
             setShowLocationDialog={setShowLocationDialog}
           />
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col">
           <Button 
             type="submit" 
             className="w-full bg-custom-red hover:bg-red-700"
@@ -177,6 +196,12 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
           >
             {isSubmitting ? "Processing..." : "Add Cafe"}
           </Button>
+          
+          {formState.numberOfHookahs >= 1 && !surveyCompleted && (
+            <div className="mt-2 text-sm text-amber-600 font-medium">
+              A brand survey will appear after submission for cafes with hookahs
+            </div>
+          )}
         </CardFooter>
       </form>
     </Card>
