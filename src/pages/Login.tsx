@@ -61,12 +61,12 @@ const Login: React.FC = () => {
         toast.success(`Welcome back!`);
         console.log('Login successful, redirecting...');
       } else {
-        toast.error('Invalid credentials');
+        toast.error('Invalid credentials. Your password might be compromised or incorrect.');
         setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('An unexpected error occurred');
+      toast.error('An unexpected error occurred. Please ensure your password is secure.');
       setIsSubmitting(false);
     }
   };

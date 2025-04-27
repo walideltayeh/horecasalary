@@ -220,6 +220,10 @@ export type Database = {
         Args: { table_name: string }
         Returns: boolean
       }
+      execute_sql: {
+        Args: { sql: string }
+        Returns: Json
+      }
     }
     Enums: {
       tobacco_brand: "Al Fakher" | "Adalya" | "Fumari" | "Star Buzz"
