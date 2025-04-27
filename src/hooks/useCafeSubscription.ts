@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef } from 'react';
 import { Cafe } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -124,20 +125,22 @@ export const useCafeSubscription = (
 
         for (const channel of channels) {
           try {
-            const status = await channel.subscribe();
+            // Fixed: Correctly subscribe without using .then()
+            // RealtimeChannel doesn't have a then() method, it's not a Promise
+            const status = channel.subscribe();
             console.log(`Channel subscribed with status: ${status}`);
             channelsRef.current.push(channel);
           } catch (err) {
             console.error("Error subscribing to channel:", err);
+            // Use setTimeout for retry instead of Promise-based approach
             setTimeout(() => {
-              channel.subscribe()
-                .then(() => {
-                  console.log("Channel subscription retry successful");
-                  channelsRef.current.push(channel);
-                })
-                .catch(retryErr => {
-                  console.error("Channel subscription retry failed:", retryErr);
-                });
+              try {
+                const status = channel.subscribe();
+                console.log("Channel subscription retry successful:", status);
+                channelsRef.current.push(channel);
+              } catch (retryErr) {
+                console.error("Channel subscription retry failed:", retryErr);
+              }
             }, 3000);
           }
         }
