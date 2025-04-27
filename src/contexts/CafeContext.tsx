@@ -38,9 +38,29 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for storage events (works across tabs)
     window.addEventListener('storage', handleStorageEvent);
     
+    // Also listen for custom events dispatched within the same tab
+    window.addEventListener('horeca_data_updated', () => {
+      console.log("Received internal data update event, refreshing cafes...");
+      fetchCafes();
+    });
+    
     return () => {
       window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('horeca_data_updated', () => {});
     };
+  }, [fetchCafes]);
+  
+  // Force an initial data fetch on mount
+  useEffect(() => {
+    console.log("CafeProvider mounted, forcing initial data fetch");
+    fetchCafes();
+    // Set up a periodic refresh every 30 seconds as a fallback
+    const intervalId = setInterval(() => {
+      console.log("Periodic cafe refresh triggered");
+      fetchCafes();
+    }, 30000);
+    
+    return () => clearInterval(intervalId);
   }, [fetchCafes]);
 
   // Custom cafe adding function that also triggers cross-tab notification
@@ -50,7 +70,9 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (cafeId) {
       // Notify other tabs about the update
       localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
-      // This triggers the storage event in other tabs
+      
+      // Dispatch an event within this tab
+      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
       
       // Trigger an immediate fetch in this tab
       await fetchCafes();
@@ -64,6 +86,10 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (result) {
       // Notify other tabs
       localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
+      
+      // Dispatch an event within this tab
+      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+      
       // Immediate fetch in this tab
       await fetchCafes();
     }

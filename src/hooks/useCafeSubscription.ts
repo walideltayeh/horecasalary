@@ -42,7 +42,7 @@ export const useCafeSubscription = (
         throw error;
       }
       
-      console.log("Cafes fetched:", data);
+      console.log("Cafes fetched:", data?.length || 0);
       
       if (data) {
         const mappedCafes = data.map(cafe => ({
@@ -62,7 +62,7 @@ export const useCafeSubscription = (
           longitude: cafe.longitude
         }));
         
-        console.log("Mapped cafes:", mappedCafes);
+        console.log("Mapped cafes:", mappedCafes.length);
         setCafes(mappedCafes);
       }
     } catch (err: any) {
@@ -76,6 +76,7 @@ export const useCafeSubscription = (
   useEffect(() => {
     console.log("Setting up cafe subscriptions for user:", user?.id);
     
+    // Clean up existing channels first
     if (channelsRef.current.length > 0) {
       channelsRef.current.forEach(channel => {
         supabase.removeChannel(channel);
@@ -83,23 +84,28 @@ export const useCafeSubscription = (
       channelsRef.current = [];
     }
     
+    // Always fetch cafes on mount, user change, or after subscription setup
     fetchCafes();
 
     if (!user) return;
 
     const setupChannel = async () => {
       try {
-        // Enable realtime for the cafes table using our new function
-        const { error } = await supabase.functions.invoke('enable-realtime', {
+        // Enable realtime for the cafes table
+        const { error: enableError } = await supabase.functions.invoke('enable-realtime', {
           body: { table_name: 'cafes' }
         });
         
-        if (error) {
-          console.error("Error enabling realtime:", error);
+        if (enableError) {
+          console.error("Error enabling realtime:", enableError);
+          toast.error(`Failed to enable realtime: ${enableError.message}`);
+        } else {
+          console.log("Realtime enabled successfully for cafes table");
         }
         
+        // Create a channel for all database changes
         const channel = supabase
-          .channel('table-db-changes')
+          .channel('db-changes')
           .on('postgres_changes', 
             {
               event: '*', 
@@ -120,6 +126,10 @@ export const useCafeSubscription = (
         console.log("Realtime subscription activated for cafes");
       } catch (err) {
         console.error("Error setting up realtime subscriptions:", err);
+        toast.error('Failed to set up realtime updates');
+        
+        // Even if realtime setup fails, still do a manual fetch
+        fetchCafes();
       }
     };
 

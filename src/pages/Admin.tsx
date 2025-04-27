@@ -10,10 +10,12 @@ import SystemStats from '@/components/admin/SystemStats';
 import UserManagement from '@/components/admin/UserManagement';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Admin: React.FC = () => {
   const { isAdmin, addUser, deleteUser, updateUser, users, fetchUsers, isLoadingUsers, error } = useAuth();
-  const { cafes } = useData();
+  const { cafes, refreshCafes, loading: loadingCafes } = useData();
   const [authenticated, setAuthenticated] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
@@ -23,8 +25,22 @@ const Admin: React.FC = () => {
     if (isAdmin && authenticated) {
       console.log("Admin page mounted, refreshing user data");
       fetchUsers();
+      // Also refresh cafes when the Admin page loads
+      refreshCafes();
     }
-  }, [isAdmin, authenticated, fetchUsers]);
+  }, [isAdmin, authenticated, fetchUsers, refreshCafes]);
+
+  // Additional periodic refreshes for cafes when on Admin page
+  useEffect(() => {
+    if (isAdmin && authenticated) {
+      const cafeRefreshInterval = setInterval(() => {
+        console.log("Admin periodic cafe refresh");
+        refreshCafes();
+      }, 15000); // Refresh every 15 seconds
+      
+      return () => clearInterval(cafeRefreshInterval);
+    }
+  }, [isAdmin, authenticated, refreshCafes]);
 
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
@@ -81,12 +97,33 @@ const Admin: React.FC = () => {
       console.error("Error refreshing users:", error);
     }
   };
+  
+  const handleRefreshCafes = async () => {
+    try {
+      await refreshCafes();
+      toast.success("Cafe data refreshed");
+    } catch (error) {
+      console.error("Error refreshing cafes:", error);
+    }
+  };
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
-        <p className="text-gray-600">Monitor user activity and cafe data</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
+          <p className="text-gray-600">Monitor user activity and cafe data</p>
+        </div>
+        
+        <Button 
+          variant="outline" 
+          className="flex items-center gap-2"
+          onClick={handleRefreshCafes}
+          disabled={loadingCafes}
+        >
+          <RefreshCw className={`h-4 w-4 ${loadingCafes ? 'animate-spin' : ''}`} />
+          {loadingCafes ? 'Refreshing...' : 'Refresh Data'}
+        </Button>
       </div>
       
       <UserManagement

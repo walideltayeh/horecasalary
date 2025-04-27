@@ -6,6 +6,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Check, Clock, RefreshCcw, Trash2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface CafeListProps {
   adminView?: boolean;
@@ -13,7 +14,7 @@ interface CafeListProps {
 }
 
 const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) => {
-  const { cafes, getCafeSize, updateCafeStatus, deleteCafe, refreshCafes } = useData();
+  const { cafes, getCafeSize, updateCafeStatus, deleteCafe, refreshCafes, loading } = useData();
   const { user, isAdmin } = useAuth();
   
   const handleUpdateStatus = (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
@@ -35,7 +36,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   // Set up periodic refresh
   useEffect(() => {
     const refreshTimer = setInterval(() => {
-      console.log("Automatic refresh timer triggered");
+      console.log("Automatic refresh timer triggered in CafeList");
       refreshCafes();
     }, 60000); // Refresh every minute
     
@@ -44,10 +45,22 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     };
   }, [refreshCafes]);
   
+  useEffect(() => {
+    // Force a refresh when the component mounts
+    console.log("CafeList mounted, forcing data refresh");
+    refreshCafes();
+  }, [refreshCafes]);
+  
   // Filter cafes based on filterByUser if provided
   const filteredCafes = filterByUser 
     ? cafes.filter(cafe => cafe.createdBy === filterByUser)
     : cafes;
+  
+  console.log("CafeList rendering with", filteredCafes.length, "cafes, loading:", loading);
+  console.log("Total cafes in context:", cafes.length);
+  if (filterByUser) {
+    console.log("Filtering by user:", filterByUser);
+  }
     
   return (
     <div className="space-y-4">
@@ -57,8 +70,10 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           size="sm"
           className="flex items-center gap-1"
           onClick={handleRefresh}
+          disabled={loading}
         >
-          <RefreshCcw className="h-3 w-3" /> Refresh Data
+          <RefreshCcw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> 
+          {loading ? 'Refreshing...' : 'Refresh Data'}
         </Button>
       </div>
       
@@ -77,7 +92,21 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCafes.length === 0 ? (
+            {loading ? (
+              // Loading skeleton
+              Array(3).fill(0).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  {adminView && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                </TableRow>
+              ))
+            ) : filteredCafes.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={adminView ? 8 : 7} className="text-center py-4 text-muted-foreground">
                   No cafes found. {!adminView && "Add some cafes to see them here."}
