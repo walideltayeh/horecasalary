@@ -1,22 +1,16 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Navigate } from 'react-router-dom';
 import PasswordProtection from '@/components/PasswordProtection';
-import { Download } from 'lucide-react';
-import UserDashboard from '@/components/UserDashboard';
-import CafeList from '@/components/CafeList';
 import UserManagementForm from '@/components/admin/UserManagementForm';
 import UserList from '@/components/admin/UserList';
 import SystemStats from '@/components/admin/SystemStats';
 import EditUserDialog from '@/components/admin/EditUserDialog';
+import { UserPerformance } from '@/components/admin/UserPerformance';
+import { CafeDatabase } from '@/components/admin/CafeDatabase';
 import { User } from '@/types';
-import { getCafeSize } from '@/utils/cafeUtils';
-import { toast } from '@/hooks/use-toast';
 
 const Admin: React.FC = () => {
   const { isAdmin, addUser, deleteUser, updateUser, users } = useAuth();
@@ -24,7 +18,6 @@ const Admin: React.FC = () => {
   const [authenticated, setAuthenticated] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<string>("all");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editUser, setEditUser] = useState({
     id: '',
@@ -127,7 +120,7 @@ const Admin: React.FC = () => {
       variant: "default"
     });
   };
-  
+
   return (
     <div className="space-y-8">
       <div>
@@ -135,7 +128,7 @@ const Admin: React.FC = () => {
         <p className="text-gray-600">Monitor user activity and cafe data</p>
       </div>
       
-      {/* User Management Form */}
+      {/* User Management Section */}
       <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>
@@ -149,7 +142,7 @@ const Admin: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* User List */}
+      {/* User List Section */}
       <Card>
         <CardHeader>
           <CardTitle>User List</CardTitle>
@@ -165,81 +158,11 @@ const Admin: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* User Dashboard Tabs */}
-      <Card>
-        <CardHeader>
-          <CardTitle>User Performance Dashboard</CardTitle>
-          <CardDescription>View performance metrics by user</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              <TabsTrigger value="all">All Users</TabsTrigger>
-              {users.filter(u => u.role === 'user').map((user) => (
-                <TabsTrigger key={user.id} value={user.id}>{user.name}</TabsTrigger>
-              ))}
-            </TabsList>
-            <TabsContent value="all" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total Cafes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{cafes.length}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Visited Cafes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {cafes.filter(c => c.status === 'Visited' || c.status === 'Contracted').length}
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Contracted Cafes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {cafes.filter(c => c.status === 'Contracted').length}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            {users.filter(u => u.role === 'user').map((user) => (
-              <TabsContent key={user.id} value={user.id}>
-                <UserDashboard userId={user.id} userName={user.name} />
-              </TabsContent>
-            ))}
-          </Tabs>
-        </CardContent>
-      </Card>
+      {/* User Performance Dashboard */}
+      <UserPerformance users={users} cafes={cafes} />
       
-      {/* Cafe Database */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Cafe Database</CardTitle>
-            <CardDescription>All cafes in the system</CardDescription>
-          </div>
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2 border-custom-red text-custom-red hover:bg-red-50"
-            onClick={exportToExcel}
-          >
-            <Download className="h-4 w-4" /> Export to Excel
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <CafeList adminView={true} />
-        </CardContent>
-      </Card>
+      {/* Cafe Database Section */}
+      <CafeDatabase cafes={cafes} />
       
       {/* System Information */}
       <Card>
