@@ -138,9 +138,7 @@ const Admin: React.FC = () => {
     
     window.XLSX.writeFile(workbook, "HoReCa_Cafes_Export.xlsx");
     
-    toast({
-      description: "Cafes data exported successfully"
-    });
+    toast.success("Cafes data exported successfully");
   };
 
   return (
