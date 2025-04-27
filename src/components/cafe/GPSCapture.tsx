@@ -29,7 +29,7 @@ export const GPSCapture = ({
         <Button 
           type="button"
           onClick={onCaptureGPS}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-bold"
           variant="secondary"
         >
           <Navigation className="h-4 w-4" />

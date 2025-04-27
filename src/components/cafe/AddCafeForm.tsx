@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { GPSCapture } from './GPSCapture';
 import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
 import { toast } from 'sonner';
+import CafeSurveyWrapper from './CafeSurveyWrapper';
 
 interface AddCafeFormProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -187,6 +187,14 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
             showLocationDialog={showLocationDialog}
             setShowLocationDialog={setShowLocationDialog}
           />
+
+          {/* Survey moved here, below GPS capture */}
+          <CafeSurveyWrapper
+            onPreSubmit={onPreSubmit}
+            surveyCompleted={surveyCompleted}
+            onFormChange={onFormChange}
+          />
+          
         </CardContent>
         <CardFooter className="flex flex-col">
           <Button 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,7 @@ const CafeSurveyWrapper: React.FC = () => {
     const isCompleted = surveyCompleted;
 
     return (
-      <div className="mb-6">
+      <div className="w-full">
         <Card className="bg-[#1a365d]">
           <CardContent className="p-6">
             <Button
@@ -108,18 +107,7 @@ const CafeSurveyWrapper: React.FC = () => {
     );
   };
 
-  return (
-    <Card className="relative">
-      <CardContent className="p-6">
-        {renderSurveyButton()}
-        <AddCafeForm
-          onPreSubmit={handlePreSubmit}
-          surveyCompleted={surveyCompleted}
-          onFormChange={handleFormChange}
-        />
-      </CardContent>
-    </Card>
-  );
+  return renderSurveyButton();
 };
 
 export default CafeSurveyWrapper;
