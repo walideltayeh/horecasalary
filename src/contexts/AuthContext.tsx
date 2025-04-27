@@ -10,9 +10,11 @@ type AuthContextType = {
   users: User[];
   isAdmin: boolean;
   isLoading: boolean;
-  session: any;  // Adding session to the context type
+  isLoadingUsers: boolean;
+  error: string | null;
+  session: any;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;  // Changed to void to match implementation
+  logout: () => Promise<void>;
   addUser: (userData: { name: string, email: string, password: string, role: 'admin' | 'user' }) => Promise<boolean>;
   deleteUser: (userId: string) => Promise<boolean>;
   updateUser: (userId: string, userData: { name?: string, password?: string, role?: 'admin' | 'user' }) => Promise<boolean>;
@@ -22,7 +24,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, users, setUsers, isLoading, session, fetchUsers } = useAuthState();
+  const { user, users, setUsers, isLoading, isLoadingUsers, error, session, fetchUsers } = useAuthState();
   const { login, logout } = useAuthActions();
   const { addUser, deleteUser, updateUser } = useUserManagement();
 
@@ -36,7 +38,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users,
       isAdmin,
       isLoading,
-      session, // Expose session to the context
+      isLoadingUsers,
+      error,
+      session,
       login,
       logout,
       addUser,
@@ -44,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUser,
       fetchUsers,
     }),
-    [user, users, isAdmin, isLoading, session, login, logout, addUser, deleteUser, updateUser, fetchUsers]
+    [user, users, isAdmin, isLoading, isLoadingUsers, error, session, login, logout, addUser, deleteUser, updateUser, fetchUsers]
   );
 
   return (

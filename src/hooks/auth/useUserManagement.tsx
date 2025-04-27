@@ -6,6 +6,15 @@ import { toast } from 'sonner';
 export function useUserManagement() {
   const [isLoading, setIsLoading] = useState(false);
 
+  // Helper function to notify updates across tabs
+  const notifyUserDataChange = () => {
+    try {
+      localStorage.setItem('users_updated', String(Date.now()));
+    } catch (e) {
+      console.warn("Failed to update localStorage for cross-tab sync");
+    }
+  };
+
   const addUser = async (userData: { 
     name: string; 
     email: string; 
@@ -40,6 +49,7 @@ export function useUserManagement() {
 
       console.log("User added successfully:", data);
       toast.success(`User ${userData.name} added successfully`);
+      notifyUserDataChange();
       return true;
     } catch (error: any) {
       console.error('Error adding user:', error);
@@ -71,6 +81,8 @@ export function useUserManagement() {
         if (userData.role) updatePayload.user_metadata.role = userData.role;
       }
 
+      console.log("Update payload:", updatePayload);
+      
       const { data, error } = await supabase.functions.invoke('admin', {
         method: 'POST',
         body: {
@@ -88,6 +100,7 @@ export function useUserManagement() {
 
       console.log("User updated successfully:", data);
       toast.success('User updated successfully');
+      notifyUserDataChange();
       return true;
     } catch (error: any) {
       console.error('Error updating user:', error);
@@ -120,6 +133,7 @@ export function useUserManagement() {
 
       console.log("User deleted successfully");
       toast.success('User deleted successfully');
+      notifyUserDataChange();
       return true;
     } catch (error: any) {
       console.error('Error deleting user:', error);

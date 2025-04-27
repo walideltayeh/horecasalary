@@ -12,17 +12,22 @@ import EditUserDialog from '@/components/admin/EditUserDialog';
 import { UserPerformance } from '@/components/admin/UserPerformance';
 import { CafeDatabase } from '@/components/admin/CafeDatabase';
 import { User } from '@/types';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { getCafeSize } from '@/utils/cafeUtils';
+import { Button } from "@/components/ui/button";
+import { RefreshCw, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Admin: React.FC = () => {
-  const { isAdmin, addUser, deleteUser, updateUser, users, fetchUsers } = useAuth();
+  const { isAdmin, addUser, deleteUser, updateUser, users, fetchUsers, isLoadingUsers, error } = useAuth();
   const { cafes } = useData();
   const [authenticated, setAuthenticated] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [editUser, setEditUser] = useState({
     id: '',
     name: '',
@@ -37,6 +42,16 @@ const Admin: React.FC = () => {
       fetchUsers();
     }
   }, [isAdmin, authenticated, fetchUsers]);
+
+  const handleRefreshUsers = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchUsers();
+      toast.success("User data refreshed");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
   
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
@@ -161,17 +176,43 @@ const Admin: React.FC = () => {
       
       {/* User List Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>User List</CardTitle>
-          <CardDescription>Users registered in the system ({users.length})</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>User List</CardTitle>
+            <CardDescription>Users registered in the system ({users.length})</CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefreshUsers}
+            disabled={isRefreshing || isLoadingUsers}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing || isLoadingUsers ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </CardHeader>
         <CardContent>
-          <UserList
-            users={users}
-            onEditUser={openEditDialog}
-            onDeleteUser={handleDeleteUser}
-            isDeletingUser={isDeletingUser}
-          />
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {isLoadingUsers ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <UserList
+              users={users}
+              onEditUser={openEditDialog}
+              onDeleteUser={handleDeleteUser}
+              isDeletingUser={isDeletingUser}
+            />
+          )}
         </CardContent>
       </Card>
       

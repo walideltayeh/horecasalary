@@ -21,19 +21,36 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { action, userData } = await req.json()
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log("Request body parsed successfully");
+    } catch (e) {
+      console.error("Error parsing request body:", e);
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    const { action, userData } = requestBody;
     console.log("Action requested:", action);
     console.log("User data received:", userData);
     
     const authClient = supabase.auth.admin
 
-    let result
+    let result;
     switch (action) {
       case 'listUsers':
         console.log("Listing users");
-        result = await authClient.listUsers({ perPage: 50 })
+        result = await authClient.listUsers({ perPage: 50 });
         console.log("Users found:", result?.data?.users?.length || 0);
-        break
+        
+        // Validate the structure of each user
+        if (result?.data?.users) {
+          console.log("First user example:", JSON.stringify(result.data.users[0]));
+        }
+        break;
       case 'createUser':
         console.log("Creating user with email:", userData.email);
         // We need to ensure consistent format between what's received and what's expected
@@ -45,24 +62,50 @@ serve(async (req) => {
             name: userData.name,
             role: userData.role
           }
-        }
+        };
         console.log("Formatted create user data:", createUserData);
-        result = await authClient.createUser(createUserData)
+        result = await authClient.createUser(createUserData);
         console.log("Create user result:", result);
-        break
+        break;
       case 'updateUser':
-        const { id, ...updateData } = userData
+        const { id, ...updateData } = userData;
         console.log("Updating user with id:", id);
-        result = await authClient.updateUserById(id, updateData)
+        
+        // Format the update data correctly
+        const formattedUpdateData: any = {};
+        
+        if (updateData.password) {
+          formattedUpdateData.password = updateData.password;
+        }
+        
+        if (updateData.email) {
+          formattedUpdateData.email = updateData.email;
+        }
+        
+        // Handle metadata updates separately
+        if (updateData.name || updateData.role || updateData.user_metadata) {
+          formattedUpdateData.user_metadata = updateData.user_metadata || {};
+          
+          if (updateData.name) {
+            formattedUpdateData.user_metadata.name = updateData.name;
+          }
+          
+          if (updateData.role) {
+            formattedUpdateData.user_metadata.role = updateData.role;
+          }
+        }
+        
+        console.log("Formatted update data:", formattedUpdateData);
+        result = await authClient.updateUserById(id, formattedUpdateData);
         console.log("Update user result:", result);
-        break
+        break;
       case 'deleteUser':
         console.log("Deleting user with id:", userData.id);
-        result = await authClient.deleteUser(userData.id)
+        result = await authClient.deleteUser(userData.id);
         console.log("Delete user result:", result);
-        break
+        break;
       default:
-        throw new Error('Invalid action')
+        throw new Error('Invalid action');
     }
 
     // Process the result to ensure errors are properly formatted as strings
@@ -81,7 +124,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
       }
-    )
+    );
   } catch (error) {
     console.error("Admin function error:", error);
     // Ensure the error is a string
@@ -93,6 +136,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400 
       }
-    )
+    );
   }
-})
+});
