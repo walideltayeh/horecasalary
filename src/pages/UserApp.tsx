@@ -4,14 +4,16 @@ import { Navigate } from 'react-router-dom';
 import { Building, BarChart2, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from './Dashboard';
-import CafeSurveyWrapper from '@/components/cafe/CafeSurveyWrapper';
+import AddCafeForm from '@/components/cafe/AddCafeForm';
 import CafeList from '@/components/CafeList';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const UserApp: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = React.useState('dashboard');
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [surveyCompleted, setSurveyCompleted] = useState(false);
   
   if (!user || user.role === 'admin') {
     return <Navigate to="/login" />;
@@ -39,6 +41,10 @@ const UserApp: React.FC = () => {
     }
   };
 
+  const handleSurveyComplete = () => {
+    setSurveyCompleted(true);
+  };
+
   // Content for the Cafe tab
   const renderCafeContent = () => {
     return (
@@ -48,8 +54,14 @@ const UserApp: React.FC = () => {
           <p className="text-gray-600">Add and manage cafe information</p>
         </div>
 
-        {/* Show survey wrapper for adding new cafes */}
-        <CafeSurveyWrapper />
+        {/* Show the cafe form directly */}
+        <AddCafeForm 
+          surveyCompleted={surveyCompleted}
+          onPreSubmit={async (cafeData) => {
+            // Add any pre-submission logic here
+            return true;
+          }}
+        />
 
         {/* List of cafes */}
         <Card>
