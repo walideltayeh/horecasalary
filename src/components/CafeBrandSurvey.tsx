@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { supabase } from '@/integrations/supabase/client';
 
 interface CafeBrandSurveyProps {
   onComplete: () => void;
@@ -46,11 +47,37 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({ onComplete, ca
     try {
       setIsSubmitting(true);
       
-      // If we have a cafeId, we could use it here to save the survey data
-      console.log('Submitting survey for cafe ID:', cafeId);
-      
-      // Now complete the survey process
-      onComplete();
+      if (!cafeId) {
+        toast.error('No cafe specified for this survey');
+        return;
+      }
+
+      // Insert a new cafe survey
+      const { data: surveyData, error: surveyError } = await supabase
+        .from('cafe_surveys')
+        .insert({ cafe_id: cafeId })
+        .select('id')
+        .single();
+
+      if (surveyError) throw surveyError;
+
+      if (surveyData) {
+        // Insert brand sales data
+        const brandSalesData = brandSales.map(sale => ({
+          survey_id: surveyData.id,
+          brand: sale.brand,
+          packs_per_week: sale.packsPerWeek
+        }));
+
+        const { error: brandError } = await supabase
+          .from('brand_sales')
+          .insert(brandSalesData);
+
+        if (brandError) throw brandError;
+        
+        toast.success('Survey completed successfully!');
+        onComplete();
+      }
     } catch (error: any) {
       console.error('Error in survey:', error);
       toast.error(error.message || 'Failed to submit survey');

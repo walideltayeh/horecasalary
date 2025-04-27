@@ -1,18 +1,42 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import AddCafeForm from './AddCafeForm';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { useCafes } from '@/contexts/CafeContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const CafeSurveyWrapper: React.FC = () => {
   const { addCafe } = useCafes();
   const [showSurvey, setShowSurvey] = useState(false);
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
 
-  // Since we're not directly using onCafeAdded anymore, we'll need to subscribe to cafe creation events 
-  // This can be handled through the CafeContext
+  // Set up a subscription to listen for new cafes being added
+  useEffect(() => {
+    const subscription = supabase
+      .channel('cafe-added-channel')
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'cafes' 
+        }, 
+        (payload) => {
+          console.log("New cafe detected via realtime:", payload);
+          if (payload.new) {
+            setNewCafeId(payload.new.id);
+            setShowSurvey(true);
+          }
+        }
+      )
+      .subscribe();
+
+    // Clean up subscription when component unmounts
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
 
   const handleSurveyComplete = () => {
     setShowSurvey(false);
