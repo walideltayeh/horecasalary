@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,42 +50,18 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Demo mode - handle admin login specifically
-      if (username.toLowerCase() === 'admin') {
-        console.log('Using admin login flow');
-        if (password !== 'AlFakher2025') {
-          toast.error('Invalid admin password');
-          setIsSubmitting(false);
-          return;
-        }
-        
-        const success = await login('admin@horeca.app', 'AlFakher2025');
-        console.log('Admin login result:', success);
-        
-        if (success) {
-          toast.success('Welcome back, Admin!');
-          console.log('Admin login successful, redirecting...');
-          // Don't navigate here, let the user effect handle it
-        } else {
-          toast.error('Failed to login. Please try again.');
-          setIsSubmitting(false);
-        }
+      const email = username.includes('@') ? username : `${username}@horeca.app`;
+      console.log('Standard user login attempt with email:', email);
+      
+      const success = await login(email, password);
+      console.log('Login result:', success);
+      
+      if (success) {
+        toast.success(`Welcome back!`);
+        console.log('Login successful, redirecting...');
       } else {
-        // Handle regular user login
-        const email = username.includes('@') ? username : `${username}@horeca.app`;
-        console.log('Standard user login attempt with email:', email);
-        
-        const success = await login(email, password);
-        console.log('Login result:', success);
-        
-        if (success) {
-          toast.success(`Welcome, ${username}!`);
-          console.log('Login successful, redirecting to user app');
-          // Don't navigate here, let the user effect handle it
-        } else {
-          toast.error('Invalid credentials');
-          setIsSubmitting(false);
-        }
+        toast.error('Invalid credentials');
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -146,9 +121,6 @@ const Login: React.FC = () => {
             </Button>
             <div className="text-sm text-center mt-2">
               {(isLoading || isSubmitting) && "Please wait..."}
-            </div>
-            <div className="text-xs text-center mt-2 text-gray-500">
-              Demo mode: Use "admin" / "AlFakher2025" to login
             </div>
           </CardFooter>
         </form>

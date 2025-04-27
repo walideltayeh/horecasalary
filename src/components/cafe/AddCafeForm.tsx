@@ -83,9 +83,13 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({ onCafeAdded }) => {
       !formState.ownerName || 
       !formState.ownerNumber || 
       !formState.governorate || 
-      !formState.city
+      !formState.city ||
+      formState.numberOfHookahs === undefined ||
+      formState.numberOfTables === undefined ||
+      !coordinates.latitude ||
+      !coordinates.longitude
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please fill in all required fields and capture GPS location");
       return;
     }
     
