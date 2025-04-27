@@ -2,8 +2,12 @@
 import { useState, useEffect } from 'react';
 import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { validateRole } from '@/utils/auth';
+import { validateRole, formatDisplayName } from '@/utils/authUtils';
 
+/**
+ * Hook to manage authentication session state
+ * @returns Current user, loading state, and session
+ */
 export function useAuthSession() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -13,6 +17,7 @@ export function useAuthSession() {
     console.log("useAuthSession: Setting up auth state listener");
     setIsLoading(true);
     
+    // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("useAuthSession: Auth state changed:", event, newSession?.user?.id);
@@ -31,9 +36,11 @@ export function useAuthSession() {
           const metadata = newSession.user.user_metadata || {};
           const email = newSession.user.email || '';
           
+          // Determine user role and name
           let roleName = metadata.role || 'user';
-          let name = metadata.name || email.split('@')[0] || 'User';
+          let name = formatDisplayName(email, metadata.name);
           
+          // Special case for admin@horeca.app
           if (email === 'admin@horeca.app' || email === 'admin') {
             roleName = 'admin';
             name = 'Admin';
@@ -59,6 +66,7 @@ export function useAuthSession() {
       }
     );
 
+    // Check for existing session on initial load
     const checkExistingSession = async () => {
       try {
         console.log("useAuthSession: Checking for existing session");
@@ -84,9 +92,11 @@ export function useAuthSession() {
           const metadata = session.user.user_metadata || {};
           const email = session.user.email || '';
           
+          // Determine user role and name
           let roleName = metadata.role || 'user';
-          let name = metadata.name || email.split('@')[0] || 'User';
+          let name = formatDisplayName(email, metadata.name);
           
+          // Special case for admin@horeca.app
           if (email === 'admin@horeca.app' || email === 'admin') {
             roleName = 'admin';
             name = 'Admin';

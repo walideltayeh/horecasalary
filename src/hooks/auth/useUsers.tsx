@@ -3,19 +3,27 @@ import { useState, useCallback, useEffect } from 'react';
 import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { validateRole } from '@/utils/auth';
+import { validateRole } from '@/utils/authUtils';
 
+/**
+ * Hook to manage users data for admin functionality
+ * @param isAdmin Whether current user is admin
+ * @param authenticated Whether user is authenticated
+ * @returns Users data and functions to manage it
+ */
 export function useUsers(isAdmin: boolean, authenticated: boolean) {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch users from Supabase Auth system
   const fetchUsers = useCallback(async () => {
     try {
       console.log("Fetching users from Supabase Auth system");
       setIsLoadingUsers(true);
       setError(null);
       
+      // Call admin function to list users
       const { data, error } = await supabase.functions.invoke('admin', {
         method: 'POST',
         body: { action: 'listUsers' }
@@ -23,6 +31,7 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
       
       console.log("Fetch users response:", data, error);
       
+      // Handle errors
       if (error) {
         console.error("Error fetching users:", error);
         setError(typeof error === 'string' ? error : error.message || 'Failed to fetch users');
@@ -37,6 +46,7 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
         return;
       }
       
+      // Parse and format user data
       if (data?.data?.users) {
         const mappedUsers = data.data.users.map(authUser => {
           const metadata = authUser.user_metadata || {};
@@ -50,7 +60,6 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
         });
         
         console.log("Fetched users:", mappedUsers.length, "users");
-        console.log("User details:", mappedUsers);
         setUsers(mappedUsers);
       } else {
         console.error("No users data in response:", data);
@@ -69,6 +78,10 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
   // Poll for users every minute if admin
   useEffect(() => {
     if (isAdmin && authenticated) {
+      // Initial fetch
+      fetchUsers();
+      
+      // Set up polling
       const intervalId = setInterval(() => {
         console.log("Polling for user updates");
         fetchUsers();
