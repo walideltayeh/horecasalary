@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Check, Clock, RefreshCcw, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { refreshCafeData } from '@/integrations/supabase/client';
 
 interface CafeListProps {
   adminView?: boolean;
@@ -16,6 +17,10 @@ interface CafeListProps {
 const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) => {
   const { cafes, getCafeSize, updateCafeStatus, deleteCafe, refreshCafes, loading } = useData();
   const { user, isAdmin } = useAuth();
+  
+  // Track render counts to help debug
+  const renderCount = React.useRef(0);
+  renderCount.current++;
   
   const handleUpdateStatus = (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
     updateCafeStatus(cafeId, newStatus);
@@ -28,9 +33,11 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     }
   };
   
-  const handleRefresh = () => {
-    refreshCafes();
-    toast.success("Refreshing cafe data from server...");
+  const handleRefresh = async () => {
+    toast.info("Refreshing cafe data from server...");
+    // Trigger both local and global refresh
+    await refreshCafes();
+    refreshCafeData();
   };
   
   // Set up periodic refresh
@@ -38,7 +45,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     const refreshTimer = setInterval(() => {
       console.log("Automatic refresh timer triggered in CafeList");
       refreshCafes();
-    }, 60000); // Refresh every minute
+    }, 30000); // Refresh every 30 seconds
     
     return () => {
       clearInterval(refreshTimer);
@@ -48,23 +55,31 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   useEffect(() => {
     // Force a refresh when the component mounts
     console.log("CafeList mounted, forcing data refresh");
-    refreshCafes();
-  }, [refreshCafes]);
+    handleRefresh();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Filter cafes based on filterByUser if provided
   const filteredCafes = filterByUser 
     ? cafes.filter(cafe => cafe.createdBy === filterByUser)
     : cafes;
   
-  console.log("CafeList rendering with", filteredCafes.length, "cafes, loading:", loading);
+  console.log(`CafeList render #${renderCount.current} with ${filteredCafes.length} cafes, loading: ${loading}`);
   console.log("Total cafes in context:", cafes.length);
+  
   if (filterByUser) {
     console.log("Filtering by user:", filterByUser);
   }
     
   return (
     <div className="space-y-4">
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-between mb-2">
+        <div>
+          {loading ? (
+            <p className="text-gray-500 text-sm">Loading cafe data...</p>
+          ) : (
+            <p className="text-gray-500 text-sm">{filteredCafes.length} cafes found</p>
+          )}
+        </div>
         <Button
           variant="outline"
           size="sm"

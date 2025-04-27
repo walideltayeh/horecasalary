@@ -1,10 +1,12 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Cafe, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
 import { getCafeSize } from '@/utils/cafeUtils';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeSubscription } from '@/hooks/useCafeSubscription';
+import { refreshCafeData } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface CafeContextType {
   cafes: Cafe[];
@@ -21,39 +23,41 @@ const CafeContext = createContext<CafeContextType | undefined>(undefined);
 export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [cafes, setCafes] = useState<Cafe[]>([]);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const { loading, setLoading, addCafe, updateCafeStatus, deleteCafe } = useCafeOperations();
   
   // Set up real-time subscriptions and fetch initial data
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
   
-  // Setup message event listener for cross-tab communication
-  useEffect(() => {
-    const handleStorageEvent = (event: StorageEvent) => {
-      if (event.key === 'cafe_data_updated') {
-        console.log("Detected cafe data update from another tab, refreshing...");
-        fetchCafes();
-      }
-    };
+  // Manual refresh function
+  const refreshCafes = useCallback(async () => {
+    console.log("Manual refresh triggered via context");
+    const now = Date.now();
     
-    // Listen for storage events (works across tabs)
-    window.addEventListener('storage', handleStorageEvent);
+    // Prevent excessive refreshes (once per second max)
+    if (now - lastRefreshTime < 1000) {
+      console.log("Refresh throttled");
+      return;
+    }
     
-    // Also listen for custom events dispatched within the same tab
-    window.addEventListener('horeca_data_updated', () => {
-      console.log("Received internal data update event, refreshing cafes...");
-      fetchCafes();
-    });
+    setLastRefreshTime(now);
+    toast.info("Refreshing cafe data...");
     
-    return () => {
-      window.removeEventListener('storage', handleStorageEvent);
-      window.removeEventListener('horeca_data_updated', () => {});
-    };
-  }, [fetchCafes]);
-  
+    try {
+      await fetchCafes(true);
+      refreshCafeData(); // Notify other components via events
+      toast.success("Cafe data refreshed successfully");
+    } catch (error) {
+      console.error("Error during manual refresh:", error);
+      toast.error("Failed to refresh cafe data");
+    }
+  }, [fetchCafes, lastRefreshTime]);
+
   // Force an initial data fetch on mount
   useEffect(() => {
     console.log("CafeProvider mounted, forcing initial data fetch");
-    fetchCafes();
+    fetchCafes(true);
+    
     // Set up a periodic refresh every 30 seconds as a fallback
     const intervalId = setInterval(() => {
       console.log("Periodic cafe refresh triggered");
@@ -68,14 +72,10 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("Adding cafe:", cafe);
     const cafeId = await addCafe(cafe);
     if (cafeId) {
-      // Notify other tabs about the update
-      localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
-      
-      // Dispatch an event within this tab
-      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
-      
       // Trigger an immediate fetch in this tab
-      await fetchCafes();
+      refreshCafeData();
+      await fetchCafes(true);
+      toast.success("Cafe added and data refreshed");
     }
     return cafeId;
   };
@@ -84,23 +84,37 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleUpdateCafeStatus = async (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => {
     const result = await updateCafeStatus(cafeId, status);
     if (result) {
-      // Notify other tabs
-      localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
-      
-      // Dispatch an event within this tab
-      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
-      
-      // Immediate fetch in this tab
-      await fetchCafes();
+      // Trigger an immediate fetch in this tab
+      refreshCafeData();
+      await fetchCafes(true);
     }
     return result;
   };
   
-  // Manual refresh function
-  const refreshCafes = async () => {
-    console.log("Manual refresh triggered");
-    await fetchCafes();
-  };
+  // Ensure Admin page sees updated data
+  useEffect(() => {
+    const adminPageCheck = () => {
+      const isAdminPage = window.location.pathname.includes('/admin');
+      if (isAdminPage) {
+        console.log("Admin page detected, forcing data refresh");
+        fetchCafes(true);
+      }
+    };
+    
+    // Check on initial render
+    adminPageCheck();
+    
+    // Setup listener for route changes
+    const handleRouteChange = () => {
+      adminPageCheck();
+    };
+    
+    window.addEventListener('popstate', handleRouteChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, [fetchCafes]);
 
   return (
     <CafeContext.Provider

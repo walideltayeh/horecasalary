@@ -73,7 +73,11 @@ serve(async (req) => {
         $function$;
         `
       }
-    );
+    )
+      .catch(err => {
+        console.error("Error creating helper functions:", err);
+        return { error: err };
+      });
     
     if (fnError) {
       console.error("Error creating helper functions:", fnError);

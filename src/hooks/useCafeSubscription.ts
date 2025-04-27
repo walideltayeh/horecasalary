@@ -10,17 +10,34 @@ export const useCafeSubscription = (
   setLoading: (loading: boolean) => void
 ) => {
   const channelsRef = useRef<any[]>([]);
+  const fetchingRef = useRef<boolean>(false);
+  const lastFetchTimeRef = useRef<number>(0);
 
-  const fetchCafes = useCallback(async () => {
+  const fetchCafes = useCallback(async (force = false) => {
+    // Debounce frequent fetch requests (within 1 second)
+    const now = Date.now();
+    if (!force && now - lastFetchTimeRef.current < 1000) {
+      console.log("Fetch request debounced");
+      return;
+    }
+    
+    // Prevent concurrent fetches
+    if (fetchingRef.current) {
+      console.log("Fetch already in progress, skipping");
+      return;
+    }
+    
     if (!user) {
       setCafes([]);
       setLoading(false);
       return;
     }
     
-    setLoading(true);
-    
     try {
+      fetchingRef.current = true;
+      setLoading(true);
+      lastFetchTimeRef.current = now;
+      
       console.log("Fetching cafes from database...");
       const { data, error } = await supabase
         .from('cafes')
@@ -42,7 +59,7 @@ export const useCafeSubscription = (
         throw error;
       }
       
-      console.log("Cafes fetched:", data?.length || 0);
+      console.log("Cafes fetched:", data?.length || 0, data);
       
       if (data) {
         const mappedCafes = data.map(cafe => ({
@@ -70,8 +87,46 @@ export const useCafeSubscription = (
       toast.error(err.message || 'Failed to fetch cafes');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, [user, setCafes, setLoading]);
+
+  // Set up all event listeners for data updates
+  useEffect(() => {
+    console.log("Setting up cafe data event listeners...");
+    
+    // Listen for manual refresh requests
+    const handleRefreshRequested = () => {
+      console.log("Manual refresh requested");
+      fetchCafes(true);
+    };
+    
+    // Listen for data update events (within same tab)
+    const handleDataUpdated = () => {
+      console.log("Data updated event received");
+      fetchCafes();
+    };
+    
+    // Listen for storage events (across tabs)
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key === 'cafe_data_updated') {
+        console.log("Storage event: cafe data updated");
+        fetchCafes();
+      }
+    };
+    
+    // Register all listeners
+    window.addEventListener('horeca_data_refresh_requested', handleRefreshRequested);
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    window.addEventListener('storage', handleStorageEvent);
+    
+    return () => {
+      // Clean up all listeners
+      window.removeEventListener('horeca_data_refresh_requested', handleRefreshRequested);
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+      window.removeEventListener('storage', handleStorageEvent);
+    };
+  }, [fetchCafes]);
 
   useEffect(() => {
     console.log("Setting up cafe subscriptions for user:", user?.id);
@@ -85,24 +140,12 @@ export const useCafeSubscription = (
     }
     
     // Always fetch cafes on mount, user change, or after subscription setup
-    fetchCafes();
+    fetchCafes(true);
 
     if (!user) return;
 
     const setupChannel = async () => {
       try {
-        // Enable realtime for the cafes table
-        const { error: enableError } = await supabase.functions.invoke('enable-realtime', {
-          body: { table_name: 'cafes' }
-        });
-        
-        if (enableError) {
-          console.error("Error enabling realtime:", enableError);
-          toast.error(`Failed to enable realtime: ${enableError.message}`);
-        } else {
-          console.log("Realtime enabled successfully for cafes table");
-        }
-        
         // Create a channel for all database changes
         const channel = supabase
           .channel('db-changes')
@@ -129,7 +172,7 @@ export const useCafeSubscription = (
         toast.error('Failed to set up realtime updates');
         
         // Even if realtime setup fails, still do a manual fetch
-        fetchCafes();
+        fetchCafes(true);
       }
     };
 

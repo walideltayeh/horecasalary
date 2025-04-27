@@ -36,3 +36,6 @@ verify_jwt = true
 
 [functions.enable-realtime]
 verify_jwt = false
+
+[functions.rls_helper]
+verify_jwt = false

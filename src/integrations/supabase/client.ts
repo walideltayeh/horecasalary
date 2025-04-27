@@ -30,25 +30,109 @@ export const supabase = createClient<Database>(
   }
 );
 
+// Manual function to initialize database structure
+const initializeDatabase = async () => {
+  try {
+    // 1. Create function to execute SQL if it doesn't exist
+    await supabase.rpc('execute_sql', {
+      sql: `
+      CREATE OR REPLACE FUNCTION public.execute_sql(sql text) RETURNS jsonb
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $function$
+      DECLARE
+        result jsonb;
+      BEGIN
+        EXECUTE sql;
+        result := '{"success": true}'::jsonb;
+        RETURN result;
+      EXCEPTION
+        WHEN OTHERS THEN
+          result := jsonb_build_object(
+            'success', false,
+            'error', SQLERRM,
+            'code', SQLSTATE
+          );
+          RETURN result;
+      END;
+      $function$;`
+    }).catch(err => {
+      // Function might already exist, continue
+      console.log('Database init step 1 (create execute_sql function):', err?.message || 'Success');
+    });
+
+    // 2. Create function to enable realtime for tables
+    await supabase.rpc('execute_sql', {
+      sql: `
+      CREATE OR REPLACE FUNCTION public.enable_realtime_for_table(table_name text)
+      RETURNS boolean
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $function$
+      BEGIN
+        -- Set the replica identity to full for the specified table
+        EXECUTE format('ALTER TABLE public.%I REPLICA IDENTITY FULL;', table_name);
+        
+        -- Check if the table is already added to the realtime publication
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_publication_tables 
+          WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public'
+          AND tablename = table_name
+        ) THEN
+          -- Add the table to the realtime publication
+          EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I;', table_name);
+        END IF;
+        
+        RETURN true;
+      END;
+      $function$;`
+    }).catch(err => {
+      // Function might already exist, continue
+      console.log('Database init step 2 (create enable_realtime function):', err?.message || 'Success');
+    });
+    
+    console.log('Database initialization completed successfully');
+  } catch (error) {
+    console.error('Error initializing database structure:', error);
+  }
+};
+
+// Call database initialization on client load
+initializeDatabase().catch(console.error);
+
+// Enable realtime for tables specifically related to cafes
 export const enableRealtimeForTables = async () => {
   try {
+    console.log("[Realtime] Starting enableRealtimeForTables");
     // We use a single channel with multiple table subscriptions for efficiency
     const tables = ['cafes', 'cafe_surveys', 'brand_sales'];
     
-    // Enable realtime for each table via edge function
+    // Enable realtime for each table via database function
     for (const table of tables) {
       try {
-        const { error } = await supabase.functions.invoke('enable-realtime', {
-          body: { table_name: table }
+        const { data, error } = await supabase.rpc('enable_realtime_for_table', { 
+          table_name: table 
         });
         
         if (error) {
-          console.error(`[Realtime] Error enabling realtime for ${table}:`, error);
+          console.error(`[Realtime] Error enabling realtime via RPC for ${table}:`, error);
+          
+          // Fallback to edge function if RPC fails
+          const { error: functionError } = await supabase.functions.invoke('enable-realtime', {
+            body: { table_name: table }
+          });
+          
+          if (functionError) {
+            console.error(`[Realtime] Error enabling realtime via edge function for ${table}:`, functionError);
+          } else {
+            console.log(`[Realtime] Successfully enabled realtime via edge function for ${table}`);
+          }
         } else {
-          console.log(`[Realtime] Successfully enabled realtime for ${table}`);
+          console.log(`[Realtime] Successfully enabled realtime via RPC for ${table}:`, data);
         }
       } catch (err) {
-        console.error(`[Realtime] Failed to invoke enable-realtime for ${table}:`, err);
+        console.error(`[Realtime] Failed to enable realtime for ${table}:`, err);
       }
     }
     
@@ -67,6 +151,7 @@ export const enableRealtimeForTables = async () => {
         },
         (payload) => {
           console.log(`[Realtime] ${table} change detected:`, payload);
+          
           // Notify via local storage for cross-tab communication
           localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
           
@@ -79,7 +164,7 @@ export const enableRealtimeForTables = async () => {
     });
 
     // Subscribe with retry logic
-    const trySubscribe = async (attempt = 1, maxAttempts = 3) => {
+    const trySubscribe = async (attempt = 1, maxAttempts = 5) => {
       try {
         const status = monitorChannel.subscribe((status) => {
           console.log(`[Realtime] Subscription status: ${status}`);
@@ -107,9 +192,9 @@ export const enableRealtimeForTables = async () => {
 // Call the function when the client is initialized
 enableRealtimeForTables();
 
-// Export a function to manually refresh cafe data
+// Force a data refresh
 export const refreshCafeData = () => {
-  window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+  console.log('[refreshCafeData] Triggering manual refresh');
+  window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
   localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
 };
-
