@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { CafeFormState } from './types/CafeFormTypes';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check } from 'lucide-react';
+
 interface CafeSurveyWrapperProps {
   onPreSubmit?: (cafeData: CafeFormState & {
     latitude: number;
@@ -18,6 +18,7 @@ interface CafeSurveyWrapperProps {
   currentFormData?: CafeFormState | null;
   onSurveyComplete?: () => void;
 }
+
 const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
   onPreSubmit,
   surveyCompleted: externalSurveyCompleted = false,
@@ -31,10 +32,10 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
     user
   } = useAuth();
 
-  // Update local state when external surveyCompleted prop changes
   React.useEffect(() => {
     setSurveyCompleted(externalSurveyCompleted);
   }, [externalSurveyCompleted]);
+
   const handleSurveyComplete = () => {
     console.log("Survey completed");
     setSurveyCompleted(true);
@@ -44,11 +45,11 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
       onSurveyComplete();
     }
   };
+
   const handleCancelSurvey = () => {
     setShowSurvey(false);
   };
 
-  // Render the survey button with conditional styling
   const renderSurveyButton = () => {
     if (!currentFormData && !onFormChange) return null;
     const isDisabled = !currentFormData || currentFormData.numberOfHookahs === 0;
@@ -56,13 +57,25 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
     return <div className="w-full mt-4">
         <Card className="bg-white">
           <CardContent className="p-6 py-0 px-0">
-            <Button type="button" variant={isCompleted ? "outline" : "default"} className={`w-full font-bold text-white ${isDisabled ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : isCompleted ? 'border-green-500 text-green-500 hover:bg-green-50' : 'bg-[#1a365d] text-white hover:bg-[#2a4365]'}`} disabled={isDisabled} onClick={() => setShowSurvey(true)}>
+            <Button 
+              type="button" 
+              variant={isCompleted ? "outline" : "default"} 
+              className={`w-full font-bold ${
+                isDisabled 
+                  ? 'bg-gray-200 text-black cursor-not-allowed' 
+                  : isCompleted 
+                    ? 'border-green-500 text-green-500 hover:bg-green-50' 
+                    : 'bg-[#1a365d] text-white hover:bg-[#2a4365]'
+              }`} 
+              disabled={isDisabled} 
+              onClick={() => setShowSurvey(true)}
+            >
               {isCompleted ? <>
                   <Check className="mr-2" />
                   <span className="font-bold">Survey Completed</span>
                 </> : <>
                   <ClipboardList className="mr-2" />
-                  <span className="font-bold text-white">
+                  <span className="font-bold">
                     {isDisabled ? 'Survey Not Required' : 'Complete Brand Survey'}
                   </span>
                 </>}
@@ -81,6 +94,8 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
         </Card>
       </div>;
   };
+
   return renderSurveyButton();
 };
+
 export default CafeSurveyWrapper;
