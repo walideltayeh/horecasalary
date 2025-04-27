@@ -31,7 +31,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     isSubmitting,
     handleInputChange,
     handleSelectChange,
-    handleSubmit,
+    handleSubmit: originalHandleSubmit,
     handleCaptureGPS,
     coordinates,
     getCafeSize,
@@ -49,12 +49,31 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     // If onPreSubmit is provided, use it to control submission
     if (onPreSubmit) {
       const canSubmit = await onPreSubmit(completeData);
-      if (!canSubmit) return null;
+      if (!canSubmit) {
+        console.log("Submission paused for survey");
+        return null; // Pause submission for survey
+      }
     }
     
     // Default submission if no pre-submit handler or it allows submission
+    console.log("Proceeding with cafe submission");
     return await addCafe(completeData);
   });
+
+  // Custom submit handler that enforces survey completion for cafes with hookahs
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // For cafes with hookahs, require survey completion before final submission
+    if (formState.numberOfHookahs >= 1 && !surveyCompleted) {
+      console.log("Starting submission process with survey check");
+      await originalHandleSubmit(e);
+    } else {
+      // For cafes without hookahs, or if survey is already completed
+      console.log("Direct submission without survey");
+      await originalHandleSubmit(e);
+    }
+  };
 
   const [availableCities, setAvailableCities] = React.useState<string[]>([]);
 
@@ -121,7 +140,6 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
           <Button 
             type="submit" 
             className="w-full bg-custom-red hover:bg-red-700"
-            disabled={isSubmitDisabled}
           >
             {isSubmitting ? "Processing..." : "Add Cafe"}
           </Button>

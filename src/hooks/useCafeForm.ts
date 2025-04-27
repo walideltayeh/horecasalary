@@ -87,6 +87,7 @@ export const useCafeForm = (onSubmit: (formData: CafeFormState & { latitude: num
 
     try {
       setIsSubmitting(true);
+      console.log("Form validation successful, proceeding with submission");
       
       // Add coordinates to the form state
       if (!coordinates.latitude || !coordinates.longitude) {
@@ -100,6 +101,7 @@ export const useCafeForm = (onSubmit: (formData: CafeFormState & { latitude: num
         longitude: coordinates.longitude
       };
       
+      console.log("Submitting cafe data:", submissionData);
       await onSubmit(submissionData);
       
       // Reset form after successful submission

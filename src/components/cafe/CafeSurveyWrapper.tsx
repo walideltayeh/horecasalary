@@ -15,10 +15,11 @@ const CafeSurveyWrapper: React.FC = () => {
   const [surveyCompleted, setSurveyCompleted] = useState(false);
 
   // Trigger survey when hookah count is 1 or more
-  const handleCafePreSubmit = async (cafeData: any) => {
+  const handleCafePreSubmit = useCallback(async (cafeData: any) => {
     // Check if survey is needed (number of hookahs ≥ 1)
     if (cafeData.numberOfHookahs >= 1) {
       // Store the cafe data temporarily and show survey
+      console.log("Survey needed, showing dialog for cafe:", cafeData);
       setPendingCafeData(cafeData);
       setShowSurvey(true);
       setSurveyCompleted(false);
@@ -27,11 +28,13 @@ const CafeSurveyWrapper: React.FC = () => {
     
     // If no survey needed, proceed with direct cafe addition
     return true;
-  };
+  }, []);
 
   const handleSurveyComplete = async (brandSales: any[]) => {
     try {
       if (pendingCafeData && brandSales.length > 0) {
+        console.log("Submitting cafe with survey data:", pendingCafeData, brandSales);
+        
         // Save cafe data and survey data
         const savedCafeId = await addCafe(pendingCafeData);
         
