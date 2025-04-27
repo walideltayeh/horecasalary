@@ -33,66 +33,14 @@ export const supabase = createClient<Database>(
 // Manual function to initialize database structure
 const initializeDatabase = async () => {
   try {
-    // 1. Create function to execute SQL if it doesn't exist
-    await supabase.rpc('execute_sql', {
-      sql: `
-      CREATE OR REPLACE FUNCTION public.execute_sql(sql text) RETURNS jsonb
-      LANGUAGE plpgsql
-      SECURITY DEFINER
-      AS $function$
-      DECLARE
-        result jsonb;
-      BEGIN
-        EXECUTE sql;
-        result := '{"success": true}'::jsonb;
-        RETURN result;
-      EXCEPTION
-        WHEN OTHERS THEN
-          result := jsonb_build_object(
-            'success', false,
-            'error', SQLERRM,
-            'code', SQLSTATE
-          );
-          RETURN result;
-      END;
-      $function$;`
-    }).catch(err => {
-      // Function might already exist, continue
-      console.log('Database init step 1 (create execute_sql function):', err?.message || 'Success');
-    });
-
-    // 2. Create function to enable realtime for tables
-    await supabase.rpc('execute_sql', {
-      sql: `
-      CREATE OR REPLACE FUNCTION public.enable_realtime_for_table(table_name text)
-      RETURNS boolean
-      LANGUAGE plpgsql
-      SECURITY DEFINER
-      AS $function$
-      BEGIN
-        -- Set the replica identity to full for the specified table
-        EXECUTE format('ALTER TABLE public.%I REPLICA IDENTITY FULL;', table_name);
-        
-        -- Check if the table is already added to the realtime publication
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_publication_tables 
-          WHERE pubname = 'supabase_realtime' 
-          AND schemaname = 'public'
-          AND tablename = table_name
-        ) THEN
-          -- Add the table to the realtime publication
-          EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I;', table_name);
-        END IF;
-        
-        RETURN true;
-      END;
-      $function$;`
-    }).catch(err => {
-      // Function might already exist, continue
-      console.log('Database init step 2 (create enable_realtime function):', err?.message || 'Success');
-    });
-    
-    console.log('Database initialization completed successfully');
+    // Call the rls_helper function to set up the database structure
+    await supabase.functions.invoke('rls_helper')
+      .then(response => {
+        console.log('Database initialization completed successfully:', response);
+      })
+      .catch(error => {
+        console.error('Failed to initialize database:', error);
+      });
   } catch (error) {
     console.error('Error initializing database structure:', error);
   }
@@ -108,28 +56,30 @@ export const enableRealtimeForTables = async () => {
     // We use a single channel with multiple table subscriptions for efficiency
     const tables = ['cafes', 'cafe_surveys', 'brand_sales'];
     
-    // Enable realtime for each table via database function
+    // Enable realtime for each table via edge function
     for (const table of tables) {
       try {
-        const { data, error } = await supabase.rpc('enable_realtime_for_table', { 
-          table_name: table 
-        });
+        const { error } = await supabase.functions.invoke('rls_helper')
+          .then(result => {
+            console.log(`[Realtime] Successfully enabled realtime via edge function for ${table}:`, result);
+            return { error: null };
+          })
+          .catch(err => {
+            console.error(`[Realtime] Error enabling realtime for ${table}:`, err);
+            return { error: err };
+          });
         
         if (error) {
-          console.error(`[Realtime] Error enabling realtime via RPC for ${table}:`, error);
-          
-          // Fallback to edge function if RPC fails
-          const { error: functionError } = await supabase.functions.invoke('enable-realtime', {
+          // Try fallback to direct function if edge function fails
+          const { error: fallbackError } = await supabase.functions.invoke('enable-realtime', {
             body: { table_name: table }
           });
           
-          if (functionError) {
-            console.error(`[Realtime] Error enabling realtime via edge function for ${table}:`, functionError);
+          if (fallbackError) {
+            console.error(`[Realtime] Fallback also failed for ${table}:`, fallbackError);
           } else {
-            console.log(`[Realtime] Successfully enabled realtime via edge function for ${table}`);
+            console.log(`[Realtime] Successfully enabled realtime via fallback for ${table}`);
           }
-        } else {
-          console.log(`[Realtime] Successfully enabled realtime via RPC for ${table}:`, data);
         }
       } catch (err) {
         console.error(`[Realtime] Failed to enable realtime for ${table}:`, err);
