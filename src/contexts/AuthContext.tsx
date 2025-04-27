@@ -1,16 +1,18 @@
+
 import React, { createContext, useContext, useMemo } from 'react';
 import { User } from '@/types';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
-import { useUserManagement } from '@/hooks/useUserManagement';
+import { useUserManagement } from '@/hooks/auth/useUserManagement';
 
 type AuthContextType = {
   user: User | null;
   users: User[];
   isAdmin: boolean;
   isLoading: boolean;
+  session: any;  // Adding session to the context type
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: () => Promise<void>;  // Changed to void to match implementation
   addUser: (userData: { name: string, email: string, password: string, role: 'admin' | 'user' }) => Promise<boolean>;
   deleteUser: (userId: string) => Promise<boolean>;
   updateUser: (userId: string, userData: { name?: string, password?: string, role?: 'admin' | 'user' }) => Promise<boolean>;
@@ -34,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users,
       isAdmin,
       isLoading,
+      session, // Expose session to the context
       login,
       logout,
       addUser,
@@ -41,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUser,
       fetchUsers,
     }),
-    [user, users, isAdmin, isLoading, login, logout, addUser, deleteUser, updateUser, fetchUsers]
+    [user, users, isAdmin, isLoading, session, login, logout, addUser, deleteUser, updateUser, fetchUsers]
   );
 
   return (

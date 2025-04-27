@@ -8,9 +8,11 @@ import { useCafes } from '@/contexts/CafeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CafeFormState } from './types/CafeFormTypes';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CafeSurveyWrapper: React.FC = () => {
   const { addCafe } = useCafes();
+  const { user } = useAuth();
   const [showSurvey, setShowSurvey] = useState(false);
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
   const [pendingCafeData, setPendingCafeData] = useState<CafeFormState & { latitude?: number, longitude?: number } | null>(null);
@@ -40,21 +42,33 @@ const CafeSurveyWrapper: React.FC = () => {
     }
     
     // If no survey needed, proceed with direct cafe addition
-    const savedCafeId = await addCafe(cafeData);
+    // Add createdBy field with current user ID
+    const cafeWithUser = {
+      ...cafeData,
+      createdBy: user?.id || ''
+    };
+    
+    const savedCafeId = await addCafe(cafeWithUser);
     if (savedCafeId) {
       setFormKey(prevKey => prevKey + 1);
       toast.success(`Cafe "${cafeData.name}" added successfully`);
     }
     return true;
-  }, [addCafe]);
+  }, [addCafe, user]);
 
   const handleSurveyComplete = async (brandSales: any[]) => {
     try {
       if (pendingCafeData && brandSales.length > 0) {
         console.log("Submitting cafe with survey data:", pendingCafeData, brandSales);
         
+        // Add createdBy field with current user ID
+        const cafeWithUser = {
+          ...pendingCafeData,
+          createdBy: user?.id || ''
+        };
+        
         // Create cafe record
-        const savedCafeId = await addCafe(pendingCafeData);
+        const savedCafeId = await addCafe(cafeWithUser);
         
         if (savedCafeId) {
           // Create survey record
