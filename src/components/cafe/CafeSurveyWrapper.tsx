@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import AddCafeForm from './AddCafeForm';
@@ -56,59 +56,67 @@ const CafeSurveyWrapper: React.FC = () => {
     const isCompleted = surveyCompleted;
 
     return (
-      <Button
-        type="button"
-        variant={isCompleted ? "outline" : "default"}
-        className={`w-full mb-4 ${
-          isDisabled 
-            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-            : isCompleted
-            ? 'border-green-500 text-green-500 hover:bg-green-50'
-            : 'bg-custom-red hover:bg-red-700'
-        }`}
-        disabled={isDisabled}
-        onClick={() => setShowSurvey(true)}
-      >
-        {isCompleted ? (
-          <>
-            <Check className="mr-2" />
-            Survey Completed
-          </>
-        ) : (
-          <>
-            <CirclePlus className="mr-2" />
-            {isDisabled ? 'Survey Not Required' : 'Complete Brand Survey'}
-          </>
-        )}
-      </Button>
+      <div className="mb-6">
+        <Card className="bg-[#1a365d]">
+          <CardContent className="p-6">
+            <Button
+              type="button"
+              variant={isCompleted ? "outline" : "default"}
+              className={`w-full font-bold ${
+                isDisabled 
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : isCompleted
+                  ? 'border-green-500 text-green-500 hover:bg-green-50'
+                  : 'bg-[#1a365d] text-white hover:bg-[#2a4365]'
+              }`}
+              disabled={isDisabled}
+              onClick={() => setShowSurvey(true)}
+            >
+              {isCompleted ? (
+                <>
+                  <Check className="mr-2" />
+                  <span className="font-bold">Survey Completed</span>
+                </>
+              ) : (
+                <>
+                  <CirclePlus className="mr-2" />
+                  <span className="font-bold">
+                    {isDisabled ? 'Survey Not Required' : 'Complete Brand Survey'}
+                  </span>
+                </>
+              )}
+            </Button>
+
+            {showSurvey && currentFormData && (
+              <div className="mt-4">
+                <CafeBrandSurvey
+                  cafeFormData={{
+                    ...currentFormData,
+                    createdBy: user?.id || 'unknown',
+                    latitude: 0,
+                    longitude: 0,
+                    status: 'Pending'
+                  }}
+                  onComplete={handleSurveyComplete}
+                  onCancel={handleCancelSurvey}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     );
   };
 
   return (
     <Card className="relative">
       <CardContent className="p-6">
-        {showSurvey && currentFormData ? (
-          <CafeBrandSurvey
-            cafeFormData={{
-              ...currentFormData,
-              createdBy: user?.id || 'unknown',
-              latitude: 0,
-              longitude: 0,
-              status: 'Pending'
-            }}
-            onComplete={handleSurveyComplete}
-            onCancel={handleCancelSurvey}
-          />
-        ) : (
-          <>
-            {renderSurveyButton()}
-            <AddCafeForm
-              onPreSubmit={handlePreSubmit}
-              surveyCompleted={surveyCompleted}
-              onFormChange={handleFormChange}
-            />
-          </>
-        )}
+        {renderSurveyButton()}
+        <AddCafeForm
+          onPreSubmit={handlePreSubmit}
+          surveyCompleted={surveyCompleted}
+          onFormChange={handleFormChange}
+        />
       </CardContent>
     </Card>
   );
