@@ -1,5 +1,4 @@
-
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Cafe } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,6 +8,8 @@ export const useCafeSubscription = (
   setCafes: React.Dispatch<React.SetStateAction<Cafe[]>>,
   setLoading: (loading: boolean) => void
 ) => {
+  const channelsRef = useRef<any[]>([]);
+
   const fetchCafes = useCallback(async () => {
     if (!user) {
       setCafes([]);
@@ -65,63 +66,104 @@ export const useCafeSubscription = (
 
   useEffect(() => {
     console.log("Setting up cafe subscriptions for user:", user?.id);
+    
+    if (channelsRef.current.length > 0) {
+      console.log("Cleaning up existing subscriptions before creating new ones");
+      channelsRef.current.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
+      channelsRef.current = [];
+    }
+    
     fetchCafes();
 
     if (!user) return;
 
-    // Set up realtime subscriptions for all relevant tables
-    const channels = [
-      supabase.channel('cafes-changes')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'cafes',
-          }, 
-          () => {
-            console.log("Cafe change detected, refreshing data...");
-            fetchCafes();
+    const setupChannels = async () => {
+      try {
+        const channels = [
+          supabase.channel('cafes-changes-' + new Date().getTime())
+            .on('postgres_changes', 
+              { 
+                event: '*', 
+                schema: 'public', 
+                table: 'cafes',
+              }, 
+              (payload) => {
+                console.log("Cafe change detected:", payload);
+                fetchCafes();
+              }
+            ),
+
+          supabase.channel('surveys-changes-' + new Date().getTime())
+            .on('postgres_changes', 
+              { 
+                event: '*', 
+                schema: 'public', 
+                table: 'cafe_surveys',
+              }, 
+              (payload) => {
+                console.log("Survey change detected:", payload);
+                fetchCafes();
+              }
+            ),
+
+          supabase.channel('sales-changes-' + new Date().getTime())
+            .on('postgres_changes', 
+              { 
+                event: '*', 
+                schema: 'public', 
+                table: 'brand_sales',
+              }, 
+              (payload) => {
+                console.log("Brand sales change detected:", payload);
+                fetchCafes();
+              }
+            )
+        ];
+
+        for (const channel of channels) {
+          try {
+            const status = await channel.subscribe();
+            console.log(`Channel subscribed with status: ${status}`);
+            channelsRef.current.push(channel);
+          } catch (err) {
+            console.error("Error subscribing to channel:", err);
+            setTimeout(() => {
+              channel.subscribe()
+                .then(() => {
+                  console.log("Channel subscription retry successful");
+                  channelsRef.current.push(channel);
+                })
+                .catch(retryErr => {
+                  console.error("Channel subscription retry failed:", retryErr);
+                });
+            }, 3000);
           }
-        ),
+        }
+        
+        console.log(`All realtime subscriptions activated (${channels.length} channels)`);
+      } catch (err) {
+        console.error("Error setting up realtime subscriptions:", err);
+      }
+    };
 
-      supabase.channel('surveys-changes')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'cafe_surveys',
-          }, 
-          () => {
-            console.log("Survey change detected, refreshing data...");
-            fetchCafes();
-          }
-        ),
+    setupChannels();
 
-      supabase.channel('sales-changes')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'brand_sales',
-          }, 
-          () => {
-            console.log("Brand sales change detected, refreshing data...");
-            fetchCafes();
-          }
-        )
-    ];
+    const pollingInterval = setInterval(() => {
+      console.log("Backup polling: fetching cafes");
+      fetchCafes();
+    }, 30000);
 
-    // Subscribe to all channels
-    Promise.all(channels.map(channel => channel.subscribe()))
-      .then(() => console.log("All realtime subscriptions activated"))
-      .catch(err => console.error("Error setting up realtime subscriptions:", err));
-
-    // Cleanup function
     return () => {
-      console.log("Cleaning up realtime subscriptions");
-      channels.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
+      console.log("Cleaning up realtime subscriptions and polling");
+      if (channelsRef.current.length > 0) {
+        channelsRef.current.forEach(channel => {
+          supabase.removeChannel(channel);
+        });
+        channelsRef.current = [];
+      }
+      clearInterval(pollingInterval);
     };
   }, [user, fetchCafes]);
 

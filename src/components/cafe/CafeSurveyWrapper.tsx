@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState, useCallback, useEffect } from 'react';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import AddCafeForm from './AddCafeForm';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -13,7 +14,7 @@ const CafeSurveyWrapper: React.FC = () => {
   const [newCafeId, setNewCafeId] = useState<string | null>(null);
   const [pendingCafeData, setPendingCafeData] = useState<any>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
-  const [formKey, setFormKey] = useState(0); // Add this to force form reset
+  const [formKey, setFormKey] = useState(0); // For form reset
 
   // Content for the Cafe tab
   const handleCafePreSubmit = useCallback(async (cafeData: any) => {
@@ -40,9 +41,11 @@ const CafeSurveyWrapper: React.FC = () => {
       if (pendingCafeData && brandSales.length > 0) {
         console.log("Submitting cafe with survey data:", pendingCafeData, brandSales);
         
+        // Create cafe record
         const savedCafeId = await addCafe(pendingCafeData);
         
         if (savedCafeId) {
+          // Create survey record
           const { data: surveyData, error: surveyError } = await supabase
             .from('cafe_surveys')
             .insert({ cafe_id: savedCafeId })
@@ -52,6 +55,7 @@ const CafeSurveyWrapper: React.FC = () => {
           if (surveyError) throw surveyError;
 
           if (surveyData) {
+            // Create brand sales records
             const brandSalesData = brandSales.map(sale => ({
               survey_id: surveyData.id,
               brand: sale.brand,
@@ -65,7 +69,7 @@ const CafeSurveyWrapper: React.FC = () => {
             if (brandError) throw brandError;
           }
 
-          // Reset form by updating the key
+          // Reset form and state
           setFormKey(prevKey => prevKey + 1);
           setNewCafeId(savedCafeId);
           setPendingCafeData(null);
@@ -73,6 +77,9 @@ const CafeSurveyWrapper: React.FC = () => {
           setSurveyCompleted(true);
 
           toast.success(`Cafe "${pendingCafeData.name}" added with survey data`);
+          
+          // Force refresh via window.postMessage
+          window.postMessage({ type: "CAFE_ADDED", cafeId: savedCafeId }, "*");
         }
       }
     } catch (error: any) {
@@ -88,6 +95,21 @@ const CafeSurveyWrapper: React.FC = () => {
     setFormKey(prevKey => prevKey + 1); // Reset form on cancel
     toast.info('Cafe submission canceled');
   };
+
+  // Listen for cafe added events from other components
+  useEffect(() => {
+    const handleCafeAdded = (event: MessageEvent) => {
+      if (event.data && event.data.type === "CAFE_ADDED") {
+        console.log("Received cafe added event:", event.data);
+        // No need to do anything here as the subscription will handle it
+      }
+    };
+
+    window.addEventListener("message", handleCafeAdded);
+    return () => {
+      window.removeEventListener("message", handleCafeAdded);
+    };
+  }, []);
 
   return (
     <>

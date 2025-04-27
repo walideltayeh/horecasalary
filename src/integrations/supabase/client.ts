@@ -27,78 +27,88 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Enable realtime for database tables
-const enableRealtimeTables = async () => {
+// This function explicitly enables realtime for the tables we need
+export const enableRealtimeForTables = async () => {
   try {
-    // Create and subscribe to a channel for the cafes table with explicit events
-    const cafesChannel = supabase.channel('cafes-channel')
-      .on('postgres_changes', 
+    // We use a single channel with multiple table subscriptions for efficiency
+    const tables = ['cafes', 'cafe_surveys', 'brand_sales'];
+    
+    // Create a more reliable monitoring channel
+    const monitorChannel = supabase.channel('db-changes-monitor');
+    
+    // Add listeners for all tables
+    tables.forEach(table => {
+      // Listen for inserts
+      monitorChannel.on(
+        'postgres_changes', 
         { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'cafes' 
-        }, 
+          table 
+        },
         (payload) => {
-          console.log('New cafe inserted:', payload);
+          console.log(`[Realtime] ${table} inserted:`, payload);
+          // Notify via local storage for cross-tab communication
+          localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
         }
-      )
-      .on('postgres_changes', 
+      );
+      
+      // Listen for updates
+      monitorChannel.on(
+        'postgres_changes', 
         { 
           event: 'UPDATE', 
           schema: 'public', 
-          table: 'cafes' 
-        }, 
+          table 
+        },
         (payload) => {
-          console.log('Cafe updated:', payload);
+          console.log(`[Realtime] ${table} updated:`, payload);
+          // Notify via local storage for cross-tab communication
+          localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
         }
-      )
-      .on('postgres_changes', 
+      );
+      
+      // Listen for deletes
+      monitorChannel.on(
+        'postgres_changes', 
         { 
           event: 'DELETE', 
           schema: 'public', 
-          table: 'cafes' 
-        }, 
+          table 
+        },
         (payload) => {
-          console.log('Cafe deleted:', payload);
+          console.log(`[Realtime] ${table} deleted:`, payload);
+          // Notify via local storage for cross-tab communication
+          localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
         }
       );
+    });
 
-    // Create and subscribe to a channel for the cafe_surveys table
-    const surveysChannel = supabase.channel('surveys-channel')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'cafe_surveys' 
-        }, 
-        (payload) => {
-          console.log('Cafe survey changed:', payload);
+    // Subscribe with retry logic
+    const trySubscribe = async (attempt = 1, maxAttempts = 3) => {
+      try {
+        const status = await monitorChannel.subscribe((status) => {
+          console.log(`[Realtime] Subscription status: ${status}`);
+        });
+        console.log(`[Realtime] Monitor channel subscribed: ${status}`);
+        return true;
+      } catch (err) {
+        console.error(`[Realtime] Subscription attempt ${attempt} failed:`, err);
+        if (attempt < maxAttempts) {
+          console.log(`[Realtime] Retrying in ${attempt * 2}s...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          return trySubscribe(attempt + 1, maxAttempts);
         }
-      );
+        return false;
+      }
+    };
     
-    // Create and subscribe to a channel for the brand_sales table
-    const brandSalesChannel = supabase.channel('brand-sales-channel')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'brand_sales' 
-        }, 
-        (payload) => {
-          console.log('Brand sales changed:', payload);
-        }
-      );
-
-    // Subscribe to all channels
-    await cafesChannel.subscribe();
-    await surveysChannel.subscribe();
-    await brandSalesChannel.subscribe();
-    
-    console.log('Realtime enabled for all database tables');
+    await trySubscribe();
+    console.log('[Realtime] Enabled for all database tables');
   } catch (error) {
-    console.error('Error enabling realtime:', error);
+    console.error('[Realtime] Error setting up realtime:', error);
   }
 };
 
 // Call the function when the client is initialized
-enableRealtimeTables();
+enableRealtimeForTables();
