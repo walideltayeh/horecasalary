@@ -45,6 +45,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Custom cafe adding function that also triggers cross-tab notification
   const handleAddCafe = async (cafe: Omit<Cafe, 'id' | 'createdAt'>) => {
+    console.log("Adding cafe:", cafe);
     const cafeId = await addCafe(cafe);
     if (cafeId) {
       // Notify other tabs about the update
@@ -71,6 +72,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   // Manual refresh function
   const refreshCafes = async () => {
+    console.log("Manual refresh triggered");
     await fetchCafes();
   };
 

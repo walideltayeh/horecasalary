@@ -30,8 +30,13 @@ export const useCafeOperations = () => {
         .select('id')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error adding cafe:", error);
+        toast.error(`Failed to add cafe: ${error.message}`);
+        throw error;
+      }
       
+      console.log("Cafe added successfully:", data);
       toast.success(`Cafe "${cafeData.name}" added successfully`);
       return data.id;
     } catch (err: any) {
@@ -50,8 +55,13 @@ export const useCafeOperations = () => {
         .update({ status })
         .eq('id', cafeId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating cafe status:", error);
+        toast.error(`Failed to update cafe status: ${error.message}`);
+        throw error;
+      }
       
+      console.log("Cafe status updated successfully");
       toast.success(`Cafe status updated to ${status}`);
       return true;
     } catch (err: any) {
@@ -70,8 +80,13 @@ export const useCafeOperations = () => {
         .delete()
         .eq('id', cafeId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error deleting cafe:", error);
+        toast.error(`Failed to delete cafe: ${error.message}`);
+        throw error;
+      }
       
+      console.log("Cafe deleted successfully");
       toast.success("Cafe deleted successfully");
       return true;
     } catch (err: any) {

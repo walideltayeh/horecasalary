@@ -36,11 +36,17 @@ export const useCafeSubscription = (
         `)
         .order('created_at', { ascending: false });
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching cafes:", error);
+        toast.error(`Failed to fetch cafes: ${error.message}`);
+        throw error;
+      }
+      
+      console.log("Cafes fetched:", data);
       
       if (data) {
-        console.log("Cafes fetched:", data);
-        setCafes(data.map(cafe => ({
+        // Map the data to our Cafe type
+        const mappedCafes = data.map(cafe => ({
           id: cafe.id,
           name: cafe.name,
           ownerName: cafe.owner_name,
@@ -55,7 +61,13 @@ export const useCafeSubscription = (
           createdBy: cafe.created_by,
           latitude: cafe.latitude,
           longitude: cafe.longitude
-        })));
+        }));
+        
+        console.log("Mapped cafes:", mappedCafes);
+        setCafes(mappedCafes);
+      } else {
+        console.log("No cafe data returned from database");
+        setCafes([]);
       }
     } catch (err: any) {
       console.error('Error fetching cafes:', err);
@@ -82,81 +94,42 @@ export const useCafeSubscription = (
 
     const setupChannels = async () => {
       try {
-        const channels = [
-          supabase.channel('cafes-changes-' + new Date().getTime())
-            .on('postgres_changes', 
-              { 
-                event: '*', 
-                schema: 'public', 
-                table: 'cafes',
-              }, 
-              (payload) => {
-                console.log("Cafe change detected:", payload);
-                fetchCafes();
-              }
-            ),
-
-          supabase.channel('surveys-changes-' + new Date().getTime())
-            .on('postgres_changes', 
-              { 
-                event: '*', 
-                schema: 'public', 
-                table: 'cafe_surveys',
-              }, 
-              (payload) => {
-                console.log("Survey change detected:", payload);
-                fetchCafes();
-              }
-            ),
-
-          supabase.channel('sales-changes-' + new Date().getTime())
-            .on('postgres_changes', 
-              { 
-                event: '*', 
-                schema: 'public', 
-                table: 'brand_sales',
-              }, 
-              (payload) => {
-                console.log("Brand sales change detected:", payload);
-                fetchCafes();
-              }
-            )
-        ];
-
-        for (const channel of channels) {
-          try {
-            // Fixed: Correctly subscribe without using .then()
-            // RealtimeChannel doesn't have a then() method, it's not a Promise
-            const status = channel.subscribe();
-            console.log(`Channel subscribed with status: ${status}`);
-            channelsRef.current.push(channel);
-          } catch (err) {
-            console.error("Error subscribing to channel:", err);
-            // Use setTimeout for retry instead of Promise-based approach
-            setTimeout(() => {
-              try {
-                const status = channel.subscribe();
-                console.log("Channel subscription retry successful:", status);
-                channelsRef.current.push(channel);
-              } catch (retryErr) {
-                console.error("Channel subscription retry failed:", retryErr);
-              }
-            }, 3000);
-          }
-        }
+        // Enable realtime for the cafes table
+        await supabase.rpc('enable_realtime', { table_name: 'cafes' });
         
-        console.log(`All realtime subscriptions activated (${channels.length} channels)`);
+        const channel = supabase
+          .channel('cafe-changes-' + Date.now())
+          .on('postgres_changes', 
+            {
+              event: '*', 
+              schema: 'public', 
+              table: 'cafes'
+            },
+            (payload) => {
+              console.log("Cafe change detected:", payload);
+              fetchCafes();
+            }
+          )
+          .subscribe((status) => {
+            console.log(`Cafe channel subscribed with status: ${status}`);
+          });
+          
+        channelsRef.current.push(channel);
+        
+        console.log("Realtime subscription activated for cafes");
       } catch (err) {
         console.error("Error setting up realtime subscriptions:", err);
+        // Fallback to polling
       }
     };
 
     setupChannels();
 
+    // Backup polling mechanism
     const pollingInterval = setInterval(() => {
       console.log("Backup polling: fetching cafes");
       fetchCafes();
-    }, 30000);
+    }, 30000); // Poll every 30 seconds
 
     return () => {
       console.log("Cleaning up realtime subscriptions and polling");
