@@ -13,7 +13,7 @@ export function useAuthActions() {
 
   return {
     login,
-    logout,
+    logout, // This should return Promise<void> to match AuthContextType
     addUser,
     updateUser,
     deleteUser,

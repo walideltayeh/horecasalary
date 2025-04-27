@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,7 +39,7 @@ export function useLogin() {
     }
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     try {
       setIsLoading(true);
       console.log("useLogin: Starting logout process");
@@ -65,7 +64,7 @@ export function useLogin() {
         } else {
           console.error("useLogin: Logout error:", error);
           toast.error('Failed to log out');
-          return false;
+          return;
         }
       }
       
@@ -78,11 +77,9 @@ export function useLogin() {
         window.location.replace('/login');
       }, 100);
       
-      return true;
     } catch (err) {
       console.error('Logout error:', err);
       toast.error('Failed to log out');
-      return false;
     } finally {
       setIsLoading(false);
     }
