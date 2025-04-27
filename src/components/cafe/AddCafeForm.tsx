@@ -140,6 +140,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
           <Button 
             type="submit" 
             className="w-full bg-custom-red hover:bg-red-700"
+            disabled={isSubmitting}
           >
             {isSubmitting ? "Processing..." : "Add Cafe"}
           </Button>

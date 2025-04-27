@@ -16,8 +16,14 @@ const UserApp: React.FC = () => {
     return <Navigate to="/login" />;
   }
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    try {
+      console.log("User App: Logging out user");
+      await logout();
+      // The redirect is handled in the logout function
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
   };
 
   // Content for the Cafe tab

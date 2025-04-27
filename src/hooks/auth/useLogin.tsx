@@ -44,12 +44,20 @@ export function useLogin() {
     try {
       setIsLoading(true);
       console.log("useLogin: Logging out");
-      await supabase.auth.signOut();
+      
+      // First clear any session data
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Logout error:", error);
+        toast.error('Failed to log out');
+        return;
+      }
+      
       toast.info('Logged out successfully');
       
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 100);
+      // Force a page reload to clear any cached state
+      window.location.href = '/login';
     } catch (err) {
       console.error('Logout error:', err);
       toast.error('Failed to log out');
