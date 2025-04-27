@@ -70,6 +70,7 @@ export function useAuthActions() {
       // Ensure the email is properly formatted
       const email = userData.email.includes('@') ? userData.email : `${userData.email}@horeca.app`;
       
+      // Create user with clear metadata structure
       const { data, error } = await supabase.functions.invoke('admin', {
         method: 'POST',
         body: {
@@ -77,11 +78,8 @@ export function useAuthActions() {
           userData: {
             email: email,
             password: userData.password,
-            email_confirm: true,
-            user_metadata: { 
-              name: userData.name,
-              role: userData.role
-            }
+            name: userData.name,
+            role: userData.role
           }
         }
       });
@@ -103,10 +101,24 @@ export function useAuthActions() {
       console.log("User added successfully:", data);
       toast.success(`User ${userData.name} added successfully`);
       
-      // Refresh user list after a short delay to ensure Supabase has processed the change
-      setTimeout(async () => {
+      // Force refresh users list with multiple retry attempts
+      let attempts = 0;
+      const maxAttempts = 3;
+      const retryDelay = 1500;
+      
+      const retryFetchUsers = async () => {
+        attempts++;
+        console.log(`Attempting to fetch users (attempt ${attempts})`);
         await fetchUsers();
-      }, 1000);
+        
+        // If we still need more attempts
+        if (attempts < maxAttempts) {
+          setTimeout(retryFetchUsers, retryDelay);
+        }
+      };
+      
+      // Start retry sequence after initial delay
+      setTimeout(retryFetchUsers, 1000);
       
       return true;
     } catch (error: any) {
@@ -162,10 +174,22 @@ export function useAuthActions() {
       console.log("User updated successfully:", data);
       toast.success('User updated successfully');
       
-      // Refresh user list after a short delay
-      setTimeout(async () => {
+      // Multiple retry attempts for fetch users
+      let attempts = 0;
+      const maxAttempts = 3;
+      const retryDelay = 1500;
+      
+      const retryFetchUsers = async () => {
+        attempts++;
+        console.log(`Attempting to fetch users after update (attempt ${attempts})`);
         await fetchUsers();
-      }, 1000);
+        
+        if (attempts < maxAttempts) {
+          setTimeout(retryFetchUsers, retryDelay);
+        }
+      };
+      
+      setTimeout(retryFetchUsers, 1000);
       
       return true;
     } catch (error: any) {
@@ -205,10 +229,22 @@ export function useAuthActions() {
       console.log("User deleted successfully");
       toast.success('User deleted successfully');
       
-      // Refresh user list after a short delay
-      setTimeout(async () => {
+      // Multiple retry attempts for fetch users
+      let attempts = 0;
+      const maxAttempts = 3;
+      const retryDelay = 1500;
+      
+      const retryFetchUsers = async () => {
+        attempts++;
+        console.log(`Attempting to fetch users after delete (attempt ${attempts})`);
         await fetchUsers();
-      }, 1000);
+        
+        if (attempts < maxAttempts) {
+          setTimeout(retryFetchUsers, retryDelay);
+        }
+      };
+      
+      setTimeout(retryFetchUsers, 1000);
       
       return true;
     } catch (error: any) {

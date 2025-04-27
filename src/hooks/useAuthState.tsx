@@ -20,7 +20,7 @@ export function useAuthState() {
       console.log("Fetching users from Supabase Auth system");
       setIsLoading(true);
       
-      // Call the admin function to list users
+      // Call the admin function to list users with more specific params
       const { data, error } = await supabase.functions.invoke('admin', {
         method: 'POST',
         body: { action: 'listUsers' }
@@ -40,8 +40,8 @@ export function useAuthState() {
         return;
       }
       
-      if (data?.users) {
-        const mappedUsers = data.users.map(authUser => {
+      if (data?.data?.users) {
+        const mappedUsers = data.data.users.map(authUser => {
           const metadata = authUser.user_metadata || {};
           return {
             id: authUser.id,
@@ -54,6 +54,8 @@ export function useAuthState() {
         
         console.log("Fetched users:", mappedUsers);
         setUsers(mappedUsers);
+      } else {
+        console.error("No users data in response:", data);
       }
     } catch (err: any) {
       console.error("Error fetching users:", err);

@@ -23,7 +23,7 @@ serve(async (req) => {
 
     const { action, userData } = await req.json()
     console.log("Action requested:", action);
-    console.log("User data:", userData);
+    console.log("User data received:", userData);
     
     const authClient = supabase.auth.admin
 
@@ -31,30 +31,35 @@ serve(async (req) => {
     switch (action) {
       case 'listUsers':
         console.log("Listing users");
-        result = await authClient.listUsers()
+        result = await authClient.listUsers({ perPage: 50 })
+        console.log("Users found:", result?.data?.users?.length || 0);
         break
       case 'createUser':
         console.log("Creating user with email:", userData.email);
-        // Ensure we're sending the correct format for createUser
+        // We need to ensure consistent format between what's received and what's expected
         const createUserData = {
           email: userData.email,
           password: userData.password,
           email_confirm: true,
-          user_metadata: { 
+          user_metadata: userData.user_metadata || {
             name: userData.name,
             role: userData.role
           }
         }
+        console.log("Formatted create user data:", createUserData);
         result = await authClient.createUser(createUserData)
+        console.log("Create user result:", result);
         break
       case 'updateUser':
         const { id, ...updateData } = userData
         console.log("Updating user with id:", id);
         result = await authClient.updateUserById(id, updateData)
+        console.log("Update user result:", result);
         break
       case 'deleteUser':
         console.log("Deleting user with id:", userData.id);
         result = await authClient.deleteUser(userData.id)
+        console.log("Delete user result:", result);
         break
       default:
         throw new Error('Invalid action')
@@ -69,7 +74,7 @@ serve(async (req) => {
       }
     }
 
-    console.log("Operation result:", result);
+    console.log("Operation completed successfully");
     return new Response(
       JSON.stringify(result),
       { 
