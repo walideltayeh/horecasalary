@@ -1,18 +1,15 @@
-import React, { useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from '@/contexts/AuthContext';
-import { mexicoLocations } from '@/data/mexicoLocations';
-import { useCafes } from '@/contexts/CafeContext';
 
+import React from 'react';
+import { useCafes } from '@/contexts/CafeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCafeForm } from '@/hooks/useCafeForm';
+import { CafeFormState } from './types/CafeFormTypes';
+import { CafeFormLayout } from './layout/CafeFormLayout';
 import { CafeBasicInfo } from './CafeBasicInfo';
 import { CafeCapacityInfo } from './CafeCapacityInfo';
 import { CafeLocationInfo } from './CafeLocationInfo';
 import { PhotoUpload } from './PhotoUpload';
 import { GPSCapture } from './GPSCapture';
-import { useCafeForm } from '@/hooks/useCafeForm';
-import { CafeFormState } from './types/CafeFormTypes';
-import { toast } from 'sonner';
 import CafeSurveyWrapper from './CafeSurveyWrapper';
 
 interface AddCafeFormProps {
@@ -42,177 +39,78 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     showLocationDialog,
     setShowLocationDialog
   } = useCafeForm(async (cafeData) => {
-    // Check if form requires a survey (hookahs >= 1) and survey not completed
     if (cafeData.numberOfHookahs >= 1 && !surveyCompleted) {
       console.log("Cafe has hookahs but survey not completed, checking with onPreSubmit...");
     }
     
-    // Prepare data for submission
     const completeData = {
       ...cafeData,
       createdBy: user?.id || 'unknown',
       status: 'Pending' as const
     };
     
-    // If onPreSubmit is provided, use it to control submission
     if (onPreSubmit) {
-      console.log("Calling onPreSubmit with data:", completeData);
       const canSubmit = await onPreSubmit(completeData);
       if (!canSubmit) {
-        console.log("Submission paused for survey");
-        return null; // Pause submission for survey
+        return null;
       }
     }
     
-    // Default submission if no pre-submit handler or it allows submission
-    console.log("Proceeding with cafe submission");
     return await addCafe(completeData);
   });
 
-  // Custom submit handler that enforces survey completion for cafes with hookahs
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // For cafes with hookahs, require survey completion before final submission
     if (formState.numberOfHookahs >= 1 && !surveyCompleted) {
-      console.log("Starting submission process with survey check");
       await originalHandleSubmit(e);
-      
-      // If we got here with hookahs and survey not completed,
-      // we need to explicitly notify the user why submission is paused
-      if (formState.numberOfHookahs >= 1 && !surveyCompleted) {
-        toast.info("Please complete the brand survey before submitting");
-      }
     } else {
-      // For cafes without hookahs, or if survey is already completed
-      console.log("Direct submission without survey");
       await originalHandleSubmit(e);
     }
   };
-
-  // Custom input change handler that reports changes to parent
-  const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleInputChange(e);
-    if (onFormChange) {
-      const { name, value, type } = e.target;
-      const updatedFormState = { 
-        ...formState, 
-        [name]: type === 'number' ? (value === '' ? 0 : Number(value)) : value 
-      };
-      onFormChange(updatedFormState);
-    }
-  };
-
-  // Custom select change handler that reports changes to parent
-  const handleFormSelectChange = (name: string, value: string) => {
-    handleSelectChange(name, value);
-    if (onFormChange) {
-      onFormChange({
-        ...formState,
-        [name]: value
-      });
-    }
-  };
-
-  // Report initial form state to parent
-  useEffect(() => {
-    if (onFormChange) {
-      onFormChange(formState);
-    }
-    
-    // Debug logging
-    console.log("AddCafeForm render:", { 
-      numberOfHookahs: formState.numberOfHookahs, 
-      surveyCompleted 
-    });
-  }, [formState, onFormChange, surveyCompleted]);
-
-  const [availableCities, setAvailableCities] = React.useState<string[]>([]);
-
-  React.useEffect(() => {
-    if (formState.governorate) {
-      const selectedLocation = mexicoLocations.find(
-        location => location.governorate === formState.governorate
-      );
-      
-      if (selectedLocation) {
-        setAvailableCities(selectedLocation.cities);
-      } else {
-        setAvailableCities([]);
-      }
-    } else {
-      setAvailableCities([]);
-    }
-  }, [formState.governorate]);
-
-  const cafeSize = getCafeSize(formState.numberOfHookahs);
-
-  // Determine if form submission should be disabled
-  const isSubmitDisabled = isSubmitting || 
-    (formState.numberOfHookahs >= 1 && !surveyCompleted);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add New Cafe</CardTitle>
-        <CardDescription>Enter cafe details to add to your database</CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-6">
-          <CafeBasicInfo 
-            formState={formState} 
-            onInputChange={handleFormInputChange} 
-          />
+    <CafeFormLayout
+      isSubmitting={isSubmitting}
+      hasHookahs={formState.numberOfHookahs >= 1}
+      surveyCompleted={surveyCompleted}
+      onSubmit={handleSubmit}
+    >
+      <CafeBasicInfo 
+        formState={formState} 
+        onInputChange={handleInputChange} 
+      />
 
-          <CafeCapacityInfo 
-            formState={formState} 
-            onInputChange={handleFormInputChange}
-            cafeSize={cafeSize}
-          />
+      <CafeCapacityInfo 
+        formState={formState} 
+        onInputChange={handleInputChange}
+        cafeSize={getCafeSize(formState.numberOfHookahs)}
+      />
 
-          <CafeLocationInfo 
-            formState={formState} 
-            onSelectChange={handleFormSelectChange}
-            availableCities={availableCities}
-          />
+      <CafeLocationInfo 
+        formState={formState} 
+        onSelectChange={handleSelectChange}
+        availableCities={[]}
+      />
 
-          <PhotoUpload onPhotoChange={(photoUrl) => 
-            handleFormSelectChange('photoUrl', photoUrl)
-          } />
+      <PhotoUpload 
+        onPhotoChange={(photoUrl) => handleSelectChange('photoUrl', photoUrl)} 
+      />
 
-          <GPSCapture 
-            coordinates={coordinates}
-            onCaptureGPS={handleCaptureGPS}
-            isCapturingLocation={isCapturingLocation}
-            showLocationDialog={showLocationDialog}
-            setShowLocationDialog={setShowLocationDialog}
-          />
+      <GPSCapture 
+        coordinates={coordinates}
+        onCaptureGPS={handleCaptureGPS}
+        isCapturingLocation={isCapturingLocation}
+        showLocationDialog={showLocationDialog}
+        setShowLocationDialog={setShowLocationDialog}
+      />
 
-          {/* Survey moved here, below GPS capture */}
-          <CafeSurveyWrapper
-            onPreSubmit={onPreSubmit}
-            surveyCompleted={surveyCompleted}
-            onFormChange={onFormChange}
-          />
-          
-        </CardContent>
-        <CardFooter className="flex flex-col">
-          <Button 
-            type="submit" 
-            className="w-full bg-custom-red hover:bg-red-700"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Processing..." : "Add Cafe"}
-          </Button>
-          
-          {formState.numberOfHookahs >= 1 && !surveyCompleted && (
-            <div className="mt-2 text-sm text-amber-600 font-medium">
-              A brand survey will appear after submission for cafes with hookahs
-            </div>
-          )}
-        </CardFooter>
-      </form>
-    </Card>
+      <CafeSurveyWrapper
+        onPreSubmit={onPreSubmit}
+        surveyCompleted={surveyCompleted}
+        onFormChange={onFormChange}
+      />
+    </CafeFormLayout>
   );
 };
 
