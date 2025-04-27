@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { useEffect } from "react";
@@ -103,6 +103,11 @@ const queryClient = new QueryClient({
   },
 });
 
+// Fix 1: Create a TooltipWrapper component to properly use TooltipProvider
+const TooltipWrapper = ({ children }: { children: React.ReactNode }) => {
+  return <TooltipProvider>{children}</TooltipProvider>;
+};
+
 const App = () => {
   // Set up cross-tab sync when the app loads
   useEffect(() => {
@@ -125,10 +130,11 @@ const App = () => {
   
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <DataProvider>
-            <BrowserRouter>
+      {/* Fix 2: Move TooltipProvider inside BrowserRouter */}
+      <BrowserRouter>
+        <TooltipWrapper>
+          <AuthProvider>
+            <DataProvider>
               <RouteTracker />
               <Toaster />
               <Sonner />
@@ -146,10 +152,10 @@ const App = () => {
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </DataProvider>
-        </AuthProvider>
-      </TooltipProvider>
+            </DataProvider>
+          </AuthProvider>
+        </TooltipWrapper>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };
