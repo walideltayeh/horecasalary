@@ -18,7 +18,7 @@ type AuthContextType = {
   addUser: (userData: { name: string, email: string, password: string, role: 'admin' | 'user' }) => Promise<boolean>;
   deleteUser: (userId: string) => Promise<boolean>;
   updateUser: (userId: string, userData: { name?: string, password?: string, role?: 'admin' | 'user' }) => Promise<boolean>;
-  fetchUsers: () => Promise<void>;
+  fetchUsers: (force?: boolean) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

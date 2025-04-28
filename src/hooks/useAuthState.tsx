@@ -13,6 +13,11 @@ export function useAuthState() {
   // Pass isAdmin and loading status to useUsers
   const { users, setUsers, isLoadingUsers, error, fetchUsers } = useUsers(isAdmin, !isLoading);
 
+  // Forward the fetchUsers function call with its parameter
+  const fetchUsersWithForce = (force: boolean = false) => {
+    return fetchUsers(force);
+  };
+
   return { 
     user, 
     users, 
@@ -21,6 +26,6 @@ export function useAuthState() {
     isLoadingUsers, 
     error,
     session, 
-    fetchUsers 
+    fetchUsers: fetchUsersWithForce
   };
 }
