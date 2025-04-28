@@ -6,6 +6,7 @@ import UserListSection from './UserListSection';
 import EditUserDialog from './EditUserDialog';
 import { useUserEditDialog } from './useUserEditDialog';
 import { useUserActions } from '@/hooks/admin/useUserActions';
+import { toast } from 'sonner';
 
 interface UserManagementProps {
   users: User[];
@@ -32,10 +33,21 @@ const UserManagement: React.FC<UserManagementProps> = ({
 }) => {
   const [selectedTab, setSelectedTab] = useState("all");
   
-  // Force data refresh on mount
+  // Force data refresh on mount and at regular intervals
   useEffect(() => {
     console.log("UserManagement mounted, refreshing users data");
+    // Initial fetch
     onRefreshUsers();
+    
+    // Set up polling with shorter interval
+    const refreshInterval = setInterval(() => {
+      console.log("UserManagement automatic refresh triggered");
+      onRefreshUsers();
+    }, 5000); // Poll every 5 seconds for better reactivity
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [onRefreshUsers]);
   
   const {
@@ -63,10 +75,16 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
   const handleEditUserSave = async () => {
     try {
-      await handleEditUser(editUser.id, editUser);
-      setEditDialogOpen(false);
+      const success = await handleEditUser(editUser.id, editUser);
+      if (success) {
+        setEditDialogOpen(false);
+        toast.success("User updated successfully");
+        // Force refresh after edit
+        await onRefreshUsers();
+      }
     } catch (error) {
       console.error("Error updating user:", error);
+      toast.error("Failed to update user");
     }
   };
 

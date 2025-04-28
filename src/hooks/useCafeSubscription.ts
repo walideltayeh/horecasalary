@@ -12,6 +12,17 @@ export const useCafeSubscription = (
   const channelsRef = useRef<any[]>([]);
   const fetchingRef = useRef<boolean>(false);
   const lastFetchTimeRef = useRef<number>(0);
+  const isAdminRef = useRef<boolean>(false);
+
+  // Check if user is admin - update whenever user changes
+  useEffect(() => {
+    if (user) {
+      isAdminRef.current = user.role === 'admin';
+      console.log("useCafeSubscription: User role updated, isAdmin:", isAdminRef.current);
+    } else {
+      isAdminRef.current = false;
+    }
+  }, [user]);
 
   const fetchCafes = useCallback(async (force = false) => {
     // Debounce frequent fetch requests (within 1 second)
@@ -32,8 +43,8 @@ export const useCafeSubscription = (
       setLoading(true);
       lastFetchTimeRef.current = now;
       
-      console.log("Fetching cafes from database...");
-      const { data, error } = await supabase
+      console.log("Fetching cafes from database... isAdmin:", isAdminRef.current);
+      const query = supabase
         .from('cafes')
         .select(`
           *,
@@ -46,6 +57,13 @@ export const useCafeSubscription = (
           )
         `)
         .order('created_at', { ascending: false });
+      
+      // Don't filter by user if admin
+      // if (!isAdminRef.current && user?.id) {
+      //   query.eq('created_by', user.id);
+      // }
+        
+      const { data, error } = await query;
         
       if (error) {
         console.error("Error fetching cafes:", error);
@@ -83,7 +101,7 @@ export const useCafeSubscription = (
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [setCafes, setLoading]);
+  }, [setCafes, setLoading, user]);
 
   // Set up all event listeners for data updates
   useEffect(() => {
@@ -138,6 +156,8 @@ export const useCafeSubscription = (
 
     const setupChannel = async () => {
       try {
+        console.log("Setting up realtime channels for cafe data");
+        
         // Create a channel for all database changes
         const channel = supabase
           .channel('db-changes')
@@ -178,7 +198,34 @@ export const useCafeSubscription = (
           
         channelsRef.current.push(surveysChannel);
         
-        console.log("Realtime subscription activated for cafes and surveys");
+        // Listen for changes in the brand_sales table
+        const salesChannel = supabase
+          .channel('sales-changes')
+          .on('postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'brand_sales'
+            },
+            (payload) => {
+              console.log("Brand sales change detected:", payload);
+              fetchCafes(true);
+            }
+          )
+          .subscribe((status) => {
+            console.log(`Brand sales channel subscribed with status: ${status}`);
+          });
+          
+        channelsRef.current.push(salesChannel);
+        
+        // Enable realtime for all relevant tables using the enable-realtime function
+        await Promise.all([
+          supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafes' }}),
+          supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafe_surveys' }}),
+          supabase.functions.invoke('enable-realtime', { body: { table_name: 'brand_sales' }})
+        ]);
+        
+        console.log("Realtime subscription activated for all cafe-related tables");
       } catch (err) {
         console.error("Error setting up realtime subscriptions:", err);
         toast.error('Failed to set up realtime updates');
@@ -197,6 +244,17 @@ export const useCafeSubscription = (
       });
       channelsRef.current = [];
     };
+  }, [fetchCafes]);
+
+  // Add additional interval for fallback polling
+  useEffect(() => {
+    // Set up a periodic refresh every 10 seconds as a fallback
+    const intervalId = setInterval(() => {
+      console.log("Periodic cafe refresh triggered");
+      fetchCafes(true);
+    }, 10000); // More frequent polling for admin
+    
+    return () => clearInterval(intervalId);
   }, [fetchCafes]);
 
   return { fetchCafes };

@@ -9,11 +9,20 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
   // Fetch users from Supabase Auth system
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (force: boolean = false) => {
+    // Don't fetch if not admin or not authenticated
     if (!isAdmin || !authenticated) {
       console.log("[useUsers] Not fetching users - not admin or not authenticated");
+      return;
+    }
+
+    // Debounce frequent fetches unless force=true
+    const now = Date.now();
+    if (!force && now - lastFetchTime < 1000) {
+      console.log("[useUsers] Debouncing fetch request, last fetch was", (now - lastFetchTime), "ms ago");
       return;
     }
 
@@ -21,6 +30,7 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
       console.log("[useUsers] Starting user fetch, isAdmin:", isAdmin, "authenticated:", authenticated);
       setIsLoadingUsers(true);
       setError(null);
+      setLastFetchTime(now);
       
       // Call admin function to list users
       const { data, error } = await supabase.functions.invoke('admin', {
@@ -77,20 +87,20 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [isAdmin, authenticated]);
+  }, [isAdmin, authenticated, lastFetchTime]);
 
   // Poll for users when admin and authenticated
   useEffect(() => {
     if (isAdmin && authenticated) {
       console.log("[useUsers] Setting up polling, isAdmin:", isAdmin, "authenticated:", authenticated);
       // Initial fetch
-      fetchUsers();
+      fetchUsers(true);
       
-      // Set up polling
+      // Set up polling with shorter interval
       const intervalId = setInterval(() => {
         console.log("[useUsers] Polling for user updates");
-        fetchUsers();
-      }, 30000); // Poll every 30 seconds
+        fetchUsers(true);
+      }, 5000); // Poll every 5 seconds for better reactivity
       
       return () => {
         console.log("[useUsers] Cleaning up polling interval");
