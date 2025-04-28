@@ -30,7 +30,7 @@ export const useUserActions = ({
     }
   };
 
-  const handleEditUser = async (userId: string, userData: any) => {
+  const handleEditUser = async (userId: string, userData: any): Promise<boolean> => {
     try {
       const success = await onEditUser(userId, userData);
       if (success) {
@@ -39,12 +39,14 @@ export const useUserActions = ({
         }
         await onRefreshUsers();
       }
+      return success; // Explicitly return the success boolean
     } catch (error) {
       console.error("Error updating user:", error);
       toast.error("Failed to update user");
+      return false; // Return false on error
     }
   };
-
+  
   const handleDeleteUser = async (userId: string, userName: string) => {
     if (confirm(`Are you sure you want to delete the user "${userName}"? This action cannot be undone.`)) {
       setIsDeletingUser(userId);
@@ -54,10 +56,12 @@ export const useUserActions = ({
           setSelectedTab("all");
         }
         await onRefreshUsers();
+        return success;
       } finally {
         setIsDeletingUser(null);
       }
     }
+    return false; // Return false if confirmation was canceled
   };
 
   return {

@@ -75,6 +75,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
   const handleEditUserSave = async () => {
     try {
+      // The key fix: handle success as a boolean return value
       const success = await handleEditUser(editUser.id, editUser);
       if (success) {
         setEditDialogOpen(false);
