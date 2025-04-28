@@ -73,7 +73,7 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
           return formattedUser;
         });
         
-        console.log("[useUsers] Final mapped users:", mappedUsers);
+        console.log("[useUsers] Final mapped users:", mappedUsers.length, mappedUsers);
         setUsers(mappedUsers);
       } else {
         console.error("[useUsers] No users data in response:", data);
@@ -96,11 +96,11 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
       // Initial fetch
       fetchUsers(true);
       
-      // Set up polling with shorter interval
+      // Set up polling with shorter interval for better reactivity
       const intervalId = setInterval(() => {
         console.log("[useUsers] Polling for user updates");
-        fetchUsers(true);
-      }, 5000); // Poll every 5 seconds for better reactivity
+        fetchUsers(true); // Force refresh every time for admins
+      }, 3000); // Poll every 3 seconds for better reactivity
       
       return () => {
         console.log("[useUsers] Cleaning up polling interval");

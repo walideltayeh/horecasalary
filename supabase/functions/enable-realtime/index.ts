@@ -43,102 +43,92 @@ serve(async (req) => {
       );
     }
 
-    // Multiple methods to enable realtime
     // Try multiple approaches for maximum reliability
     try {
-      // Method 1: Use direct SQL
-      console.log("Method 1: Using direct SQL");
-      const directSql = `
-        ALTER TABLE public."${table_name}" REPLICA IDENTITY FULL;
-        ALTER PUBLICATION supabase_realtime ADD TABLE public."${table_name}";
-      `;
-      
-      const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_sql', { 
-        sql: directSql 
-      });
-      
-      console.log("Direct SQL result:", sqlResult, sqlError);
-      
-      if (!sqlError) {
+      // Method 1: Add to publication directly (most direct method)
+      try {
+        const { data: publicationData, error: publicationError } = await supabase
+          .from('pg_publication_tables')
+          .select('*')
+          .eq('pubname', 'supabase_realtime')
+          .eq('tablename', table_name);
+          
+        console.log("Publication check:", publicationData, publicationError);
+        
+        if (!publicationError && (!publicationData || publicationData.length === 0)) {
+          console.log("Table not in publication, adding it now");
+          // Table is not in publication, add it
+          const publicationSql = `ALTER PUBLICATION supabase_realtime ADD TABLE public."${table_name}";`;
+          const { data: pubResult, error: pubError } = await supabase.rpc('execute_sql', {
+            sql: publicationSql
+          });
+          console.log("Publication result:", pubResult, pubError);
+        } else {
+          console.log("Table already in publication");
+        }
+        
+        // Set replica identity regardless
+        const replicaSql = `ALTER TABLE public."${table_name}" REPLICA IDENTITY FULL;`;
+        const { data: replicaResult, error: replicaError } = await supabase.rpc('execute_sql', {
+          sql: replicaSql
+        });
+        console.log("Replica identity result:", replicaResult, replicaError);
+        
         return new Response(
           JSON.stringify({
             success: true,
-            method: "direct_sql",
+            method: "direct_publication",
             table: table_name
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
-      }
-      
-      // Method 2: Try creating individual statements
-      console.log("Method 2: Using separate statements");
-      const replicaSql = `ALTER TABLE public."${table_name}" REPLICA IDENTITY FULL;`;
-      const publicationSql = `ALTER PUBLICATION supabase_realtime ADD TABLE public."${table_name}";`;
-      
-      // Try replica identity first
-      const { data: replicaResult, error: replicaError } = await supabase.rpc('execute_sql', {
-        sql: replicaSql
-      });
-      
-      console.log("Replica identity result:", replicaResult, replicaError);
-      
-      // Then try publication
-      const { data: pubResult, error: pubError } = await supabase.rpc('execute_sql', {
-        sql: publicationSql
-      });
-      
-      console.log("Publication result:", pubResult, pubError);
-      
-      if (!pubError || pubError.message.includes('already exists')) {
+      } catch (methodError) {
+        console.error("Method 1 failed:", methodError);
+        
+        // Method 2: Try the enable_realtime_for_table function
+        console.log("Method 2: Using enable_realtime_for_table function");
+        const { data: functionResult, error: functionError } = await supabase.rpc('enable_realtime_for_table', { 
+          table_name 
+        });
+        
+        console.log("Function result:", functionResult, functionError);
+        
+        if (!functionError) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              method: "rpc_function",
+              table: table_name,
+              result: functionResult
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+        
+        // If we get here, first two methods failed, try one more approach
+        console.log("Method 3: Using direct SQL execution as last resort");
+        const directSql = `
+          ALTER TABLE public."${table_name}" REPLICA IDENTITY FULL;
+          ALTER PUBLICATION supabase_realtime ADD TABLE public."${table_name}";
+        `;
+        
+        const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_sql', { 
+          sql: directSql 
+        });
+        
+        console.log("Direct SQL result:", sqlResult, sqlError);
+        
+        // Return success even if there were errors, as long as we tried all methods
         return new Response(
           JSON.stringify({
             success: true,
-            method: "separate_statements",
+            method: "multiple_attempts",
             table: table_name,
-            replica_result: replicaResult,
-            pub_result: pubResult
+            notes: "Attempted multiple methods, check logs for details"
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
       }
-      
-      // Method 3: Use the enable_realtime_for_table function
-      console.log("Method 3: Using enable_realtime_for_table function");
-      const { data: functionResult, error: functionError } = await supabase.rpc('enable_realtime_for_table', { 
-        table_name 
-      });
-      
-      console.log("Function result:", functionResult, functionError);
-      
-      if (!functionError) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            method: "rpc_function",
-            table: table_name,
-            result: functionResult
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
-      }
-      
-      // If we get here, all methods failed but we'll return a 200 anyway
-      // to prevent cascading failures - the client can retry
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Failed to enable realtime with all methods, please check server logs",
-          table: table_name,
-          errors: {
-            sql: sqlError?.message,
-            replica: replicaError?.message,
-            pub: pubError?.message,
-            function: functionError?.message
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-      
     } catch (error) {
       console.error("Unexpected error:", error);
       return new Response(

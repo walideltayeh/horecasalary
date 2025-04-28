@@ -10,6 +10,7 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 declare global {
   interface Window {
     cafeDataLastRefreshed?: number;
+    cafeDataRefreshCallbacks?: Array<() => void>;
   }
 }
 
@@ -61,25 +62,26 @@ export const enableRealtimeForTables = async () => {
   try {
     console.log("[Realtime] Starting enableRealtimeForTables");
     // We use a single channel with multiple table subscriptions for efficiency
-    const tables = ['cafes', 'cafe_surveys', 'brand_sales'];
+    const tables = ['cafes', 'cafe_surveys', 'brand_sales', 'users'];
     
     // Enable realtime for each table via edge function
     for (const table of tables) {
       try {
+        // First try the rls_helper function
         const { data, error } = await supabase.functions.invoke('rls_helper');
         
         if (error) {
           console.error(`[Realtime] Error enabling realtime via edge function for ${table}:`, error);
           
-          // Try fallback to direct function if edge function fails
-          const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('enable-realtime', {
+          // Try direct call to enable-realtime function if rls_helper fails
+          const { data: directData, error: directError } = await supabase.functions.invoke('enable-realtime', {
             body: { table_name: table }
           });
           
-          if (fallbackError) {
-            console.error(`[Realtime] Fallback also failed for ${table}:`, fallbackError);
+          if (directError) {
+            console.error(`[Realtime] Direct call also failed for ${table}:`, directError);
           } else {
-            console.log(`[Realtime] Successfully enabled realtime via fallback for ${table}`, fallbackData);
+            console.log(`[Realtime] Successfully enabled realtime via direct call for ${table}`, directData);
           }
         } else {
           console.log(`[Realtime] Successfully enabled realtime via edge function for ${table}:`, data);
@@ -112,6 +114,17 @@ export const enableRealtimeForTables = async () => {
           window.dispatchEvent(new CustomEvent('horeca_data_updated', {
             detail: { table, payload }
           }));
+          
+          // Run any registered callbacks
+          if (window.cafeDataRefreshCallbacks && Array.isArray(window.cafeDataRefreshCallbacks)) {
+            window.cafeDataRefreshCallbacks.forEach(callback => {
+              try {
+                callback();
+              } catch (e) {
+                console.error("Error in refresh callback:", e);
+              }
+            });
+          }
         }
       );
     });
@@ -145,6 +158,26 @@ export const enableRealtimeForTables = async () => {
 // Call the function when the client is initialized
 enableRealtimeForTables();
 
+// Add a global callback registry for refresh events
+if (typeof window !== 'undefined') {
+  window.cafeDataRefreshCallbacks = window.cafeDataRefreshCallbacks || [];
+}
+
+// Register a refresh callback
+export const registerRefreshCallback = (callback: () => void) => {
+  if (typeof window !== 'undefined' && callback) {
+    window.cafeDataRefreshCallbacks = window.cafeDataRefreshCallbacks || [];
+    window.cafeDataRefreshCallbacks.push(callback);
+    return () => {
+      // Return unregister function
+      if (window.cafeDataRefreshCallbacks) {
+        window.cafeDataRefreshCallbacks = window.cafeDataRefreshCallbacks.filter(cb => cb !== callback);
+      }
+    };
+  }
+  return () => {}; // Empty unregister function
+};
+
 // Force a data refresh - enhanced version with more notification channels
 export const refreshCafeData = () => {
   console.log('[refreshCafeData] Triggering manual refresh');
@@ -154,6 +187,17 @@ export const refreshCafeData = () => {
   
   // Update localStorage for cross-tab communication
   localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
+  
+  // Run any registered callbacks
+  if (window.cafeDataRefreshCallbacks && Array.isArray(window.cafeDataRefreshCallbacks)) {
+    window.cafeDataRefreshCallbacks.forEach(callback => {
+      try {
+        callback();
+      } catch (e) {
+        console.error("Error in refresh callback:", e);
+      }
+    });
+  }
   
   // Additional global flag to ensure all components can detect the refresh
   try {

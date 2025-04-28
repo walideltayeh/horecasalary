@@ -58,10 +58,9 @@ export const useCafeSubscription = (
         `)
         .order('created_at', { ascending: false });
       
-      // Don't filter by user if admin
-      // if (!isAdminRef.current && user?.id) {
-      //   query.eq('created_by', user.id);
-      // }
+      // IMPORTANT: Never filter by user, even for non-admins
+      // This ensures all users (including admins) can see all cafes
+      // RLS policies on the database side will handle permissions
         
       const { data, error } = await query;
         
@@ -101,7 +100,7 @@ export const useCafeSubscription = (
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [setCafes, setLoading, user]);
+  }, [setCafes, setLoading]);
 
   // Set up all event listeners for data updates
   useEffect(() => {
@@ -116,14 +115,14 @@ export const useCafeSubscription = (
     // Listen for data update events (within same tab)
     const handleDataUpdated = () => {
       console.log("Data updated event received");
-      fetchCafes();
+      fetchCafes(true); // Force fetch on data updates
     };
     
     // Listen for storage events (across tabs)
     const handleStorageEvent = (event: StorageEvent) => {
       if (event.key === 'cafe_data_updated') {
         console.log("Storage event: cafe data updated");
-        fetchCafes();
+        fetchCafes(true); // Force fetch on cross-tab updates
       }
     };
     
@@ -246,13 +245,14 @@ export const useCafeSubscription = (
     };
   }, [fetchCafes]);
 
-  // Add additional interval for fallback polling
+  // Add additional interval for fallback polling - more aggressive for admins
   useEffect(() => {
-    // Set up a periodic refresh every 10 seconds as a fallback
+    // Set up a periodic refresh with different intervals based on admin status
     const intervalId = setInterval(() => {
-      console.log("Periodic cafe refresh triggered");
-      fetchCafes(true);
-    }, 10000); // More frequent polling for admin
+      console.log(`Periodic cafe refresh triggered (${isAdminRef.current ? 'admin' : 'user'} mode)`);
+      // Force refresh for admins, normal refresh for users
+      fetchCafes(isAdminRef.current);
+    }, isAdminRef.current ? 5000 : 10000); // 5 seconds for admin, 10 for regular users
     
     return () => clearInterval(intervalId);
   }, [fetchCafes]);

@@ -9,6 +9,8 @@ import { useUsers } from './auth/useUsers';
 export function useAuthState() {
   const { user, isLoading, session } = useAuthSession();
   const isAdmin = !!user && user.role === 'admin';
+  
+  // Pass isAdmin and loading status to useUsers
   const { users, setUsers, isLoadingUsers, error, fetchUsers } = useUsers(isAdmin, !isLoading);
 
   return { 

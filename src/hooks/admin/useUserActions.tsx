@@ -47,7 +47,7 @@ export const useUserActions = ({
     }
   };
   
-  const handleDeleteUser = async (userId: string, userName: string) => {
+  const handleDeleteUser = async (userId: string, userName: string): Promise<boolean> => {
     if (confirm(`Are you sure you want to delete the user "${userName}"? This action cannot be undone.`)) {
       setIsDeletingUser(userId);
       try {

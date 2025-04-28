@@ -22,15 +22,16 @@ const Admin: React.FC = () => {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [selectedTab, setSelectedTab] = useState("all");
   const { handleRefreshCafes, enableRealtimeForTable } = useAdminRefresh();
-  const [autoRefreshStarted, setAutoRefreshStarted] = useState(false);
+  const [refreshAttemptCount, setRefreshAttemptCount] = useState(0);
 
   // Super aggressive data refresh when the component is mounted
+  // and when authenticated status changes
   useEffect(() => {
-    if (isAdmin && authenticated && !autoRefreshStarted) {
-      console.log("Admin page mounted, performing INITIAL data refresh");
+    if (isAdmin && authenticated) {
+      console.log("Admin page mounted or auth changed, performing INITIAL data refresh");
       
       // Enable realtime for critical tables immediately
-      const tables = ['cafes', 'cafe_surveys', 'brand_sales'];
+      const tables = ['cafes', 'cafe_surveys', 'brand_sales', 'users'];
       tables.forEach(table => {
         console.log(`Enabling realtime for ${table}`);
         enableRealtimeForTable(table);
@@ -39,11 +40,11 @@ const Admin: React.FC = () => {
       // Force immediate data refresh
       const forceRefresh = async () => {
         try {
-          console.log("Forcing immediate data refresh");
+          console.log(`Forcing immediate data refresh (attempt ${refreshAttemptCount + 1})`);
           toast.info("Refreshing all data...");
           
           // Force fetch users immediately
-          await fetchUsers();
+          await fetchUsers(true);
           
           // Force refresh cafes immediately
           await refreshCafes();
@@ -52,8 +53,18 @@ const Admin: React.FC = () => {
           // Trigger global refresh event
           window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
           
-          toast.success("All data refreshed successfully");
-          setAutoRefreshStarted(true);
+          if (users.length > 0 && cafes.length > 0) {
+            toast.success(`Data refreshed successfully: ${users.length} users, ${cafes.length} cafes`);
+          } else {
+            // If we don't have data yet, try again in 2 seconds (up to 3 attempts)
+            if (refreshAttemptCount < 3) {
+              setTimeout(() => {
+                setRefreshAttemptCount(prev => prev + 1);
+              }, 2000);
+            } else {
+              toast.warning("Data may not be fully loaded. Try refreshing manually.");
+            }
+          }
         } catch (error) {
           console.error("Error during initial data refresh:", error);
           toast.error("Failed to refresh data");
@@ -62,7 +73,7 @@ const Admin: React.FC = () => {
       
       forceRefresh();
     }
-  }, [isAdmin, authenticated, fetchUsers, refreshCafes, handleRefreshCafes, enableRealtimeForTable, autoRefreshStarted]);
+  }, [isAdmin, authenticated, fetchUsers, refreshCafes, handleRefreshCafes, enableRealtimeForTable, refreshAttemptCount, users.length, cafes.length]);
 
   // Additional periodic refreshes for cafes when on Admin page
   useEffect(() => {
@@ -77,7 +88,7 @@ const Admin: React.FC = () => {
       
       const userRefreshInterval = setInterval(() => {
         console.log("Admin periodic user refresh");
-        fetchUsers();
+        fetchUsers(true);
       }, 5000); // Refresh users every 5 seconds
       
       return () => {
@@ -91,10 +102,11 @@ const Admin: React.FC = () => {
   // Reset refresh and force update when authenticated
   const handleAuthenticated = () => {
     setAuthenticated(true);
+    setRefreshAttemptCount(0);
     // Force refresh after authentication with a short delay to ensure everything is set up
     setTimeout(() => {
       console.log("Admin authenticated, forcing data refresh");
-      fetchUsers();
+      fetchUsers(true);
       refreshCafes();
       handleRefreshCafes();
       // Trigger global refresh event
@@ -122,7 +134,7 @@ const Admin: React.FC = () => {
     try {
       await addUser(userData);
       toast.success(`User ${userData.name} added successfully`);
-      await fetchUsers();
+      await fetchUsers(true);
     } finally {
       setIsAddingUser(false);
     }
@@ -136,7 +148,7 @@ const Admin: React.FC = () => {
         if (userData.role === 'admin') {
           setSelectedTab("all");
         }
-        await fetchUsers();
+        await fetchUsers(true);
       }
       return success;
     } catch (error) {
@@ -155,7 +167,7 @@ const Admin: React.FC = () => {
         if (selectedTab === userId) {
           setSelectedTab("all");
         }
-        await fetchUsers();
+        await fetchUsers(true);
       }
       return success;
     } finally {
@@ -175,7 +187,7 @@ const Admin: React.FC = () => {
         onAddUser={handleAddUser}
         onEditUser={handleEditUser}
         onDeleteUser={handleDeleteUser}
-        onRefreshUsers={fetchUsers}
+        onRefreshUsers={() => fetchUsers(true)}
         isAddingUser={isAddingUser}
         isDeletingUser={isDeletingUser}
       />
