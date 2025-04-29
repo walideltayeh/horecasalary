@@ -4,7 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeSubscription } from '@/hooks/useCafeSubscription';
 import { useCafeDataManager } from './hooks/useCafeDataManager';
-import { useEdgeFunctionDelete } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
+import { useClientSideDelete } from '@/hooks/cafe/deletion/useClientSideDelete';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { broadcastDeletionEvent } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
 
 export const useCafeState = () => {
   const { user } = useAuth();
@@ -19,20 +22,99 @@ export const useCafeState = () => {
   // Import the fetchCafes from useCafeSubscription
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
   
-  // Use the edge function delete hook
-  const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
+  // Get client-side deletion functionality
+  const { clientSideDeletion } = useClientSideDelete();
   
-  // Implement a proper deleteCafe function that uses the edge function
+  // Implement a proper deleteCafe function that uses the edge function with a fallback
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     console.log("Delete cafe called for:", cafeId);
     
-    // Use the edge function to perform deletion
-    const result = await deleteViaEdgeFunction(cafeId);
-    
-    // Even if deletion fails, refresh to ensure UI is up to date
-    await fetchCafes(true);
-    
-    return result;
+    try {
+      // Show initial toast
+      toast.info("Starting deletion process...", {
+        id: `delete-${cafeId}`,
+        duration: 3000
+      });
+      
+      // First try to delete using the edge function
+      const { data: functionData, error: functionError } = await Promise.race([
+        supabase.functions.invoke(
+          'safe_delete_cafe_related_data',
+          { 
+            body: { cafeId },
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        ),
+        // Add a timeout promise to prevent hanging
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Edge function timed out')), 10000)
+        )
+      ]).catch(error => {
+        console.error("Edge function error or timeout:", error);
+        return { error: { message: error.message || "Edge function timeout" } };
+      });
+      
+      if (functionError) {
+        console.log("DELETION: Edge function failed, falling back to client-side deletion");
+        toast.error(`Edge function error: ${functionError.message}. Trying fallback method...`, {
+          id: `delete-${cafeId}`
+        });
+        
+        // Fall back to client-side deletion
+        const result = await clientSideDeletion(cafeId);
+        
+        // Always refresh cafes after deletion attempt
+        setTimeout(() => fetchCafes(true), 500);
+        
+        return result;
+      }
+      
+      if (functionData?.success) {
+        console.log("DELETION: Edge function success:", functionData);
+        
+        // Notify on success
+        toast.success("Deletion completed successfully", {
+          id: `delete-${cafeId}`,
+          duration: 2000
+        });
+        
+        // Broadcast deletion event
+        broadcastDeletionEvent(cafeId);
+        
+        // Always refresh cafes after deletion
+        setTimeout(() => fetchCafes(true), 500);
+        
+        return true;
+      } else {
+        console.error("DELETION: Edge function returned error:", functionData);
+        toast.error(`Deletion failed: ${functionData?.error || "Unknown error"}`, {
+          id: `delete-${cafeId}`,
+          duration: 4000
+        });
+        
+        // Try the client-side deletion as a fallback
+        console.log("DELETION: Attempting client-side deletion as fallback");
+        const result = await clientSideDeletion(cafeId);
+        
+        // Always refresh cafes after deletion attempt
+        setTimeout(() => fetchCafes(true), 500);
+        
+        return result;
+      }
+    } catch (err: any) {
+      // Handle any unexpected errors
+      console.error("DELETION: Unexpected error:", err);
+      toast.error(`Deletion failed with error: ${err.message || "Unknown error"}`, {
+        id: `delete-${cafeId}`
+      });
+      
+      // Always refresh cafes to ensure UI is up to date
+      setTimeout(() => fetchCafes(true), 500);
+      
+      return false;
+    }
   };
   
   return { 
