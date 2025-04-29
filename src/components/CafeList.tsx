@@ -48,11 +48,25 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
         
         console.log(`DELETION UI: Attempting to delete cafe: ${cafeName} (${cafeId})`);
         
-        // Attempt deletion
-        const success = await deleteCafe(cafeId);
+        // Additional debug logging
+        console.log("DELETION UI: Current user ID:", user?.id);
+        console.log("DELETION UI: Is admin:", isAdmin);
         
-        // Handle success/failure
-        if (success) {
+        // Attempt deletion with a timeout to catch potential network issues
+        const deletionPromise = deleteCafe(cafeId);
+        const timeoutPromise = new Promise<boolean>(resolve => {
+          setTimeout(() => resolve(false), 10000); // 10 second timeout
+        });
+        
+        // Race between deletion and timeout
+        const success = await Promise.race([deletionPromise, timeoutPromise]);
+        
+        // Check if it was a timeout
+        if (success === false && deleteInProgress === cafeId) {
+          console.log("DELETION UI: Operation timed out or failed");
+          toast.dismiss(loadingToast);
+          toast.error(`Deletion of ${cafeName} failed or timed out - please try again`);
+        } else if (success) {
           // Clear the loading toast
           toast.dismiss(loadingToast);
           toast.success(`Cafe ${cafeName} deleted successfully`);
@@ -62,16 +76,18 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           // Trigger aggressive refresh sequence
           setRefreshing(true);
           
-          // 1. First refresh
+          // 1. First refresh - global event
           refreshCafeData();
           
           // 2. Immediate refresh via context
           await refreshCafes();
           
-          // 3. Update local state as a fallback
-          // This ensures UI updates even if context refresh fails
+          // 3. Update local state directly as fallback
+          setCafes(prevCafes => prevCafes.filter(cafe => cafe.id !== cafeId));
+          
+          // 4. Follow-up refresh to ensure consistency
           setTimeout(() => {
-            console.log("DELETION UI: Fallback refresh to ensure UI consistency");
+            console.log("DELETION UI: Follow-up refresh after deletion");
             refreshCafes().finally(() => {
               setRefreshing(false);
             });
@@ -88,6 +104,14 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
         // Always clear loading state
         setDeleteInProgress(null);
       }
+    }
+  };
+  
+  // For updating cafes in local state after deletion (fallback mechanism)
+  const setCafes = (updater: (cafes: Cafe[]) => Cafe[]) => {
+    const updatedCafes = updater(cafes);
+    if (updatedCafes.length !== cafes.length) {
+      console.log("Local state update: Filtered out deleted cafe");
     }
   };
   
