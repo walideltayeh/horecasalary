@@ -12,7 +12,9 @@ export const CafeCapacityInfo = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
-        <Label htmlFor="numberOfHookahs">Number of Hookahs</Label>
+        <Label htmlFor="numberOfHookahs">
+          Number of Hookahs <span className="text-red-500">*</span>
+        </Label>
         <Input 
           id="numberOfHookahs" 
           name="numberOfHookahs"
@@ -21,6 +23,7 @@ export const CafeCapacityInfo = ({
           value={formState.numberOfHookahs}
           onChange={onInputChange}
           className="input-with-red-outline"
+          required
         />
         <div className="mt-2">
           <div>Current Size: <span className="cafe-size-value">{cafeSize}</span></div>
@@ -31,7 +34,9 @@ export const CafeCapacityInfo = ({
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="numberOfTables">Number of Tables</Label>
+        <Label htmlFor="numberOfTables">
+          Number of Tables <span className="text-red-500">*</span>
+        </Label>
         <Input 
           id="numberOfTables" 
           name="numberOfTables"
@@ -40,6 +45,7 @@ export const CafeCapacityInfo = ({
           value={formState.numberOfTables}
           onChange={onInputChange}
           className="input-with-red-outline"
+          required
         />
       </div>
     </div>

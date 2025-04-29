@@ -11,7 +11,9 @@ export const CafeBasicInfo = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
-        <Label htmlFor="name">Name of Cafe</Label>
+        <Label htmlFor="name">
+          Name of Cafe <span className="text-red-500">*</span>
+        </Label>
         <Input 
           id="name" 
           name="name"
@@ -24,7 +26,9 @@ export const CafeBasicInfo = ({
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="ownerName">Owner's Name</Label>
+        <Label htmlFor="ownerName">
+          Owner's Name <span className="text-red-500">*</span>
+        </Label>
         <Input 
           id="ownerName" 
           name="ownerName"
@@ -37,7 +41,9 @@ export const CafeBasicInfo = ({
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="ownerNumber">Owner's Phone Number</Label>
+        <Label htmlFor="ownerNumber">
+          Owner's Phone Number <span className="text-red-500">*</span>
+        </Label>
         <Input 
           id="ownerNumber" 
           name="ownerNumber"

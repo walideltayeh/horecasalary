@@ -1,104 +1,85 @@
-
-import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
+import React, { useState, useCallback } from 'react';
 import { Label } from "@/components/ui/label";
-import { ImageIcon, X } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { ImageIcon } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 interface PhotoUploadProps {
   onPhotoChange: (photoUrl: string) => void;
-  initialUrl?: string;
 }
 
-export const PhotoUpload: React.FC<PhotoUploadProps> = ({ onPhotoChange, initialUrl = '' }) => {
-  const [photoUrl, setPhotoUrl] = useState(initialUrl);
+export const PhotoUpload: React.FC<PhotoUploadProps> = ({ onPhotoChange }) => {
+  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
 
-  // Update local state when initialUrl changes (e.g., when editing an existing cafe)
-  useEffect(() => {
-    setPhotoUrl(initialUrl);
-  }, [initialUrl]);
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB
-      toast.error("File size must be less than 5MB");
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    
+    if (!file) {
+      toast.error("No file selected");
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      toast.error("Only image files are allowed");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size should be less than 5MB");
       return;
     }
 
     setUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setPhotoUrl(base64String);
-      onPhotoChange(base64String);
+    
+    try {
+      const reader = new FileReader();
+      reader.onload = (event: any) => {
+        setPhotoPreview(event.target.result);
+        onPhotoChange(event.target.result);
+      };
+      reader.readAsDataURL(file);
+      toast.success("Photo uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading photo:", error);
+      toast.error("Failed to upload photo");
+    } finally {
       setUploading(false);
-    };
-    reader.onerror = () => {
-      toast.error("Error reading the file");
-      setUploading(false);
-    };
-    reader.readAsDataURL(file);
-  };
+    }
+  }, [onPhotoChange]);
 
-  const clearPhoto = () => {
-    setPhotoUrl('');
-    onPhotoChange('');
-  };
+  const {getRootProps, getInputProps, isDragActive} = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif']
+    },
+    maxFiles: 1
+  });
 
   return (
-    <div className="space-y-2">
-      <Label>Cafe Photo</Label>
-      <div className="flex flex-col gap-2">
-        {photoUrl ? (
-          <div className="relative w-full">
-            <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-md border border-gray-200">
-              <img 
-                src={photoUrl} 
-                alt="Cafe" 
-                className="w-full h-full object-cover" 
-              />
-            </AspectRatio>
-            <Button
-              type="button"
-              variant="destructive"
-              className="absolute top-2 right-2 h-8 w-8 p-0"
-              onClick={clearPhoto}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="border border-gray-300 rounded-md py-8 px-4 flex flex-col items-center justify-center gap-2 bg-gray-50">
-            <ImageIcon className="h-12 w-12 text-gray-300" />
-            <Label
-              htmlFor="photo-upload"
-              className="cursor-pointer text-center text-sm font-medium text-blue-600 hover:text-blue-800"
-            >
-              {uploading ? "Uploading..." : "Upload photo"}
-            </Label>
-            <input
-              id="photo-upload"
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={handleFileChange}
-              disabled={uploading}
-            />
-            <p className="text-xs text-gray-500">
-              Upload a cafe photo (max 5MB)
-            </p>
+    <div>
+      <div
+        {...getRootProps()}
+        className={`relative border-2 border-dashed rounded-md p-4 ${isDragActive ? 'border-custom-red' : 'border-gray-300'} transition-colors duration-200`}
+      >
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center justify-center">
+          <ImageIcon className="h-6 w-6 text-gray-500 mb-2" />
+          <p className="text-sm text-gray-500">
+            {isDragActive ? "Drop the image here..." : "Drag 'n' drop an image here, or click to select files"}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            (Only *.jpeg, *.jpg, *.png and *.gif images will be accepted)
+          </p>
+        </div>
+        {uploading && (
+          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-100 bg-opacity-50 rounded-md">
+            <p>Uploading...</p>
           </div>
         )}
       </div>
+      {photoPreview && (
+        <div className="mt-4">
+          <Label>Photo Preview:</Label>
+          <img src={photoPreview} alt="Cafe Preview" className="mt-2 rounded-md max-h-48 object-cover" />
+        </div>
+      )}
     </div>
   );
 };

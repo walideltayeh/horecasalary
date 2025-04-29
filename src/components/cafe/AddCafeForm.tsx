@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
@@ -63,6 +64,31 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // First, validate that all fields are filled
+    const requiredFields = [
+      { field: 'name', label: 'Cafe name' },
+      { field: 'ownerName', label: 'Owner name' },
+      { field: 'ownerNumber', label: 'Owner phone' },
+      { field: 'governorate', label: 'Governorate' },
+      { field: 'city', label: 'City' },
+      { field: 'photoUrl', label: 'Cafe photo' }
+    ];
+    
+    const missingFields = requiredFields
+      .filter(({ field }) => !formState[field as keyof CafeFormState])
+      .map(({ label }) => label);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Required fields missing: ${missingFields.join(', ')}`);
+      return;
+    }
+    
+    // Validate GPS coordinates
+    if (!coordinates.latitude || !coordinates.longitude) {
+      toast.error('GPS location is required');
+      return;
+    }
+    
     if (formState.numberOfHookahs >= 1 && !localSurveyCompleted) {
       setShowSurvey(true);
       toast.info("Please complete the brand survey before submitting");
@@ -109,17 +135,27 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         availableCities={[]}
       />
 
-      <PhotoUpload 
-        onPhotoChange={(photoUrl) => handleSelectChange('photoUrl', photoUrl)} 
-      />
+      <div className="space-y-2">
+        <Label className="block">
+          Cafe Photo <span className="text-red-500">*</span>
+        </Label>
+        <PhotoUpload 
+          onPhotoChange={(photoUrl) => handleSelectChange('photoUrl', photoUrl)} 
+        />
+      </div>
 
-      <GPSCapture 
-        coordinates={coordinates}
-        onCaptureGPS={handleCaptureGPS}
-        isCapturingLocation={isCapturingLocation}
-        showLocationDialog={showLocationDialog}
-        setShowLocationDialog={setShowLocationDialog}
-      />
+      <div className="space-y-2">
+        <Label className="block">
+          GPS Location <span className="text-red-500">*</span>
+        </Label>
+        <GPSCapture 
+          coordinates={coordinates}
+          onCaptureGPS={handleCaptureGPS}
+          isCapturingLocation={isCapturingLocation}
+          showLocationDialog={showLocationDialog}
+          setShowLocationDialog={setShowLocationDialog}
+        />
+      </div>
 
       <CafeSurveyWrapper
         surveyCompleted={localSurveyCompleted}

@@ -31,10 +31,13 @@ export const CafeLocationInfo = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
-        <Label htmlFor="governorate">Governorate</Label>
+        <Label htmlFor="governorate">
+          Governorate <span className="text-red-500">*</span>
+        </Label>
         <Select 
           value={formState.governorate} 
           onValueChange={(value) => onSelectChange('governorate', value)}
+          required
         >
           <SelectTrigger id="governorate" className="input-with-red-outline">
             <SelectValue placeholder="Select governorate" />
@@ -50,11 +53,14 @@ export const CafeLocationInfo = ({
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="city">City</Label>
+        <Label htmlFor="city">
+          City <span className="text-red-500">*</span>
+        </Label>
         <Select 
           value={formState.city} 
           onValueChange={(value) => onSelectChange('city', value)}
           disabled={cities.length === 0}
+          required
         >
           <SelectTrigger id="city" className="input-with-red-outline">
             <SelectValue placeholder={cities.length ? "Select city" : "Select governorate first"} />

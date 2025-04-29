@@ -27,26 +27,39 @@ export const useCafeForm = (onSubmit?: (formData: CafeFormState & { latitude: nu
   });
 
   const validateForm = useCallback(() => {
+    // Validate that all required fields are filled
     const {
       name, 
       ownerName, 
-      ownerNumber, 
+      ownerNumber,
+      numberOfHookahs,
+      numberOfTables, 
       governorate, 
       city, 
       photoUrl
     } = formState;
 
+    // Check all fields are filled
     const requiredFields = [
       { value: name, message: 'Cafe name is required' },
       { value: ownerName, message: 'Owner name is required' },
       { value: ownerNumber, message: 'Owner number is required' },
+      { value: photoUrl, message: 'Cafe photo is required' },
       { value: governorate, message: 'Governorate is required' },
-      { value: city, message: 'City is required' },
-      { value: photoUrl, message: 'Cafe photo is required' }
+      { value: city, message: 'City is required' }
     ];
 
+    // Add numeric field validations
+    if (numberOfHookahs === undefined || numberOfHookahs < 0) {
+      requiredFields.push({ value: '', message: 'Number of hookahs must be 0 or greater' });
+    }
+    
+    if (numberOfTables === undefined || numberOfTables < 0) {
+      requiredFields.push({ value: '', message: 'Number of tables must be 0 or greater' });
+    }
+
     const missingFields = requiredFields
-      .filter(field => !field.value)
+      .filter(field => !field.value && field.value !== 0)
       .map(field => field.message);
 
     const hasGPSCoordinates = coordinates.latitude && coordinates.longitude;
