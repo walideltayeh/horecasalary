@@ -98,6 +98,7 @@ export const useRealtimeChannels = (
       toast.error('Failed to set up realtime updates');
     }
 
+    // Return a cleanup function with correct type
     return () => {
       console.log("Cleaning up realtime subscriptions");
       channelsRef.current.forEach(channel => {
