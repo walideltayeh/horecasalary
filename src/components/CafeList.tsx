@@ -1,17 +1,14 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Check, Clock, Pencil, RefreshCcw, Trash2 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { refreshCafeData } from '@/integrations/supabase/client';
-import ExportToExcel from './admin/ExportToExcel';
 import CafeEditDialog from './cafe/CafeEditDialog';
 import { Cafe } from '@/types';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import CafeTableActions from './cafe/CafeTableActions';
+import CafeTable from './cafe/CafeTable';
+import DeleteConfirmationDialog from './cafe/DeleteConfirmationDialog';
 
 interface CafeListProps {
   adminView?: boolean;
@@ -241,155 +238,26 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
             <p className="text-gray-500 text-sm">{filteredCafes.length} cafes found {adminView ? '(Admin view)' : ''}</p>
           )}
         </div>
-        <div className="flex gap-2">
-          <ExportToExcel cafes={filteredCafes} />
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1"
-            onClick={handleRefresh}
-            disabled={loading || refreshing}
-          >
-            <RefreshCcw className={`h-3 w-3 ${loading || refreshing ? 'animate-spin' : ''}`} /> 
-            {loading || refreshing ? 'Refreshing...' : 'Refresh Data'}
-          </Button>
-        </div>
+        <CafeTableActions 
+          loading={loading} 
+          refreshing={refreshing} 
+          filteredCafes={filteredCafes}
+          handleRefresh={handleRefresh}
+        />
       </div>
       
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Owner</TableHead>
-              {adminView && <TableHead>Created By</TableHead>}
-              <TableHead>Date Added</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array(3).fill(0).map((_, i) => (
-                <TableRow key={`skeleton-${i}`}>
-                  <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  {adminView && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                </TableRow>
-              ))
-            ) : filteredCafes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={adminView ? 8 : 7} className="text-center py-4 text-muted-foreground">
-                  No cafes found. {!adminView && "Add some cafes to see them here."}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredCafes.map((cafe) => {
-                // Improve permission checking
-                const canEdit = Boolean(
-                  isAdmin || 
-                  (user && cafe.createdBy === user.id)
-                );
-                
-                return (
-                <TableRow key={cafe.id}>
-                  <TableCell className="font-medium">{cafe.name}</TableCell>
-                  <TableCell>
-                    <span className={getCafeSize(cafe.numberOfHookahs) === 'In Negotiation' ? 'text-orange-500' : 
-                                    getCafeSize(cafe.numberOfHookahs) === 'Small' ? 'text-blue-500' : 
-                                    getCafeSize(cafe.numberOfHookahs) === 'Medium' ? 'text-green-500' : 
-                                    'text-purple-500'}>
-                      {getCafeSize(cafe.numberOfHookahs)}
-                    </span>
-                  </TableCell>
-                  <TableCell>{cafe.governorate}, {cafe.city}</TableCell>
-                  <TableCell>
-                    <span className={cafe.status === 'Contracted' ? 'text-green-500' : 
-                                    cafe.status === 'Visited' ? 'text-blue-500' : 
-                                    'text-gray-500'}>
-                      {cafe.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{cafe.ownerName}</TableCell>
-                  {adminView && <TableCell>{cafe.createdBy}</TableCell>}
-                  <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {canEdit && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex items-center gap-1"
-                          onClick={() => handleEdit(cafe)}
-                        >
-                          <Pencil className="h-3 w-3" /> Edit
-                        </Button>
-                      )}
-                    
-                      {canEdit && cafe.status === 'Pending' && (
-                        <>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex items-center gap-1 border-blue-500 text-blue-500 hover:bg-blue-50"
-                            onClick={() => handleUpdateStatus(cafe.id, 'Visited')}
-                          >
-                            <Clock className="h-3 w-3" /> Mark Visited
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
-                            onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-                          >
-                            <Check className="h-3 w-3" /> Mark Contracted
-                          </Button>
-                        </>
-                      )}
-                      {canEdit && cafe.status === 'Visited' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
-                          onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-                        >
-                          <Check className="h-3 w-3" /> Mark Contracted
-                        </Button>
-                      )}
-                      {canEdit && cafe.status === 'Contracted' && (
-                        <span className="text-green-500 text-xs">✓ Contracted</span>
-                      )}
-                      {canEdit && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`flex items-center gap-1 ${
-                            deleteInProgress === cafe.id 
-                              ? 'border-gray-300 text-gray-400' 
-                              : 'border-red-500 text-red-500 hover:bg-red-50'
-                          }`}
-                          onClick={() => openDeleteConfirmation(cafe.id, cafe.name)}
-                          disabled={deleteInProgress !== null} // Disable all delete buttons while any deletion is in progress
-                        >
-                          <Trash2 className={`h-3 w-3 ${deleteInProgress === cafe.id ? 'animate-spin' : ''}`} /> 
-                          {deleteInProgress === cafe.id ? 'Deleting...' : 'Delete'}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )})
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <CafeTable 
+        filteredCafes={filteredCafes}
+        adminView={adminView}
+        loading={loading}
+        isAdmin={isAdmin}
+        user={user}
+        deleteInProgress={deleteInProgress}
+        getCafeSize={getCafeSize}
+        handleEdit={handleEdit}
+        handleUpdateStatus={handleUpdateStatus}
+        openDeleteConfirmation={openDeleteConfirmation}
+      />
       
       {cafeToEdit && (
         <CafeEditDialog 
@@ -408,28 +276,12 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
         />
       )}
 
-      <AlertDialog open={cafeToDelete !== null} onOpenChange={(isOpen) => {
-        if (!isOpen) closeDeleteConfirmation();
-      }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete {cafeToDelete?.name} and all associated data. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteInProgress !== null}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete}
-              disabled={deleteInProgress !== null}
-              className="bg-red-500 text-white hover:bg-red-600"
-            >
-              {deleteInProgress ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmationDialog 
+        cafeToDelete={cafeToDelete}
+        deleteInProgress={deleteInProgress}
+        handleDelete={handleDelete}
+        closeDeleteConfirmation={closeDeleteConfirmation}
+      />
     </div>
   );
 };
