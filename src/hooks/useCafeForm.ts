@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { useGPSLocation } from './useGPSLocation';
@@ -59,7 +58,7 @@ export const useCafeForm = (onSubmit?: (formData: CafeFormState & { latitude: nu
     }
 
     const missingFields = requiredFields
-      .filter(field => !field.value && field.value !== 0)
+      .filter(field => !field.value && field.value !== 0) // Modified to handle 0 values correctly
       .map(field => field.message);
 
     const hasGPSCoordinates = coordinates.latitude && coordinates.longitude;

@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import CafeSurveyWrapper from './CafeSurveyWrapper';
+import { Label } from "@/components/ui/label";
 
 interface AddCafeFormProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;

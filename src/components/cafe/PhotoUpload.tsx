@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState, useCallback, useEffect } from 'react';
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ImageIcon } from 'lucide-react';
@@ -7,11 +8,19 @@ import { toast } from 'sonner';
 
 interface PhotoUploadProps {
   onPhotoChange: (photoUrl: string) => void;
+  initialUrl?: string;
 }
 
-export const PhotoUpload: React.FC<PhotoUploadProps> = ({ onPhotoChange }) => {
-  const [photoPreview, setPhotoPreview] = useState<string>('');
+export const PhotoUpload: React.FC<PhotoUploadProps> = ({ onPhotoChange, initialUrl = '' }) => {
+  const [photoPreview, setPhotoPreview] = useState<string>(initialUrl);
   const [uploading, setUploading] = useState(false);
+  
+  // Set initial photo preview if provided
+  useEffect(() => {
+    if (initialUrl) {
+      setPhotoPreview(initialUrl);
+    }
+  }, [initialUrl]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
