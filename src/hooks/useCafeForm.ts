@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { useGPSLocation } from './useGPSLocation';
@@ -57,8 +58,21 @@ export const useCafeForm = (onSubmit?: (formData: CafeFormState & { latitude: nu
       requiredFields.push({ value: '', message: 'Number of tables must be 0 or greater' });
     }
 
+    // Fix the type comparison issue by being more explicit with the filtering
     const missingFields = requiredFields
-      .filter(field => !field.value && field.value !== 0) // Modified to handle 0 values correctly
+      .filter(field => {
+        // String values: check if they're empty strings
+        if (typeof field.value === 'string') {
+          return field.value.trim() === '';
+        }
+        // Number values: this would never enter this filter since they're validated above
+        // but added for type completeness
+        if (typeof field.value === 'number') {
+          return false; // Numbers are validated separately above
+        }
+        // In case of any other type, consider it as missing
+        return true;
+      })
       .map(field => field.message);
 
     const hasGPSCoordinates = coordinates.latitude && coordinates.longitude;
