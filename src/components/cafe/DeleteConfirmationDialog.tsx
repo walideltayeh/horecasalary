@@ -21,6 +21,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   
   return (
     <AlertDialog open={cafeToDelete !== null} onOpenChange={(isOpen) => {
+      // Only allow closing the dialog if we're not currently deleting
       if (!isOpen && !isDeleting) closeDeleteConfirmation();
     }}>
       <AlertDialogContent>
@@ -33,9 +34,12 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
-            onClick={handleDelete}
+            onClick={(e) => {
+              e.preventDefault(); // Prevent immediate dialog close
+              handleDelete();
+            }}
             disabled={isDeleting}
-            className={`bg-red-500 text-white hover:bg-red-600 ${isDeleting ? 'opacity-80' : ''}`}
+            className={`bg-red-500 text-white hover:bg-red-600 ${isDeleting ? 'opacity-80 cursor-not-allowed' : ''}`}
           >
             {isDeleting ? (
               <>

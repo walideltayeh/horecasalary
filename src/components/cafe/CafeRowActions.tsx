@@ -48,7 +48,7 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
             size="sm" 
             className="flex items-center gap-1 border-blue-500 text-blue-500 hover:bg-blue-50"
             onClick={() => handleUpdateStatus(cafe.id, 'Visited')}
-            disabled={isDeleting}
+            disabled={isDeleting || anyDeletionInProgress}
           >
             <Clock className="h-3 w-3" /> Mark Visited
           </Button>
@@ -57,7 +57,7 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
             size="sm" 
             className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
             onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-            disabled={isDeleting}
+            disabled={isDeleting || anyDeletionInProgress}
           >
             <Check className="h-3 w-3" /> Mark Contracted
           </Button>
@@ -69,7 +69,7 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
           size="sm" 
           className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
           onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-          disabled={isDeleting}
+          disabled={isDeleting || anyDeletionInProgress}
         >
           <Check className="h-3 w-3" /> Mark Contracted
         </Button>
@@ -88,7 +88,7 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
                 ? 'border-gray-300 text-gray-400 cursor-not-allowed'
                 : 'border-red-500 text-red-500 hover:bg-red-50'
           }`}
-          onClick={() => !isDeleting && !anyDeletionInProgress && openDeleteConfirmation(cafe.id, cafe.name)}
+          onClick={() => !anyDeletionInProgress && openDeleteConfirmation(cafe.id, cafe.name)}
           disabled={anyDeletionInProgress}
         >
           {isDeleting ? (

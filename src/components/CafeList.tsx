@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { refreshCafeData } from '@/integrations/supabase/client';
 import CafeEditDialog from './cafe/CafeEditDialog';
 import { Cafe } from '@/types';
 import CafeTableActions from './cafe/CafeTableActions';
@@ -27,6 +26,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mounted = useRef(true);
+  const lastDeleteAttemptRef = useRef<string | null>(null);
   
   // Update local cafes when the main cafes state changes
   useEffect(() => {
@@ -91,29 +91,47 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   const handleDelete = async () => {
     if (!cafeToDelete || deleteInProgress) return;
     
+    // Circuit breaker - prevent repeated delete attempts for the same cafe
+    if (lastDeleteAttemptRef.current === cafeToDelete.id) {
+      const confirmRepeatedDelete = window.confirm(
+        "You've already attempted to delete this cafe. Are you sure you want to try again?"
+      );
+      if (!confirmRepeatedDelete) {
+        closeDeleteConfirmation();
+        return;
+      }
+    }
+    
+    lastDeleteAttemptRef.current = cafeToDelete.id;
+    
     try {
       // Show loading state on button
       setDeleteInProgress(cafeToDelete.id);
       
-      // Show toast - using a regular toast, not a loading toast to avoid blocking UI
-      toast.info(`Deleting cafe ${cafeToDelete.name}...`);
+      // Show toast notification
+      toast.info(`Deleting cafe ${cafeToDelete.name}...`, {
+        id: `delete-init-${cafeToDelete.id}`,
+        duration: 3000
+      });
       
       console.log(`UI: Starting deletion of cafe: ${cafeToDelete.name} (${cafeToDelete.id})`);
       
       // Optimistic UI update - remove cafe from local state immediately
       setLocalCafes(prev => prev.filter(cafe => cafe.id !== cafeToDelete.id));
       
-      // Close the confirmation dialog immediately to improve responsiveness
+      // Close the dialog immediately to improve UI responsiveness
       closeDeleteConfirmation();
       
-      // Set up a watchdog timeout for ultra-stuck operations
+      // Set up a watchdog timeout
       const watchdogTimeoutId = setTimeout(() => {
         if (mounted.current && deleteInProgress === cafeToDelete.id) {
           console.log("UI: Deletion watchdog timeout triggered - forcing state reset");
-          toast.error('Deletion operation timed out - please refresh your page');
+          toast.error('Deletion operation timed out - please refresh your page', {
+            id: `delete-timeout-${cafeToDelete.id}`
+          });
           setDeleteInProgress(null);
         }
-      }, 20000); // 20 second absolute timeout
+      }, 15000); // 15 second absolute timeout
       
       deleteTimeoutRef.current = watchdogTimeoutId;
       
@@ -128,10 +146,14 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       
       // Only update state if component is still mounted
       if (mounted.current) {
+        console.log(`UI: Delete operation completed with result: ${result}`);
+        
+        // CRITICAL: Always reset deletion progress state
+        setDeleteInProgress(null);
+        
         // Handle result
         if (result === true) {
           console.log(`UI: Cafe ${cafeToDelete.name} deleted successfully`);
-          toast.success(`Cafe ${cafeToDelete.name} deleted successfully`);
           
           // Force a refresh after a small delay (but only if mounted)
           setTimeout(() => {
@@ -141,26 +163,37 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           }, 1000);
         } else {
           console.error(`UI: Failed to delete cafe ${cafeToDelete.name}`);
-          toast.error(`Failed to delete ${cafeToDelete.name}`);
-          // Restore the deleted cafe in the local state
-          setLocalCafes(cafes);
+          toast.error(`Failed to delete ${cafeToDelete.name}`, {
+            id: `delete-error-${cafeToDelete.id}`
+          });
+          
+          // Restore the deleted cafe in the local state by refreshing
+          refreshCafes();
         }
-        
-        // IMPORTANT FIX: Always reset the delete in progress state regardless of result
-        setDeleteInProgress(null);
       }
     } catch (error: any) {
       // Only update state if component is still mounted
       if (mounted.current) {
         console.error(`UI: Error during deletion:`, error);
-        toast.error(`Error: ${error.message || 'Unknown error'}`);
+        toast.error(`Error: ${error.message || 'Unknown error'}`, {
+          id: `delete-error-${cafeToDelete.id}`
+        });
         
-        // IMPORTANT FIX: Make sure state is reset even in case of errors
+        // CRITICAL FIX: Make sure state is reset even in case of errors
         setDeleteInProgress(null);
-        closeDeleteConfirmation();
         
-        // Restore the deleted cafe in the local state
-        setLocalCafes(cafes);
+        // Restore the cafe list
+        refreshCafes();
+      }
+    } finally {
+      // Belt-and-suspenders approach: ensure state is always cleaned up
+      if (mounted.current) {
+        setDeleteInProgress(null);
+      }
+      
+      if (deleteTimeoutRef.current) {
+        clearTimeout(deleteTimeoutRef.current);
+        deleteTimeoutRef.current = null;
       }
     }
   };
@@ -215,7 +248,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       if (mounted.current) {
         setLocalCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
         
-        // IMPORTANT FIX: Clear the deleteInProgress state if this was the cafe being deleted
+        // Clear the deleteInProgress state if this was the cafe being deleted
         if (deleteInProgress === cafeId) {
           setDeleteInProgress(null);
         }
@@ -229,7 +262,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
     };
-  }, [refreshCafes, refreshing, deleteInProgress]); // Added deleteInProgress as dependency
+  }, [refreshCafes, refreshing, deleteInProgress]);
   
   let filteredCafes = localCafes;
   
