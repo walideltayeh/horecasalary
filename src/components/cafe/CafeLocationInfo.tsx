@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CafeFormProps } from './types/CafeFormTypes';
-import { mexicoLocations } from '@/data/mexicoLocations';
+import { getGovernorates, getCitiesForGovernorate } from '@/utils/locationUtils';
 
 export const CafeLocationInfo = ({ 
   formState, 
@@ -11,23 +11,17 @@ export const CafeLocationInfo = ({
   availableCities 
 }: Pick<CafeFormProps, 'formState' | 'onSelectChange' | 'availableCities'>) => {
   const [cities, setCities] = useState<string[]>([]);
+  const governorates = getGovernorates();
 
   // Update cities when governorate changes
   useEffect(() => {
     if (formState.governorate) {
-      const locationData = mexicoLocations.find(
-        location => location.governorate === formState.governorate
-      );
+      const locationCities = getCitiesForGovernorate(formState.governorate);
+      setCities(locationCities);
       
-      if (locationData) {
-        setCities(locationData.cities);
-        
-        // If current city is not in the new cities list, clear it
-        if (formState.city && !locationData.cities.includes(formState.city)) {
-          onSelectChange('city', '');
-        }
-      } else {
-        setCities([]);
+      // If current city is not in the new cities list, clear it
+      if (formState.city && !locationCities.includes(formState.city)) {
+        onSelectChange('city', '');
       }
     } else {
       setCities([]);
@@ -46,9 +40,9 @@ export const CafeLocationInfo = ({
             <SelectValue placeholder="Select governorate" />
           </SelectTrigger>
           <SelectContent>
-            {mexicoLocations.map((location) => (
-              <SelectItem key={location.governorate} value={location.governorate}>
-                {location.governorate}
+            {governorates.map((location) => (
+              <SelectItem key={location} value={location}>
+                {location}
               </SelectItem>
             ))}
           </SelectContent>

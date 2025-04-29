@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Cafe } from '@/types';
 import { useCafes } from '@/contexts/CafeContext';
 import { toast } from 'sonner';
-import { governorates, cities } from '@/data/mexicoLocations';
+import { getGovernorates, getCitiesForGovernorate } from '@/utils/locationUtils';
 import { PhotoUpload } from './PhotoUpload';
 
 interface CafeEditDialogProps {
@@ -31,6 +31,20 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
     photoUrl: cafe.photoUrl || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
+  
+  // Get the list of all governorates
+  const governorates = getGovernorates();
+  
+  // Update available cities when governorate changes
+  useEffect(() => {
+    if (formData.governorate) {
+      const cities = getCitiesForGovernorate(formData.governorate);
+      setAvailableCities(cities);
+    } else {
+      setAvailableCities([]);
+    }
+  }, [formData.governorate]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -53,11 +67,15 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
       ...prev,
       [key]: value,
     }));
+    
+    // Reset city when governorate changes
+    if (key === 'governorate') {
+      setFormData((prev) => ({
+        ...prev,
+        city: '',
+      }));
+    }
   };
-  
-  const availableCities = formData.governorate 
-    ? cities.filter(city => city.governorate === formData.governorate)
-    : [];
 
   const handleSubmit = async () => {
     try {
@@ -177,11 +195,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
             <Label htmlFor="governorate">Governorate</Label>
             <Select
               value={formData.governorate}
-              onValueChange={(value) => {
-                handleSelectChange('governorate', value);
-                // Reset city when governorate changes
-                handleSelectChange('city', '');
-              }}
+              onValueChange={(value) => handleSelectChange('governorate', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select governorate" />
@@ -208,8 +222,8 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
               </SelectTrigger>
               <SelectContent>
                 {availableCities.map((city) => (
-                  <SelectItem key={city.name} value={city.name}>
-                    {city.name}
+                  <SelectItem key={city} value={city}>
+                    {city}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -217,7 +231,6 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           </div>
           
           <div className="grid gap-2">
-            <Label>Photo</Label>
             <PhotoUpload 
               onPhotoChange={(url) => handleSelectChange('photoUrl', url)}
               initialUrl={formData.photoUrl} 
