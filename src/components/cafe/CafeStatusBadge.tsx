@@ -1,17 +1,32 @@
 
 import React from 'react';
+import { Badge } from "@/components/ui/badge";
 
 interface CafeStatusBadgeProps {
   status: 'Pending' | 'Visited' | 'Contracted';
 }
 
 const CafeStatusBadge: React.FC<CafeStatusBadgeProps> = ({ status }) => {
+  let variant: "outline" | "default" | "secondary" | "destructive" = "outline";
+  
+  // Determine badge variant based on status
+  switch (status) {
+    case 'Contracted':
+      variant = "default"; // Green
+      break;
+    case 'Visited':
+      variant = "secondary"; // Blue
+      break;
+    case 'Pending':
+    default:
+      variant = "outline"; // Gray
+      break;
+  }
+  
   return (
-    <span className={status === 'Contracted' ? 'text-green-500' : 
-                    status === 'Visited' ? 'text-blue-500' : 
-                    'text-gray-500'}>
+    <Badge variant={variant} className="font-medium">
       {status}
-    </span>
+    </Badge>
   );
 };
 

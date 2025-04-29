@@ -1,37 +1,54 @@
 
 import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
 /**
- * Hook that sets up refresh on data events rather than continuous polling
+ * Hook for setting up periodic refresh of cafe data
+ * Different refresh intervals for admin vs regular users
  */
 export const usePeriodicRefresh = (
   onRefresh: (force?: boolean) => Promise<void>,
-  isAdmin: React.MutableRefObject<boolean>
+  isAdminRef: React.MutableRefObject<boolean>
 ) => {
-  const lastRefreshTimeRef = useRef<number>(0);
-
-  // Replace periodic refresh with event-based refresh
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastAutoRefreshRef = useRef<number>(0);
+  
+  // Set up a periodic refresh based on user role
   useEffect(() => {
-    // Initial fetch once on mount
-    onRefresh(false);
+    const setupRefreshInterval = () => {
+      // Clear existing interval if any
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      // Set refresh interval based on user role
+      const refreshInterval = isAdminRef.current ? 30000 : 60000; // 30s for admin, 60s for regular users
+      
+      // Create new interval
+      intervalRef.current = setInterval(() => {
+        const now = Date.now();
+        
+        // Avoid refreshing too frequently
+        if (now - lastAutoRefreshRef.current > refreshInterval) {
+          console.log(`Auto-refreshing cafe data (as ${isAdminRef.current ? 'admin' : 'regular user'})`);
+          lastAutoRefreshRef.current = now;
+          
+          // Use a custom event instead of direct refresh for better decoupling
+          window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
+        }
+      }, refreshInterval);
+      
+      console.log(`Periodic refresh set up with interval: ${refreshInterval}ms`);
+    };
     
-    // Set up event listeners for data changes
-    const handleDataUpdated = () => {
-      const now = Date.now();
-      // Debounce rapid updates (minimum 2 seconds between refreshes)
-      if (now - lastRefreshTimeRef.current > 2000) {
-        console.log("Event-based refresh triggered");
-        lastRefreshTimeRef.current = now;
-        onRefresh(false);
+    setupRefreshInterval();
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-    
-    // Listen for data update events
-    window.addEventListener('horeca_data_updated', handleDataUpdated);
-    
-    // Clean up event listeners
-    return () => {
-      window.removeEventListener('horeca_data_updated', handleDataUpdated);
-    };
-  }, [onRefresh]);
+  }, [isAdminRef]);
 };

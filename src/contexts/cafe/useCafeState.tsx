@@ -1,26 +1,22 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Cafe } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeSubscription } from '@/hooks/useCafeSubscription';
+import { useCafeDataManager } from './hooks/useCafeDataManager';
 
 export const useCafeState = () => {
   const { user } = useAuth();
-  const [cafes, setCafes] = useState<Cafe[]>([]);
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const { loading, setLoading, addCafe, updateCafe, updateCafeStatus, deleteCafe } = useCafeOperations();
   
+  // Use a separate hook for managing cafe data
+  const { cafes, setCafes, pendingDeletions } = useCafeDataManager();
+  
+  // Use the existing subscription hook
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
   
-  const pendingDeletions = useRef<Set<string>>(new Set());
-  
-  // Initial data fetch
-  useEffect(() => {
-    console.log("CafeProvider mounted, forcing initial data fetch");
-    fetchCafes(true);
-  }, [fetchCafes]);
-
   return { 
     cafes,
     setCafes,

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCcw } from 'lucide-react';
 import ExportToExcel from '../admin/ExportToExcel';
 import { Cafe } from '@/types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CafeTableActionsProps {
   loading: boolean;
@@ -21,16 +22,25 @@ const CafeTableActions: React.FC<CafeTableActionsProps> = ({
   return (
     <div className="flex gap-2">
       <ExportToExcel cafes={filteredCafes} />
-      <Button
-        variant="outline"
-        size="sm"
-        className="flex items-center gap-1"
-        onClick={handleRefresh}
-        disabled={loading || refreshing}
-      >
-        <RefreshCcw className={`h-3 w-3 ${loading || refreshing ? 'animate-spin' : ''}`} /> 
-        {loading || refreshing ? 'Refreshing...' : 'Refresh Data'}
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={handleRefresh}
+              disabled={loading || refreshing}
+            >
+              <RefreshCcw className={`h-3 w-3 ${loading || refreshing ? 'animate-spin' : ''}`} /> 
+              {loading || refreshing ? 'Refreshing...' : 'Refresh Data'}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Refresh cafe data from server</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };
