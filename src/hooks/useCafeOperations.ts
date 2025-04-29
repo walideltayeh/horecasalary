@@ -108,58 +108,53 @@ export const useCafeOperations = () => {
     }
   };
 
-  // Improved deletion function with better error handling and retries
+  // Completely rewritten deletion function with more robust error handling and cleanup
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     try {
-      console.log(`DELETION DEBUG: Starting process for cafe ID: ${cafeId}`);
+      console.log(`DELETION: Starting deletion process for cafe ${cafeId}`);
       
-      // Step 1: Verify cafe exists before attempting deletion
+      // Step 1: Verify cafe exists
       const { data: existingCafe, error: fetchError } = await supabase
         .from('cafes')
         .select('name')
         .eq('id', cafeId)
-        .single();
+        .maybeSingle();
       
       if (fetchError) {
-        console.error("DELETION DEBUG: Error fetching cafe before deletion:", fetchError);
+        console.error("DELETION: Error fetching cafe:", fetchError);
         toast.error(`Error checking cafe: ${fetchError.message}`);
         return false;
       }
       
       if (!existingCafe) {
-        console.error("DELETION DEBUG: Cafe doesn't exist");
+        console.warn("DELETION: Cafe doesn't exist - may have been already deleted");
         toast.error("Cafe not found - it may have been already deleted");
-        return false;
+        return true; // Return true since it's already gone
       }
       
-      console.log(`DELETION DEBUG: Confirmed cafe exists: ${existingCafe.name}`);
-      
-      // Step 2: Check if there are any related records in cafe_surveys
+      // Step 2: Delete related brand_sales records first
       const { data: relatedSurveys } = await supabase
         .from('cafe_surveys')
         .select('id')
         .eq('cafe_id', cafeId);
-        
-      console.log(`DELETION DEBUG: Found ${relatedSurveys?.length || 0} related surveys`);
       
-      // Step 3: If there are related surveys, delete them first
       if (relatedSurveys && relatedSurveys.length > 0) {
-        console.log(`DELETION DEBUG: Deleting ${relatedSurveys.length} related surveys`);
+        console.log(`DELETION: Found ${relatedSurveys.length} related surveys to delete first`);
         
-        // Get all survey IDs
+        // Get survey IDs
         const surveyIds = relatedSurveys.map(survey => survey.id);
         
-        // Delete related brand_sales records first
+        // Delete brand_sales records linked to these surveys
         const { error: brandSalesError } = await supabase
           .from('brand_sales')
           .delete()
           .in('survey_id', surveyIds);
-          
+        
         if (brandSalesError) {
-          console.error("DELETION DEBUG: Error deleting brand_sales:", brandSalesError);
-          // Continue anyway, as we'll try to delete the cafe
+          console.error("DELETION: Failed to delete related brand_sales:", brandSalesError);
+          // Continue anyway, try to delete surveys and cafe
         } else {
-          console.log("DELETION DEBUG: Successfully deleted related brand_sales");
+          console.log("DELETION: Successfully deleted related brand_sales");
         }
         
         // Delete surveys
@@ -169,83 +164,90 @@ export const useCafeOperations = () => {
           .eq('cafe_id', cafeId);
           
         if (surveysError) {
-          console.error("DELETION DEBUG: Error deleting surveys:", surveysError);
-          // Continue anyway, as we'll try to delete the cafe
+          console.error("DELETION: Failed to delete related surveys:", surveysError);
+          // Continue anyway, try to delete the cafe
         } else {
-          console.log("DELETION DEBUG: Successfully deleted related surveys");
+          console.log("DELETION: Successfully deleted related surveys");
         }
       }
       
-      // Step 4: Attempt deletion with multiple retries
+      // Step 3: Delete the cafe with multiple retries
       let success = false;
       let attempts = 0;
-      const maxAttempts = 3;
+      const maxAttempts = 5; // Increased from 3 to 5 attempts
       
       while (!success && attempts < maxAttempts) {
         attempts++;
-        console.log(`DELETION DEBUG: Attempt ${attempts} to delete cafe ${cafeId}`);
+        console.log(`DELETION: Attempt ${attempts}/${maxAttempts} to delete cafe ${cafeId}`);
         
-        const { data: deletedData, error: deleteError } = await supabase
-          .from('cafes')
-          .delete()
-          .eq('id', cafeId)
-          .select();
-        
-        if (deleteError) {
-          console.error(`DELETION DEBUG: Error on attempt ${attempts}:`, deleteError);
-          
-          if (attempts === maxAttempts) {
-            // Final attempt failed
-            if (deleteError.code === '42501' || deleteError.message.includes('permission denied')) {
-              toast.error("Permission denied. You cannot delete this cafe.");
-            } else {
-              toast.error(`Failed to delete cafe: ${deleteError.message}`);
-            }
-            return false;
+        try {
+          // Small delay between retries, increasing with each attempt
+          if (attempts > 1) {
+            const delayMs = attempts * 300;
+            console.log(`DELETION: Waiting ${delayMs}ms before retry ${attempts}`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
           }
           
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 500));
-          continue;
-        }
-        
-        // Successful deletion
-        if (deletedData && deletedData.length > 0) {
-          console.log("DELETION DEBUG: Cafe deleted successfully with returned data", deletedData);
-          toast.success("Cafe deleted successfully");
-          return true;
-        }
-        
-        // No error but no data returned either - check if the cafe still exists
-        const { data: checkData } = await supabase
-          .from('cafes')
-          .select('id')
-          .eq('id', cafeId)
-          .single();
+          const { data, error } = await supabase
+            .from('cafes')
+            .delete()
+            .eq('id', cafeId)
+            .select();
           
-        if (!checkData) {
-          // The cafe is gone, so deletion was successful
-          console.log("DELETION DEBUG: Cafe confirmed deleted (not found after deletion)");
-          toast.success("Cafe deleted successfully");
+          if (error) {
+            console.error(`DELETION: Error on attempt ${attempts}:`, error);
+            
+            // Special handling for foreign key violations
+            if (error.code === "23503") {
+              console.log("DELETION: Foreign key violation - attempting to clean up related records");
+              // Try to force delete related records and continue
+              await supabase.rpc('force_delete_related_records', { cafe_id_param: cafeId });
+            }
+            
+            // If this was the last attempt, show error to user
+            if (attempts === maxAttempts) {
+              toast.error(`Failed to delete cafe: ${error.message}`);
+              return false;
+            }
+            
+            // Continue to next attempt
+            continue;
+          }
+          
+          // If we get here, deletion was successful
+          console.log("DELETION: Cafe successfully deleted");
+          success = true;
+          
+          // Dispatch a custom event to notify all components
+          window.dispatchEvent(new CustomEvent('cafe_deleted', {
+            detail: { cafeId, cafeName: existingCafe.name }
+          }));
+          
+          // Also update localStorage for cross-tab communication
+          try {
+            localStorage.setItem('last_deleted_cafe', cafeId);
+            localStorage.setItem('last_deletion_time', String(Date.now()));
+          } catch (e) {
+            console.warn("DELETION: Could not update localStorage");
+          }
+          
           return true;
+        } catch (err: any) {
+          console.error(`DELETION: Unexpected error on attempt ${attempts}:`, err);
+          
+          // If this was the last attempt, show error to user
+          if (attempts === maxAttempts) {
+            toast.error(`Unexpected error: ${err.message || 'Unknown error'}`);
+            return false;
+          }
         }
-        
-        // The cafe still exists, retry if attempts remain
-        console.warn(`DELETION DEBUG: Cafe still exists after attempt ${attempts}`);
-        
-        if (attempts === maxAttempts) {
-          console.error("DELETION DEBUG: All deletion attempts failed, cafe still exists");
-          toast.error("Failed to delete cafe after multiple attempts");
-          return false;
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      return false;  // Should not reach here, but just in case
+      // If we got here, all attempts failed
+      toast.error("Failed to delete cafe after multiple attempts");
+      return false;
     } catch (err: any) {
-      console.error('DELETION DEBUG: Unexpected exception:', err);
+      console.error('DELETION: Critical error in deletion process:', err);
       toast.error('An unexpected error occurred while deleting the cafe');
       return false;
     }

@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useData } from '@/contexts/DataContext';
@@ -23,11 +22,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   const [cafeToEdit, setCafeToEdit] = useState<Cafe | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [deleteInProgress, setDeleteInProgress] = useState<string | null>(null);
-  const [deleteAttempted, setDeleteAttempted] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  
-  const renderCount = React.useRef(0);
-  renderCount.current++;
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleUpdateStatus = (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
     updateCafeStatus(cafeId, newStatus);
@@ -37,81 +33,69 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   const handleDelete = async (cafeId: string, cafeName: string) => {
     if (window.confirm(`Are you sure you want to delete ${cafeName}?`)) {
       try {
-        // Track that we've attempted a delete
-        setDeleteAttempted(true);
-        
         // Show loading state on button
         setDeleteInProgress(cafeId);
         
         // Show toast
         const loadingToast = toast.loading(`Deleting cafe ${cafeName}...`);
         
-        console.log(`DELETION UI: Attempting to delete cafe: ${cafeName} (${cafeId})`);
+        console.log(`UI: Starting deletion of cafe: ${cafeName} (${cafeId})`);
         
-        // Additional debug logging
-        console.log("DELETION UI: Current user ID:", user?.id);
-        console.log("DELETION UI: Is admin:", isAdmin);
-        
-        // Attempt deletion with a timeout to catch potential network issues
-        const deletionPromise = deleteCafe(cafeId);
-        const timeoutPromise = new Promise<boolean>(resolve => {
-          setTimeout(() => resolve(false), 10000); // 10 second timeout
+        // Set up a timeout to catch hung operations
+        const timeoutPromise = new Promise<boolean>((_, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Deletion operation timed out'));
+          }, 10000); // 10 second timeout
+          
+          // Store timeout ID so we can clear it
+          refreshTimeoutRef.current = timeoutId;
         });
         
         // Race between deletion and timeout
-        const success = await Promise.race([deletionPromise, timeoutPromise]);
+        const result = await Promise.race([
+          deleteCafe(cafeId),
+          timeoutPromise
+        ]);
         
-        // Check if it was a timeout
-        if (success === false && deleteInProgress === cafeId) {
-          console.log("DELETION UI: Operation timed out or failed");
-          toast.dismiss(loadingToast);
-          toast.error(`Deletion of ${cafeName} failed or timed out - please try again`);
-        } else if (success) {
-          // Clear the loading toast
-          toast.dismiss(loadingToast);
+        // Clear the timeout
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current);
+          refreshTimeoutRef.current = null;
+        }
+        
+        // Handle result
+        toast.dismiss(loadingToast);
+        
+        if (result === true) {
+          console.log(`UI: Cafe ${cafeName} deleted successfully`);
           toast.success(`Cafe ${cafeName} deleted successfully`);
           
-          console.log("DELETION UI: Success, triggering data refresh sequence");
+          // Set cafes locally first for immediate UI update
+          const filteredCafes = cafes.filter(cafe => cafe.id !== cafeId);
           
-          // Trigger aggressive refresh sequence
+          // Force refresh after a small delay
           setRefreshing(true);
-          
-          // 1. First refresh - global event
-          refreshCafeData();
-          
-          // 2. Immediate refresh via context
-          await refreshCafes();
-          
-          // 3. Update local state directly as fallback
-          setCafes(prevCafes => prevCafes.filter(cafe => cafe.id !== cafeId));
-          
-          // 4. Follow-up refresh to ensure consistency
-          setTimeout(() => {
-            console.log("DELETION UI: Follow-up refresh after deletion");
-            refreshCafes().finally(() => {
-              setRefreshing(false);
-            });
+          setTimeout(async () => {
+            await refreshCafes();
+            setRefreshing(false);
           }, 1000);
         } else {
-          // Clear the loading toast
-          toast.dismiss(loadingToast);
+          console.error(`UI: Failed to delete cafe ${cafeName}`);
           toast.error(`Failed to delete ${cafeName}`);
+          
+          // Force refresh to ensure UI is in sync with server
+          refreshCafes();
         }
-      } catch (error) {
-        console.error("DELETION UI: Exception occurred:", error);
-        toast.error(`Error deleting ${cafeName}`);
+      } catch (error: any) {
+        console.error(`UI: Error during deletion:`, error);
+        toast.error(`Error: ${error.message || 'Unknown error'}`);
+        
+        // Force refresh to ensure UI is in sync with server
+        refreshCafes();
       } finally {
         // Always clear loading state
         setDeleteInProgress(null);
       }
-    }
-  };
-  
-  // For updating cafes in local state after deletion (fallback mechanism)
-  const setCafes = (updater: (cafes: Cafe[]) => Cafe[]) => {
-    const updatedCafes = updater(cafes);
-    if (updatedCafes.length !== cafes.length) {
-      console.log("Local state update: Filtered out deleted cafe");
     }
   };
   
@@ -136,6 +120,21 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     }
   };
   
+  // Set up listener for deletion events
+  useEffect(() => {
+    const handleCafeDeleted = (event: CustomEvent) => {
+      const { cafeId } = event.detail;
+      console.log(`Cafe deletion event received for ${cafeId}`);
+      refreshCafes();
+    };
+    
+    window.addEventListener('cafe_deleted' as any, handleCafeDeleted as any);
+    
+    return () => {
+      window.removeEventListener('cafe_deleted' as any, handleCafeDeleted as any);
+    };
+  }, [refreshCafes]);
+  
   useEffect(() => {
     console.log("CafeList mounted, forcing data refresh");
     handleRefresh();
@@ -148,23 +147,12 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     
     return () => {
       clearInterval(refreshTimer);
+      // Also clear any pending timeouts
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
     };
   }, [refreshCafes, adminView]);
-  
-  // Special effect to handle post-deletion refreshes
-  useEffect(() => {
-    if (deleteAttempted && !deleteInProgress) {
-      console.log("DELETION UI: Delete operation completed, checking data consistency");
-      
-      // One final refresh after any delete operation completes
-      const finalCheckTimer = setTimeout(() => {
-        refreshCafes();
-        setDeleteAttempted(false);
-      }, 2000);
-      
-      return () => clearTimeout(finalCheckTimer);
-    }
-  }, [deleteAttempted, deleteInProgress, refreshCafes]);
   
   const filteredCafes = adminView 
     ? cafes
@@ -172,13 +160,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       ? cafes.filter(cafe => cafe.createdBy === filterByUser)
       : cafes;
   
-  console.log(`CafeList render #${renderCount.current} with ${filteredCafes.length} cafes, loading: ${loading}, isAdmin: ${isAdmin}, adminView: ${adminView}`);
-  console.log("Total cafes in context:", cafes.length);
-  
-  if (filterByUser && !adminView) {
-    console.log("Filtering by user:", filterByUser);
-  }
-    
   return (
     <div className="space-y-4">
       <div className="flex justify-between mb-2">
@@ -319,7 +300,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           onClick={() => handleDelete(cafe.id, cafe.name)}
                           disabled={deleteInProgress !== null} // Disable all delete buttons while any deletion is in progress
                         >
-                          <Trash2 className="h-3 w-3" /> 
+                          <Trash2 className={`h-3 w-3 ${deleteInProgress === cafe.id ? 'animate-spin' : ''}`} /> 
                           {deleteInProgress === cafe.id ? 'Deleting...' : 'Delete'}
                         </Button>
                       )}

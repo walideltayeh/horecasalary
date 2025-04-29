@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Cafe, CafeSize } from '@/types';
 import { useAuth } from './AuthContext';
 import { getCafeSize } from '@/utils/cafeUtils';
@@ -29,6 +28,9 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   // Set up real-time subscriptions and fetch initial data
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
+  
+  // Keep track of cafes that are being deleted
+  const pendingDeletions = useRef<Set<string>>(new Set());
   
   // Manual refresh function with improved reliability
   const refreshCafes = useCallback(async () => {
@@ -76,6 +78,42 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 120000); // Every 2 minutes
     
     return () => clearInterval(intervalId);
+  }, [fetchCafes]);
+  
+  // Listen for deletion events (both from within the app and from other tabs)
+  useEffect(() => {
+    const handleCafeDeleted = (event: CustomEvent) => {
+      const { cafeId } = event.detail;
+      console.log(`Deletion event received for cafe ${cafeId}`);
+      
+      // Update local state immediately without waiting for server refresh
+      setCafes(prevCafes => prevCafes.filter(cafe => cafe.id !== cafeId));
+      
+      // Force a refresh to ensure consistency
+      setTimeout(() => {
+        fetchCafes(true);
+      }, 500);
+    };
+    
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'last_deleted_cafe') {
+        const deletedCafeId = event.newValue;
+        if (deletedCafeId) {
+          console.log(`Storage event: cafe ${deletedCafeId} deleted in another tab`);
+          setCafes(prevCafes => prevCafes.filter(cafe => cafe.id !== deletedCafeId));
+          fetchCafes(true);
+        }
+      }
+    };
+    
+    // Add event listeners
+    window.addEventListener('cafe_deleted' as any, handleCafeDeleted as any);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('cafe_deleted' as any, handleCafeDeleted as any);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [fetchCafes]);
 
   // Custom cafe adding function with improved refresh handling
@@ -131,73 +169,52 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return result;
   };
   
-  // Custom deleteCafe with improved refresh handling
+  // Custom deleteCafe with improved state management
   const handleDeleteCafe = async (cafeId: string) => {
-    const result = await deleteCafe(cafeId);
-    if (result) {
-      // Enhanced refresh pattern with multiple approaches
-      console.log("Cafe deleted, performing thorough refresh");
+    try {
+      // First check if this cafe is currently being deleted
+      if (pendingDeletions.current.has(cafeId)) {
+        console.log(`Deletion already in progress for cafe ${cafeId}`);
+        toast.info("Deletion already in progress");
+        return false;
+      }
       
-      // Global notification
-      refreshCafeData();
+      // Mark this cafe as being deleted
+      pendingDeletions.current.add(cafeId);
       
-      // Immediate fetch
-      await fetchCafes(true);
+      // Update local state immediately for better UI responsiveness
+      // This is optimistic UI update
+      setCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
       
-      // Follow-up fetch to ensure consistency
-      setTimeout(async () => {
-        console.log("Follow-up refresh after deletion");
+      // Perform the actual deletion
+      const result = await deleteCafe(cafeId);
+      
+      if (result) {
+        console.log(`Cafe ${cafeId} successfully deleted`);
+        
+        // Perform multiple refreshes to ensure consistency
+        refreshCafeData();
         await fetchCafes(true);
         
-        // Update local state directly as backup strategy
-        setCafes(prevCafes => prevCafes.filter(cafe => cafe.id !== cafeId));
-      }, 1000);
+        // Follow-up refresh for redundancy
+        setTimeout(async () => {
+          await fetchCafes(true);
+        }, 1000);
+      } else {
+        // If deletion failed, restore the cafe in local state
+        console.log(`Deletion failed for cafe ${cafeId}, restoring in local state`);
+        fetchCafes(true);
+      }
+      
+      // Remove from pending deletions
+      pendingDeletions.current.delete(cafeId);
+      return result;
+    } catch (error) {
+      console.error(`Error in handleDeleteCafe for ${cafeId}:`, error);
+      pendingDeletions.current.delete(cafeId);
+      return false;
     }
-    return result;
   };
-  
-  // Ensure Admin page sees updated data
-  useEffect(() => {
-    const adminPageCheck = () => {
-      const isAdminPage = window.location.pathname.includes('/admin');
-      if (isAdminPage) {
-        console.log("Admin page detected, forcing data refresh");
-        fetchCafes(true);
-      }
-    };
-    
-    // Check on initial render
-    adminPageCheck();
-    
-    // Setup listener for route changes
-    const handleRouteChange = () => {
-      adminPageCheck();
-    };
-    
-    window.addEventListener('popstate', handleRouteChange);
-    
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, [fetchCafes]);
-
-  // Set up listener for deletion events
-  useEffect(() => {
-    const handleDataUpdate = (event: CustomEvent) => {
-      console.log("Received data update event:", event.detail);
-      // If it's a deletion event, force refresh
-      if (event.detail?.payload?.eventType === 'DELETE') {
-        console.log("DELETE event detected, forcing refresh");
-        fetchCafes(true);
-      }
-    };
-    
-    window.addEventListener('horeca_data_updated' as any, handleDataUpdate as any);
-    
-    return () => {
-      window.removeEventListener('horeca_data_updated' as any, handleDataUpdate as any);
-    };
-  }, [fetchCafes]);
 
   return (
     <CafeContext.Provider
