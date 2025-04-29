@@ -13,8 +13,8 @@ import { toast } from 'sonner';
 
 const UserApp: React.FC = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = React.useState('dashboard');
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const mounted = useRef(true);
   
@@ -91,9 +91,8 @@ const UserApp: React.FC = () => {
 
         <AddCafeForm 
           surveyCompleted={surveyCompleted}
-          onPreSubmit={async (cafeData) => {
-            return true;
-          }}
+          onPreSubmit={async () => true}
+          onComplete={handleSurveyComplete}
         />
 
         <Card>
@@ -102,7 +101,7 @@ const UserApp: React.FC = () => {
             <CardDescription>List of cafes you've added</CardDescription>
           </CardHeader>
           <CardContent>
-            <CafeList filterByUser={user.id} />
+            <CafeList filterByUser={user?.id} />
           </CardContent>
         </Card>
       </div>
@@ -116,7 +115,7 @@ const UserApp: React.FC = () => {
           <h1 className="text-xl font-bold">HoReCa Mobile</h1>
           <div className="flex items-center">
             <div className="bg-white rounded-full w-8 h-8 flex items-center justify-center text-custom-red font-bold">
-              {user.name.charAt(0)}
+              {user?.name?.charAt(0) || 'U'}
             </div>
           </div>
         </div>
