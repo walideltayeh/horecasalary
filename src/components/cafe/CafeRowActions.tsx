@@ -3,6 +3,7 @@ import React from 'react';
 import { Cafe } from '@/types';
 import { Button } from "@/components/ui/button";
 import { Check, Clock, Loader2, Pencil, Trash2 } from 'lucide-react';
+import CafeStatusBadge from './CafeStatusBadge';
 
 interface CafeRowActionsProps {
   cafe: Cafe;

@@ -21,8 +21,14 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
   useEffect(() => {
     if (mounted.current) {
       setLocalCafes(cafes);
+      console.log("CafeList render - all cafes:", cafes);
+      if (filterByUser) {
+        console.log("Filtering cafes by user ID:", filterByUser);
+        const filtered = cafes.filter(cafe => cafe.createdBy === filterByUser);
+        console.log("Filtered cafes:", filtered);
+      }
     }
-  }, [cafes]);
+  }, [cafes, filterByUser]);
 
   // Cleanup function to prevent state updates after unmount
   useEffect(() => {
@@ -55,11 +61,15 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
         toast.error(`Failed to update cafe status`);
       } else {
         toast.success(`Cafe status updated to ${newStatus}`);
+        // Force a refresh to ensure synchronized state
+        refreshCafes();
       }
     } catch (error) {
       if (mounted.current) {
         setLocalCafes(cafes);
         toast.error(`Error updating status`);
+        // Force a refresh to ensure synchronized state
+        refreshCafes();
       }
     }
   };
@@ -143,6 +153,9 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
         // Handle result
         if (result === true) {
           console.log(`UI: Cafe ${cafeToDelete.name} deleted successfully`);
+          toast.success(`Successfully deleted ${cafeToDelete.name}`, {
+            id: `delete-success-${cafeToDelete.id}`
+          });
           
           // Force a refresh after a small delay (but only if mounted)
           setTimeout(() => {

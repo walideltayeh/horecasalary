@@ -28,7 +28,7 @@ const CafeTableRow: React.FC<CafeTableRowProps> = ({
   openDeleteConfirmation
 }) => {
   return (
-    <TableRow key={cafe.id}>
+    <TableRow key={cafe.id} className={deleteInProgress === cafe.id ? 'opacity-50' : ''}>
       <TableCell className="font-medium">{cafe.name}</TableCell>
       <TableCell>
         <CafeSizeBadge cafeSize={getCafeSize(cafe.numberOfHookahs)} />
