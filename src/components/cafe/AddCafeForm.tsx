@@ -72,21 +72,33 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
       { field: 'ownerNumber', label: 'Owner phone' },
       { field: 'governorate', label: 'Governorate' },
       { field: 'city', label: 'City' },
-      { field: 'photoUrl', label: 'Cafe photo' }
+      { field: 'photoUrl', label: 'Cafe photo' },
+      { field: 'numberOfHookahs', label: 'Number of hookahs' },
+      { field: 'numberOfTables', label: 'Number of tables' }
     ];
     
     const missingFields = requiredFields
-      .filter(({ field }) => !formState[field as keyof CafeFormState])
+      .filter(({ field }) => {
+        const value = formState[field as keyof CafeFormState];
+        return value === undefined || value === null || value === '' || (typeof value === 'number' && value < 0);
+      })
       .map(({ label }) => label);
     
     if (missingFields.length > 0) {
-      toast.error(`Required fields missing: ${missingFields.join(', ')}`);
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+    
+    // Validate phone number format
+    const phoneRegex = /^[0-9]{10,15}$/;
+    if (!phoneRegex.test(formState.ownerNumber.replace(/\D/g, ''))) {
+      toast.error('Please enter a valid phone number (10-15 digits)');
       return;
     }
     
     // Validate GPS coordinates
     if (!coordinates.latitude || !coordinates.longitude) {
-      toast.error('GPS location is required');
+      toast.error('Please capture the GPS location');
       return;
     }
     
