@@ -25,7 +25,13 @@ export const useCafeEvents = ({ fetchCafes, setLastRefreshTime, lastRefreshTime 
     
     try {
       await fetchCafes(true);
-      refreshCafeData();
+      
+      // Broadcast the refresh event to all components
+      console.log("Broadcasting data refresh event");
+      window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+        detail: { action: 'refresh', timestamp: now }
+      }));
+      
       toast.success("Cafe data refreshed successfully");
     } catch (error) {
       console.error("Error during manual refresh:", error);
@@ -37,14 +43,26 @@ export const useCafeEvents = ({ fetchCafes, setLastRefreshTime, lastRefreshTime 
 };
 
 export const useCafeDeletionEvents = ({ fetchCafes }: { fetchCafes: (force?: boolean) => Promise<void> }) => {
+  const refreshInProgressRef = useRef(false);
+  
   useEffect(() => {
     const handleCafeDeleted = (event: CustomEvent) => {
       const { cafeId } = event.detail;
       console.log(`Deletion event received for cafe ${cafeId}`);
       
+      if (refreshInProgressRef.current) {
+        console.log("Refresh already in progress, queueing");
+        return;
+      }
+      
+      refreshInProgressRef.current = true;
+      
       // Wait a bit before forcing a refresh to ensure all operations are complete
       setTimeout(() => {
-        fetchCafes(true);
+        console.log("Refreshing after deletion event");
+        fetchCafes(true).finally(() => {
+          refreshInProgressRef.current = false;
+        });
       }, 500);
     };
     
@@ -53,7 +71,16 @@ export const useCafeDeletionEvents = ({ fetchCafes }: { fetchCafes: (force?: boo
         const deletedCafeId = event.newValue;
         if (deletedCafeId) {
           console.log(`Storage event: cafe ${deletedCafeId} deleted in another tab`);
-          fetchCafes(true);
+          
+          if (!refreshInProgressRef.current) {
+            refreshInProgressRef.current = true;
+            
+            setTimeout(() => {
+              fetchCafes(true).finally(() => {
+                refreshInProgressRef.current = false;
+              });
+            }, 500);
+          }
         }
       }
     };

@@ -12,6 +12,8 @@ export const useCafeStatusUpdate = (
   const mounted = useRef(true);
   
   const handleUpdateStatus = async (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
+    console.log(`Updating cafe status: ${cafeId} to ${newStatus}`);
+    
     // Optimistic update
     setLocalCafes(prev => 
       prev.map(cafe => cafe.id === cafeId ? {...cafe, status: newStatus} : cafe)
@@ -27,9 +29,12 @@ export const useCafeStatusUpdate = (
         toast.success(`Cafe status updated to ${newStatus}`);
         
         // Broadcast a data update event to trigger refresh across components
-        window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+        window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+          detail: { action: 'statusUpdate', cafeId, newStatus }
+        }));
         
         // Force a refresh to ensure synchronized state
+        console.log("Forcing refresh after status update");
         setTimeout(() => refreshCafes(), 300);
       }
     } catch (error) {

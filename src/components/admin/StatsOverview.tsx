@@ -1,24 +1,51 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import CafeStatsCard from './CafeStatsCard';
 import { Cafe } from '@/types';
+import { useCafes } from '@/contexts/CafeContext';
 
 interface StatsOverviewProps {
   cafes: Cafe[];
 }
 
 export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
-  const totalCafes = cafes.length;
-  const pendingCafes = cafes.filter(cafe => cafe.status === 'Pending').length;
-  const visitedCafes = cafes.filter(cafe => cafe.status === 'Visited').length;
-  const contractedCafes = cafes.filter(cafe => cafe.status === 'Contracted').length;
+  const [stats, setStats] = useState({
+    totalCafes: 0,
+    pendingCafes: 0, 
+    visitedCafes: 0,
+    contractedCafes: 0
+  });
+  
+  // Update stats whenever cafes change
+  useEffect(() => {
+    const totalCafes = cafes.length;
+    const pendingCafes = cafes.filter(cafe => cafe.status === 'Pending').length;
+    const visitedCafes = cafes.filter(cafe => cafe.status === 'Visited').length;
+    const contractedCafes = cafes.filter(cafe => cafe.status === 'Contracted').length;
+    
+    setStats({ totalCafes, pendingCafes, visitedCafes, contractedCafes });
+    console.log("StatsOverview updated with new cafe data:", totalCafes, "cafes");
+  }, [cafes]);
+  
+  // Set up listener for data update events
+  useEffect(() => {
+    const handleDataUpdated = () => {
+      console.log("StatsOverview detected data update event");
+      // We don't need to do anything here as the parent component will refresh the cafes prop
+    };
+    
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    return () => {
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+    };
+  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <CafeStatsCard title="Total Cafes" value={totalCafes} />
-      <CafeStatsCard title="Pending Cafes" value={pendingCafes} />
-      <CafeStatsCard title="Visited Cafes" value={visitedCafes} />
-      <CafeStatsCard title="Contracted Cafes" value={contractedCafes} />
+      <CafeStatsCard title="Total Cafes" value={stats.totalCafes} />
+      <CafeStatsCard title="Pending Cafes" value={stats.pendingCafes} />
+      <CafeStatsCard title="Visited Cafes" value={stats.visitedCafes} />
+      <CafeStatsCard title="Contracted Cafes" value={stats.contractedCafes} />
     </div>
   );
 };

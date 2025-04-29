@@ -5,7 +5,8 @@ import { Cafe } from '@/types';
 export const useEventListeners = (
   setLocalCafes: React.Dispatch<React.SetStateAction<Cafe[]>>,
   refreshing: boolean,
-  deleteInProgress: string | null
+  deleteInProgress: string | null,
+  handleRefresh?: () => Promise<void>
 ) => {
   const mounted = useRef(true);
   
@@ -13,9 +14,10 @@ export const useEventListeners = (
   useEffect(() => {
     const handleDataUpdated = () => {
       console.log("CafeList detected data update event");
-      if (mounted.current && !refreshing) {
-        // We don't need to set refreshing to true here
-        // as that should be handled by the refresh function
+      if (mounted.current && !refreshing && handleRefresh) {
+        // Actually trigger refresh when data update event is detected
+        console.log("Triggering refresh due to data update event");
+        handleRefresh();
       }
     };
     
@@ -26,6 +28,12 @@ export const useEventListeners = (
       // Update local state immediately for better responsiveness
       if (mounted.current) {
         setLocalCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
+        
+        // Also trigger a refresh to ensure data consistency
+        if (handleRefresh && !refreshing) {
+          console.log("Triggering refresh after deletion event");
+          setTimeout(() => handleRefresh(), 300);
+        }
       }
     };
     
@@ -36,7 +44,7 @@ export const useEventListeners = (
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
     };
-  }, [refreshing, deleteInProgress, setLocalCafes]);
+  }, [refreshing, deleteInProgress, setLocalCafes, handleRefresh]);
   
   // Cleanup function to prevent state updates after unmount
   useEffect(() => {

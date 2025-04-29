@@ -27,8 +27,8 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
   const { deleteInProgress, cafeToDelete, openDeleteConfirmation, closeDeleteConfirmation, handleDelete } = 
     useCafeDelete(deleteCafe, refreshCafes);
   
-  // Set up event listeners
-  useEventListeners(setLocalCafes, refreshing, deleteInProgress);
+  // Set up event listeners and pass handleRefresh to enable auto-refreshing on events
+  useEventListeners(setLocalCafes, refreshing, deleteInProgress, handleRefresh);
   
   // Update local cafes when the main cafes state changes
   useEffect(() => {

@@ -16,6 +16,7 @@ const UserApp: React.FC = () => {
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const mounted = useRef(true);
   const { handleLogout, isLoggingOut } = useLogoutHandler();
+  const lastRefreshTimeRef = useRef<number>(Date.now());
   
   // Cleanup on unmount
   useEffect(() => {
@@ -34,13 +35,26 @@ const UserApp: React.FC = () => {
       if (mounted.current) {
         refreshCafeData();
         console.log("Initial cafe data refresh triggered");
+        lastRefreshTimeRef.current = Date.now();
       }
     }, 500);
+    
+    // Set up event listener for tab changes
+    const handleTabChange = () => {
+      // Only refresh if it's been a while since last refresh
+      const now = Date.now();
+      if (now - lastRefreshTimeRef.current > 2000) {
+        console.log("Tab changed, triggering refresh");
+        refreshCafeData();
+        lastRefreshTimeRef.current = now;
+      }
+    };
     
     // Set up event listener for data updates
     const handleDataUpdated = () => {
       console.log("UserApp received data update event");
-      // No need to do anything here, as CafeList handles its own updates
+      // Mark the time of the last update
+      lastRefreshTimeRef.current = Date.now();
     };
     
     window.addEventListener('horeca_data_updated', handleDataUpdated);
@@ -50,6 +64,16 @@ const UserApp: React.FC = () => {
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
     };
   }, []);
+  
+  // Handle tab changes
+  useEffect(() => {
+    console.log("Tab changed to:", activeTab);
+    // Refresh data when switching tabs
+    if (mounted.current) {
+      refreshCafeData();
+      console.log(`Refreshed data due to tab change to ${activeTab}`);
+    }
+  }, [activeTab]);
   
   if (!user || user.role === 'admin') {
     return <Navigate to="/login" />;
