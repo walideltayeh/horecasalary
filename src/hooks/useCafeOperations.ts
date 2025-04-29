@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Cafe } from '@/types';
 import { supabase } from '@/integrations/supabase/client';

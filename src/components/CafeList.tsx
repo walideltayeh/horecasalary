@@ -11,6 +11,7 @@ import { refreshCafeData } from '@/integrations/supabase/client';
 import ExportToExcel from './admin/ExportToExcel';
 import CafeEditDialog from './cafe/CafeEditDialog';
 import { Cafe } from '@/types';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 
 interface CafeListProps {
   adminView?: boolean;
@@ -23,72 +24,93 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   const [cafeToEdit, setCafeToEdit] = useState<Cafe | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [deleteInProgress, setDeleteInProgress] = useState<string | null>(null);
+  const [cafeToDelete, setCafeToDelete] = useState<{id: string, name: string} | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mounted = useRef(true);
+  
+  // Cleanup function to prevent state updates after unmount
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const handleUpdateStatus = (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
     updateCafeStatus(cafeId, newStatus);
     toast.success(`Cafe status updated to ${newStatus}`);
   };
 
-  const handleDelete = async (cafeId: string, cafeName: string) => {
-    if (window.confirm(`Are you sure you want to delete ${cafeName}?`)) {
-      try {
-        // Show loading state on button
-        setDeleteInProgress(cafeId);
-        
-        // Show toast
-        const loadingToast = toast.loading(`Deleting cafe ${cafeName}...`);
-        
-        console.log(`UI: Starting deletion of cafe: ${cafeName} (${cafeId})`);
-        
-        // Set up a timeout to catch hung operations
-        const timeoutPromise = new Promise<boolean>((_, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Deletion operation timed out'));
-          }, 10000); // 10 second timeout
-          
-          // Store timeout ID so we can clear it
-          refreshTimeoutRef.current = timeoutId;
-        });
-        
-        // Race between deletion and timeout
-        const result = await Promise.race([
-          deleteCafe(cafeId),
-          timeoutPromise
-        ]);
-        
-        // Clear the timeout
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
-          refreshTimeoutRef.current = null;
+  const openDeleteConfirmation = (cafeId: string, cafeName: string) => {
+    setCafeToDelete({ id: cafeId, name: cafeName });
+  };
+
+  const closeDeleteConfirmation = () => {
+    setCafeToDelete(null);
+  };
+
+  const handleDelete = async () => {
+    if (!cafeToDelete) return;
+    
+    try {
+      // Show loading state on button
+      setDeleteInProgress(cafeToDelete.id);
+      
+      // Show toast
+      const loadingToast = toast.loading(`Deleting cafe ${cafeToDelete.name}...`);
+      
+      console.log(`UI: Starting deletion of cafe: ${cafeToDelete.name} (${cafeToDelete.id})`);
+      
+      // Set up a timeout to catch hung operations
+      const timeoutId = setTimeout(() => {
+        if (mounted.current) {
+          toast.error('Deletion operation timed out');
+          setDeleteInProgress(null);
+          closeDeleteConfirmation();
         }
-        
+      }, 10000); // 10 second timeout
+      
+      refreshTimeoutRef.current = timeoutId;
+      
+      // Perform deletion
+      const result = await deleteCafe(cafeToDelete.id);
+      
+      // Clear the timeout
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+      
+      // Only update state if component is still mounted
+      if (mounted.current) {
         // Handle result
         toast.dismiss(loadingToast);
         
         if (result === true) {
-          console.log(`UI: Cafe ${cafeName} deleted successfully`);
-          toast.success(`Cafe ${cafeName} deleted successfully`);
-          
-          // Dispatch event to trigger refresh across components
-          window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+          console.log(`UI: Cafe ${cafeToDelete.name} deleted successfully`);
+          toast.success(`Cafe ${cafeToDelete.name} deleted successfully`);
         } else {
-          console.error(`UI: Failed to delete cafe ${cafeName}`);
-          toast.error(`Failed to delete ${cafeName}`);
-          
-          // Force refresh to ensure UI is in sync with server
-          refreshCafes();
+          console.error(`UI: Failed to delete cafe ${cafeToDelete.name}`);
+          toast.error(`Failed to delete ${cafeToDelete.name}`);
         }
-      } catch (error: any) {
+        
+        // Close the confirmation dialog
+        closeDeleteConfirmation();
+        
+        // Reset the delete in progress state
+        setDeleteInProgress(null);
+      }
+    } catch (error: any) {
+      // Only update state if component is still mounted
+      if (mounted.current) {
         console.error(`UI: Error during deletion:`, error);
         toast.error(`Error: ${error.message || 'Unknown error'}`);
-        
-        // Force refresh to ensure UI is in sync with server
-        refreshCafes();
-      } finally {
-        // Always clear loading state
         setDeleteInProgress(null);
+        closeDeleteConfirmation();
       }
     }
   };
@@ -104,12 +126,18 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     
     try {
       await refreshCafes();
-      toast.success("Data refreshed successfully");
+      if (mounted.current) {
+        toast.success("Data refreshed successfully");
+      }
     } catch (error) {
-      console.error("Error during refresh:", error);
-      toast.error("Failed to refresh data");
+      if (mounted.current) {
+        console.error("Error during refresh:", error);
+        toast.error("Failed to refresh data");
+      }
     } finally {
-      setRefreshing(false);
+      if (mounted.current) {
+        setRefreshing(false);
+      }
     }
   };
   
@@ -117,8 +145,14 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   useEffect(() => {
     const handleDataUpdated = () => {
       console.log("CafeList detected data update event");
-      setRefreshing(true);
-      refreshCafes().finally(() => setRefreshing(false));
+      if (mounted.current) {
+        setRefreshing(true);
+        refreshCafes().finally(() => {
+          if (mounted.current) {
+            setRefreshing(false);
+          }
+        });
+      }
     };
     
     window.addEventListener('horeca_data_updated', handleDataUpdated);
@@ -129,17 +163,10 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       // Also clear any pending timeouts
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
       }
     };
   }, [refreshCafes]);
-  
-  // Log user and filter for debugging
-  console.log("CafeList render - Current user:", user);
-  console.log("CafeList render - isAdmin:", isAdmin);
-  console.log("CafeList render - filterByUser:", filterByUser);
-  
-  // Log cafes to help debug
-  console.log("CafeList render - all cafes:", cafes);
   
   let filteredCafes = cafes;
   
@@ -211,7 +238,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
             ) : (
               filteredCafes.map((cafe) => {
                 // Debug permissions for this specific cafe
-                const canEdit = isAdmin || (user && cafe.createdBy === user.id);
+                const canEdit = Boolean(isAdmin || (user && cafe.createdBy === user.id));
                 console.log(`Cafe ${cafe.id} permissions - isAdmin: ${isAdmin}, user.id: ${user?.id}, cafe.createdBy: ${cafe.createdBy}, canEdit: ${canEdit}`);
                 
                 return (
@@ -291,7 +318,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                               ? 'border-gray-300 text-gray-400' 
                               : 'border-red-500 text-red-500 hover:bg-red-50'
                           }`}
-                          onClick={() => handleDelete(cafe.id, cafe.name)}
+                          onClick={() => openDeleteConfirmation(cafe.id, cafe.name)}
                           disabled={deleteInProgress !== null} // Disable all delete buttons while any deletion is in progress
                         >
                           <Trash2 className={`h-3 w-3 ${deleteInProgress === cafe.id ? 'animate-spin' : ''}`} /> 
@@ -323,6 +350,29 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           }}
         />
       )}
+
+      <AlertDialog open={cafeToDelete !== null} onOpenChange={(isOpen) => {
+        if (!isOpen) closeDeleteConfirmation();
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {cafeToDelete?.name} and all associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteInProgress !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              disabled={deleteInProgress !== null}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              {deleteInProgress ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
