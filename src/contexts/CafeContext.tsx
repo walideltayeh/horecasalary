@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 interface CafeContextType {
   cafes: Cafe[];
   addCafe: (cafe: Omit<Cafe, 'id' | 'createdAt'>) => Promise<string | null>;
+  updateCafe: (cafeId: string, cafeData: Partial<Cafe>) => Promise<boolean>;
   updateCafeStatus: (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => Promise<boolean>;
   getCafeSize: (numberOfHookahs: number) => CafeSize;
   deleteCafe: (cafeId: string) => Promise<boolean>;
@@ -24,7 +25,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { user } = useAuth();
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
-  const { loading, setLoading, addCafe, updateCafeStatus, deleteCafe } = useCafeOperations();
+  const { loading, setLoading, addCafe, updateCafe, updateCafeStatus, deleteCafe } = useCafeOperations();
   
   // Set up real-time subscriptions and fetch initial data
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
@@ -58,11 +59,11 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("CafeProvider mounted, forcing initial data fetch");
     fetchCafes(true);
     
-    // Set up a periodic refresh every 30 seconds as a fallback
+    // Set up a periodic refresh every 2 minutes as a fallback
     const intervalId = setInterval(() => {
       console.log("Periodic cafe refresh triggered");
       fetchCafes();
-    }, 30000);
+    }, 120000); // Every 2 minutes
     
     return () => clearInterval(intervalId);
   }, [fetchCafes]);
@@ -83,6 +84,28 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Custom updateCafeStatus that also triggers cross-tab notification
   const handleUpdateCafeStatus = async (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => {
     const result = await updateCafeStatus(cafeId, status);
+    if (result) {
+      // Trigger an immediate fetch in this tab
+      refreshCafeData();
+      await fetchCafes(true);
+    }
+    return result;
+  };
+  
+  // Custom updateCafe that also triggers cross-tab notification
+  const handleUpdateCafe = async (cafeId: string, cafeData: Partial<Cafe>) => {
+    const result = await updateCafe(cafeId, cafeData);
+    if (result) {
+      // Trigger an immediate fetch in this tab
+      refreshCafeData();
+      await fetchCafes(true);
+    }
+    return result;
+  };
+  
+  // Custom deleteCafe that also triggers cross-tab notification
+  const handleDeleteCafe = async (cafeId: string) => {
+    const result = await deleteCafe(cafeId);
     if (result) {
       // Trigger an immediate fetch in this tab
       refreshCafeData();
@@ -121,9 +144,10 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         cafes,
         addCafe: handleAddCafe,
+        updateCafe: handleUpdateCafe,
         updateCafeStatus: handleUpdateCafeStatus,
         getCafeSize,
-        deleteCafe,
+        deleteCafe: handleDeleteCafe,
         loading,
         refreshCafes
       }}

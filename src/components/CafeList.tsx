@@ -1,14 +1,16 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Check, Clock, RefreshCcw, Trash2 } from 'lucide-react';
+import { Check, Clock, Pencil, RefreshCcw, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { refreshCafeData } from '@/integrations/supabase/client';
 import ExportToExcel from './admin/ExportToExcel';
+import CafeEditDialog from './cafe/CafeEditDialog';
+import { Cafe } from '@/types';
 
 interface CafeListProps {
   adminView?: boolean;
@@ -18,6 +20,8 @@ interface CafeListProps {
 const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) => {
   const { cafes, getCafeSize, updateCafeStatus, deleteCafe, refreshCafes, loading } = useData();
   const { user, isAdmin } = useAuth();
+  const [cafeToEdit, setCafeToEdit] = useState<Cafe | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   
   // Track render counts to help debug
   const renderCount = React.useRef(0);
@@ -28,10 +32,22 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     toast.success(`Cafe status updated to ${newStatus}`);
   };
 
-  const handleDelete = (cafeId: string, cafeName: string) => {
+  const handleDelete = async (cafeId: string, cafeName: string) => {
     if (window.confirm(`Are you sure you want to delete ${cafeName}?`)) {
-      deleteCafe(cafeId);
+      const success = await deleteCafe(cafeId);
+      if (success) {
+        toast.success(`Cafe ${cafeName} deleted successfully`);
+        refreshCafeData(); // Force refresh after delete
+        refreshCafes();
+      } else {
+        toast.error(`Failed to delete ${cafeName}`);
+      }
     }
+  };
+  
+  const handleEdit = (cafe: Cafe) => {
+    setCafeToEdit(cafe);
+    setShowEditDialog(true);
   };
   
   const handleRefresh = async () => {
@@ -48,7 +64,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     handleRefresh();
     
     // Set different refresh intervals for admin vs regular view
-    const refreshInterval = adminView ? 20000 : 60000; // 20 seconds for admin (reduced from 5s), 60s for regular users (increased from 30s)
+    const refreshInterval = adminView ? 40000 : 120000; // 40 seconds for admin, 2 minutes for regular users
     
     const refreshTimer = setInterval(() => {
       console.log(`Automatic refresh timer triggered in CafeList (${adminView ? 'admin view' : 'user view'})`);
@@ -60,9 +76,9 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     };
   }, [refreshCafes, adminView]);
   
-  // Filter cafes based on filterByUser if provided, unless admin view
+  // Filter cafes based on adminView - if admin, show all cafes; if user, filter by user ID
   const filteredCafes = adminView 
-    ? cafes // Show all cafes in admin view regardless of filterByUser
+    ? cafes // Show all cafes in admin view
     : filterByUser 
       ? cafes.filter(cafe => cafe.createdBy === filterByUser)
       : cafes;
@@ -159,8 +175,20 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                   <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {/* Show status update buttons for both admin view and user's own cafes */}
-                      {(adminView || cafe.createdBy === user?.id) && cafe.status === 'Pending' && (
+                      {/* Edit button for both admin and cafe creator */}
+                      {(isAdmin || cafe.createdBy === user?.id) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center gap-1"
+                          onClick={() => handleEdit(cafe)}
+                        >
+                          <Pencil className="h-3 w-3" /> Edit
+                        </Button>
+                      )}
+                    
+                      {/* Status update buttons */}
+                      {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Pending' && (
                         <>
                           <Button 
                             variant="outline" 
@@ -180,7 +208,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           </Button>
                         </>
                       )}
-                      {(adminView || cafe.createdBy === user?.id) && cafe.status === 'Visited' && (
+                      {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Visited' && (
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -190,10 +218,10 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           <Check className="h-3 w-3" /> Mark Contracted
                         </Button>
                       )}
-                      {(adminView || cafe.createdBy === user?.id) && cafe.status === 'Contracted' && (
+                      {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Contracted' && (
                         <span className="text-green-500 text-xs">✓ Contracted</span>
                       )}
-                      {/* Allow admin to delete any cafe */}
+                      {/* Delete button - only for admin or cafe creator */}
                       {(isAdmin || cafe.createdBy === user?.id) && (
                         <Button
                           variant="outline"
@@ -212,6 +240,23 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           </TableBody>
         </Table>
       </div>
+      
+      {/* Edit dialog */}
+      {cafeToEdit && (
+        <CafeEditDialog 
+          cafe={cafeToEdit} 
+          isOpen={showEditDialog}
+          onClose={() => {
+            setShowEditDialog(false);
+            setCafeToEdit(null);
+          }}
+          onSave={() => {
+            setShowEditDialog(false);
+            setCafeToEdit(null);
+            handleRefresh();
+          }}
+        />
+      )}
     </div>
   );
 };

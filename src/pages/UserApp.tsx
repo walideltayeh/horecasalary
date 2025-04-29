@@ -17,16 +17,16 @@ const UserApp: React.FC = () => {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   
-  // Reduce refresh frequency - from 30 seconds to 2 minutes
+  // Further reduce refresh frequency - from 2 minutes to 5 minutes
   useEffect(() => {
     console.log("UserApp mounted, refreshing data once");
     refreshCafeData();
     
-    // Reduce refresh frequency to every 2 minutes instead of 30 seconds
+    // Reduce refresh frequency to every 5 minutes
     const intervalId = setInterval(() => {
       console.log("UserApp periodic refresh (reduced frequency)");
       refreshCafeData();
-    }, 120000); // Refresh every 2 minutes instead of every 30 seconds
+    }, 300000); // Refresh every 5 minutes
     
     return () => clearInterval(intervalId);
   }, []);

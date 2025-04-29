@@ -1,60 +1,104 @@
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Camera } from 'lucide-react';
+import { ImageIcon, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 interface PhotoUploadProps {
   onPhotoChange: (photoUrl: string) => void;
+  initialUrl?: string;
 }
 
-export const PhotoUpload = ({ onPhotoChange }: PhotoUploadProps) => {
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+export const PhotoUpload: React.FC<PhotoUploadProps> = ({ onPhotoChange, initialUrl = '' }) => {
+  const [photoUrl, setPhotoUrl] = useState(initialUrl);
+  const [uploading, setUploading] = useState(false);
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setPhotoPreview(result);
-        onPhotoChange(result);
-      };
-      reader.readAsDataURL(file);
+  // Update local state when initialUrl changes (e.g., when editing an existing cafe)
+  useEffect(() => {
+    setPhotoUrl(initialUrl);
+  }, [initialUrl]);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      toast.error("File size must be less than 5MB");
+      return;
     }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error("Only image files are allowed");
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setPhotoUrl(base64String);
+      onPhotoChange(base64String);
+      setUploading(false);
+    };
+    reader.onerror = () => {
+      toast.error("Error reading the file");
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearPhoto = () => {
+    setPhotoUrl('');
+    onPhotoChange('');
   };
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="photo">Cafe Photo</Label>
-      <div className="flex items-center">
-        <Label 
-          htmlFor="photo" 
-          className="flex items-center justify-center h-10 px-4 border border-custom-red rounded-md cursor-pointer hover:bg-gray-100"
-        >
-          <Camera className="mr-2 h-5 w-5" />
-          <span>Choose Photo</span>
-        </Label>
-        <Input 
-          id="photo" 
-          type="file" 
-          accept="image/*" 
-          onChange={handlePhotoChange}
-          className="hidden" 
-        />
-      </div>
-      
-      {photoPreview && (
-        <div className="mt-2">
-          <div className="w-full h-40 bg-gray-100 rounded-md overflow-hidden">
-            <img 
-              src={photoPreview} 
-              alt="Cafe preview" 
-              className="w-full h-full object-cover"
-            />
+      <Label>Cafe Photo</Label>
+      <div className="flex flex-col gap-2">
+        {photoUrl ? (
+          <div className="relative w-full">
+            <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-md border border-gray-200">
+              <img 
+                src={photoUrl} 
+                alt="Cafe" 
+                className="w-full h-full object-cover" 
+              />
+            </AspectRatio>
+            <Button
+              type="button"
+              variant="destructive"
+              className="absolute top-2 right-2 h-8 w-8 p-0"
+              onClick={clearPhoto}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="border border-gray-300 rounded-md py-8 px-4 flex flex-col items-center justify-center gap-2 bg-gray-50">
+            <ImageIcon className="h-12 w-12 text-gray-300" />
+            <Label
+              htmlFor="photo-upload"
+              className="cursor-pointer text-center text-sm font-medium text-blue-600 hover:text-blue-800"
+            >
+              {uploading ? "Uploading..." : "Upload photo"}
+            </Label>
+            <input
+              id="photo-upload"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={handleFileChange}
+              disabled={uploading}
+            />
+            <p className="text-xs text-gray-500">
+              Upload a cafe photo (max 5MB)
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

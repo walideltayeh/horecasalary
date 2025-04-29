@@ -71,6 +71,43 @@ export const useCafeOperations = () => {
     }
   };
 
+  const updateCafe = async (cafeId: string, cafeData: Partial<Cafe>): Promise<boolean> => {
+    try {
+      console.log(`Updating cafe ${cafeId}:`, cafeData);
+      
+      // Prepare update object - convert from camelCase to snake_case for Supabase
+      const updateData: Record<string, any> = {};
+      if (cafeData.name) updateData.name = cafeData.name;
+      if (cafeData.ownerName) updateData.owner_name = cafeData.ownerName;
+      if (cafeData.ownerNumber) updateData.owner_number = cafeData.ownerNumber;
+      if (cafeData.numberOfHookahs !== undefined) updateData.number_of_hookahs = cafeData.numberOfHookahs;
+      if (cafeData.numberOfTables !== undefined) updateData.number_of_tables = cafeData.numberOfTables;
+      if (cafeData.status) updateData.status = cafeData.status;
+      if (cafeData.photoUrl) updateData.photo_url = cafeData.photoUrl;
+      if (cafeData.governorate) updateData.governorate = cafeData.governorate;
+      if (cafeData.city) updateData.city = cafeData.city;
+      
+      const { error } = await supabase
+        .from('cafes')
+        .update(updateData)
+        .eq('id', cafeId);
+
+      if (error) {
+        console.error("Error updating cafe:", error);
+        toast.error(`Failed to update cafe: ${error.message}`);
+        throw error;
+      }
+      
+      console.log("Cafe updated successfully");
+      toast.success(`Cafe updated successfully`);
+      return true;
+    } catch (err: any) {
+      console.error('Error updating cafe:', err);
+      toast.error(err.message || 'Failed to update cafe');
+      return false;
+    }
+  };
+
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     try {
       console.log(`Deleting cafe ${cafeId}`);
@@ -100,6 +137,7 @@ export const useCafeOperations = () => {
     loading,
     setLoading,
     addCafe,
+    updateCafe,
     updateCafeStatus,
     deleteCafe
   };
