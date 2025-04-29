@@ -5,7 +5,7 @@ import CafeEditDialog from './cafe/CafeEditDialog';
 import CafeTableActions from './cafe/CafeTableActions';
 import CafeTable from './cafe/CafeTable';
 import DeleteConfirmationDialog from './cafe/DeleteConfirmationDialog';
-import { useCafeListState } from '@/hooks/useCafeListState';
+import { useCafeListState } from '@/hooks/cafe/useCafeListState';
 
 interface CafeListProps {
   adminView?: boolean;
