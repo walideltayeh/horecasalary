@@ -200,8 +200,50 @@ export const useCafeOperations = () => {
             // Special handling for foreign key violations
             if (error.code === "23503") {
               console.log("DELETION: Foreign key violation - attempting to clean up related records");
-              // Try to force delete related records and continue
-              await supabase.rpc('force_delete_related_records', { cafe_id_param: cafeId });
+              
+              // Instead of using RPC, we'll handle the cleanup directly
+              // First, try to find surveys and delete those
+              const { data: surveys } = await supabase
+                .from('cafe_surveys')
+                .select('id')
+                .eq('cafe_id', cafeId);
+                
+              if (surveys && surveys.length > 0) {
+                console.log(`Found ${surveys.length} more surveys to delete`);
+                
+                // Delete related brand sales for these surveys
+                for (const survey of surveys) {
+                  await supabase
+                    .from('brand_sales')
+                    .delete()
+                    .eq('survey_id', survey.id);
+                }
+                
+                // Delete the surveys
+                await supabase
+                  .from('cafe_surveys')
+                  .delete()
+                  .eq('cafe_id', cafeId);
+              }
+              
+              // Try again using execute_sql for direct SQL execution as a last resort
+              if (attempts === maxAttempts - 1) {
+                console.log("DELETION: Using SQL execution as last resort");
+                try {
+                  const sql = `
+                    DELETE FROM brand_sales WHERE survey_id IN 
+                    (SELECT id FROM cafe_surveys WHERE cafe_id = '${cafeId}');
+                    
+                    DELETE FROM cafe_surveys WHERE cafe_id = '${cafeId}';
+                    
+                    DELETE FROM cafes WHERE id = '${cafeId}';
+                  `;
+                  
+                  await supabase.rpc('execute_sql', { sql });
+                } catch (sqlError) {
+                  console.error("Error during SQL execution:", sqlError);
+                }
+              }
             }
             
             // If this was the last attempt, show error to user
