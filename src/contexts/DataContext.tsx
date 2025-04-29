@@ -20,8 +20,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 // Create a single useData hook that combines all context hooks
 export const useData = () => {
-  const cafeContext = useCafes();
+  // Make sure all contexts are used within their proper providers
   const kpiContext = useKPI();
+  const cafeContext = useCafes();
   const salaryContext = useSalary();
 
   // Add utility functions for cafes filtering by user

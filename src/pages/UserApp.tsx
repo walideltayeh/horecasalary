@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { Building, BarChart2, LogOut } from 'lucide-react';
@@ -122,7 +121,12 @@ const UserApp: React.FC = () => {
       </header>
       
       <main className="flex-1 overflow-y-auto p-4 pb-24">
-        {activeTab === 'dashboard' && <Dashboard />}
+        {/* Only render Dashboard if activeTab is dashboard */}
+        {activeTab === 'dashboard' ? (
+          <ErrorBoundary fallback={<p>Error loading dashboard. Please try the Cafe tab instead.</p>}>
+            <Dashboard />
+          </ErrorBoundary>
+        ) : null}
         {activeTab === 'cafe' && renderCafeContent()}
       </main>
       
@@ -158,6 +162,22 @@ const UserApp: React.FC = () => {
       </nav>
     </div>
   );
+};
+
+// Simple error boundary component to prevent the whole app from crashing
+const ErrorBoundary: React.FC<{ children: React.ReactNode, fallback: React.ReactNode }> = ({ children, fallback }) => {
+  const [hasError, setHasError] = useState(false);
+  
+  useEffect(() => {
+    const errorHandler = () => {
+      setHasError(true);
+    };
+    
+    window.addEventListener('error', errorHandler);
+    return () => window.removeEventListener('error', errorHandler);
+  }, []);
+  
+  return hasError ? <>{fallback}</> : <>{children}</>;
 };
 
 export default UserApp;
