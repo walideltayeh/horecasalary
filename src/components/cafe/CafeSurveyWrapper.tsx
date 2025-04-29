@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ClipboardList } from 'lucide-react';
-import CafeBrandSurvey from '../CafeBrandSurvey';
-import { CafeFormState } from './types/CafeFormTypes';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
-import { Check } from 'lucide-react';
+import { CafeFormState } from './types/CafeFormTypes';
+import SurveyButton from './survey/SurveyButton';
+import SurveyForm from './survey/SurveyForm';
 
 interface CafeSurveyWrapperProps {
   onPreSubmit?: (cafeData: CafeFormState & {
@@ -28,11 +26,8 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(externalSurveyCompleted);
-  const {
-    user
-  } = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     setSurveyCompleted(externalSurveyCompleted);
   }, [externalSurveyCompleted]);
 
@@ -50,52 +45,33 @@ const CafeSurveyWrapper: React.FC<CafeSurveyWrapperProps> = ({
     setShowSurvey(false);
   };
 
-  const renderSurveyButton = () => {
-    if (!currentFormData && !onFormChange) return null;
-    const isDisabled = !currentFormData || currentFormData.numberOfHookahs === 0;
-    const isCompleted = surveyCompleted;
-    return <div className="w-full mt-4">
-        <Card className="bg-white">
-          <CardContent className="p-6 py-0 px-0">
-            <Button 
-              type="button" 
-              variant={isCompleted ? "outline" : "default"} 
-              className={`w-full font-bold ${
-                isDisabled 
-                  ? 'bg-gray-200 text-black cursor-not-allowed' 
-                  : isCompleted 
-                    ? 'border-green-500 text-green-500 hover:bg-green-50' 
-                    : 'bg-[#1a365d] text-white hover:bg-[#2a4365]'
-              }`} 
-              disabled={isDisabled} 
-              onClick={() => setShowSurvey(true)}
-            >
-              {isCompleted ? <>
-                  <Check className="mr-2" />
-                  <span className="font-bold">Survey Completed</span>
-                </> : <>
-                  <ClipboardList className="mr-2" />
-                  <span className="font-bold">
-                    {isDisabled ? 'Survey Not Required' : 'Complete Brand Survey'}
-                  </span>
-                </>}
-            </Button>
+  if (!currentFormData && !onFormChange) return null;
+  
+  const isDisabled = !currentFormData || currentFormData.numberOfHookahs === 0;
+  const isCompleted = surveyCompleted;
 
-            {showSurvey && currentFormData && <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
-                <CafeBrandSurvey cafeFormData={{
-              ...currentFormData,
-              createdBy: user?.id || 'unknown',
-              latitude: 0,
-              longitude: 0,
-              status: 'Pending'
-            }} onComplete={handleSurveyComplete} onCancel={handleCancelSurvey} />
-              </div>}
-          </CardContent>
-        </Card>
-      </div>;
-  };
+  return (
+    <div className="w-full mt-4">
+      <Card className="bg-white">
+        <CardContent className="p-6 py-0 px-0">
+          <SurveyButton 
+            isDisabled={isDisabled} 
+            isCompleted={isCompleted} 
+            onClick={() => setShowSurvey(true)} 
+          />
 
-  return renderSurveyButton();
+          {currentFormData && (
+            <SurveyForm
+              isVisible={showSurvey}
+              cafeFormData={currentFormData}
+              onComplete={handleSurveyComplete}
+              onCancel={handleCancelSurvey}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 export default CafeSurveyWrapper;
