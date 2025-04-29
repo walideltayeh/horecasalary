@@ -1,21 +1,21 @@
-import React from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Building, BarChart2, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from './Dashboard';
-import AddCafeForm from '@/components/cafe/AddCafeForm';
-import CafeList from '@/components/CafeList';
-import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { refreshCafeData } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import UserHeader from '@/components/layout/UserHeader';
+import UserNavigation from '@/components/layout/UserNavigation';
+import CafeContent from '@/components/cafe/CafeContent';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 
 const UserApp: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const mounted = useRef(true);
+  const { handleLogout, isLoggingOut } = useLogoutHandler();
   
   // Cleanup on unmount
   useEffect(() => {
@@ -55,129 +55,38 @@ const UserApp: React.FC = () => {
     return <Navigate to="/login" />;
   }
 
-  const handleLogout = async () => {
-    try {
-      if (isLoggingOut) {
-        console.log("Already processing logout, ignoring duplicate request");
-        return;
-      }
-      
-      setIsLoggingOut(true);
-      console.log("UserApp: Starting logout process");
-      
-      await logout();
-      
-      console.log("UserApp: Logout complete, fallback redirect");
-    } catch (error) {
-      console.error("Error during logout:", error);
-      setIsLoggingOut(false);
-    }
-  };
-
   const handleSurveyComplete = () => {
     setSurveyCompleted(true);
-    toast.success("Survey completed, refreshing data...");
-    refreshCafeData();
-  };
-
-  const renderCafeContent = () => {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Cafe Management</h1>
-          <p className="text-gray-600">Add and manage cafe information</p>
-        </div>
-
-        <AddCafeForm 
-          surveyCompleted={surveyCompleted}
-          onPreSubmit={async () => true}
-          onComplete={handleSurveyComplete}
-        />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>My Cafes</CardTitle>
-            <CardDescription>List of cafes you've added</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CafeList filterByUser={user?.id} />
-          </CardContent>
-        </Card>
-      </div>
-    );
   };
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <header className="bg-custom-red text-white p-4 shadow-md">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">HoReCa Mobile</h1>
-          <div className="flex items-center">
-            <div className="bg-white rounded-full w-8 h-8 flex items-center justify-center text-custom-red font-bold">
-              {user?.name?.charAt(0) || 'U'}
-            </div>
-          </div>
-        </div>
-      </header>
+      <UserHeader user={user} />
       
       <main className="flex-1 overflow-y-auto p-4 pb-24">
-        {/* Only render Dashboard if activeTab is dashboard */}
         {activeTab === 'dashboard' ? (
           <ErrorBoundary fallback={<p>Error loading dashboard. Please try the Cafe tab instead.</p>}>
             <Dashboard />
           </ErrorBoundary>
         ) : null}
-        {activeTab === 'cafe' && renderCafeContent()}
+        
+        {activeTab === 'cafe' && (
+          <CafeContent 
+            user={user} 
+            surveyCompleted={surveyCompleted} 
+            onSurveyComplete={handleSurveyComplete} 
+          />
+        )}
       </main>
       
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around">
-          <button 
-            className={`flex flex-col items-center p-4 ${activeTab === 'dashboard' ? 'text-custom-red' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('dashboard')}
-            disabled={isLoggingOut}
-          >
-            <BarChart2 />
-            <span className="text-xs mt-1">Dashboard</span>
-          </button>
-          
-          <button 
-            className={`flex flex-col items-center p-4 ${activeTab === 'cafe' ? 'text-custom-red' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('cafe')}
-            disabled={isLoggingOut}
-          >
-            <Building />
-            <span className="text-xs mt-1">Cafes</span>
-          </button>
-          
-          <button 
-            className="flex flex-col items-center p-4 text-gray-600"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-          >
-            <LogOut />
-            <span className="text-xs mt-1">{isLoggingOut ? "Logging out..." : "Logout"}</span>
-          </button>
-        </div>
-      </nav>
+      <UserNavigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        handleLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
+      />
     </div>
   );
-};
-
-// Simple error boundary component to prevent the whole app from crashing
-const ErrorBoundary: React.FC<{ children: React.ReactNode, fallback: React.ReactNode }> = ({ children, fallback }) => {
-  const [hasError, setHasError] = useState(false);
-  
-  useEffect(() => {
-    const errorHandler = () => {
-      setHasError(true);
-    };
-    
-    window.addEventListener('error', errorHandler);
-    return () => window.removeEventListener('error', errorHandler);
-  }, []);
-  
-  return hasError ? <>{fallback}</> : <>{children}</>;
 };
 
 export default UserApp;
