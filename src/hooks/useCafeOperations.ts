@@ -113,11 +113,10 @@ export const useCafeOperations = () => {
       console.log(`Deleting cafe ${cafeId}`);
       
       // Enhanced error handling and improved deletion logic
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from('cafes')
         .delete()
-        .eq('id', cafeId)
-        .select('count');
+        .eq('id', cafeId);
 
       if (error) {
         console.error("Error deleting cafe:", error);
@@ -125,15 +124,7 @@ export const useCafeOperations = () => {
         throw error;
       }
       
-      // Verify deletion was successful
-      const deleteCount = count || 0;
-      if (deleteCount === 0) {
-        console.warn("No cafe was deleted, possibly due to permissions or cafe not found");
-        toast.warning("No cafe was deleted. Please check if you have permission.");
-        return false;
-      }
-      
-      console.log(`Cafe deleted successfully (rows: ${deleteCount})`);
+      console.log("Cafe deleted successfully");
       toast.success("Cafe deleted successfully");
       return true;
     } catch (err: any) {

@@ -224,6 +224,10 @@ export type Database = {
         Args: { sql: string }
         Returns: Json
       }
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       tobacco_brand: "Al Fakher" | "Adalya" | "Fumari" | "Star Buzz"
