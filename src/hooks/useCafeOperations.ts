@@ -110,21 +110,28 @@ export const useCafeOperations = () => {
 
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     try {
-      console.log(`Deleting cafe ${cafeId}`);
+      console.log(`Attempting to delete cafe with ID: ${cafeId}`);
       
-      // Simplified deletion logic with improved error handling
-      const { error } = await supabase
+      // Enhanced deletion logic with better error handling
+      const { data, error } = await supabase
         .from('cafes')
         .delete()
-        .eq('id', cafeId);
+        .eq('id', cafeId)
+        .select();
 
       if (error) {
         console.error("Error deleting cafe:", error);
         toast.error(`Failed to delete cafe: ${error.message}`);
-        throw error;
+        return false;
       }
       
-      console.log("Cafe deleted successfully");
+      if (!data || data.length === 0) {
+        console.warn("No cafe was deleted, possibly due to RLS policy or cafe not found");
+        toast.error("Could not delete cafe - you may not have permission or it doesn't exist");
+        return false;
+      }
+      
+      console.log("Cafe deleted successfully:", data);
       toast.success("Cafe deleted successfully");
       return true;
     } catch (err: any) {

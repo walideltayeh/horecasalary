@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   const { user, isAdmin } = useAuth();
   const [cafeToEdit, setCafeToEdit] = useState<Cafe | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState<string | null>(null);
   
   const renderCount = React.useRef(0);
   renderCount.current++;
@@ -32,32 +34,35 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
 
   const handleDelete = async (cafeId: string, cafeName: string) => {
     if (window.confirm(`Are you sure you want to delete ${cafeName}?`)) {
-      console.log(`Attempting to delete cafe: ${cafeName} (${cafeId})`);
-      
-      toast.loading(`Deleting cafe ${cafeName}...`);
-      
       try {
+        console.log(`Attempting to delete cafe: ${cafeName} (${cafeId})`);
+        
+        setDeleteInProgress(cafeId);
+        toast.loading(`Deleting cafe ${cafeName}...`);
+        
         const success = await deleteCafe(cafeId);
         
         if (success) {
           toast.success(`Cafe ${cafeName} deleted successfully`);
           
-          console.log("Triggering multi-stage refresh after deletion");
-          
+          console.log("Triggering refresh after deletion");
           refreshCafeData();
-          refreshCafes();
           
+          // Immediate refresh
+          await refreshCafes();
+          
+          // Follow-up refresh to ensure data consistency
           setTimeout(() => {
-            console.log("Secondary refresh after deletion");
             refreshCafes();
           }, 1000);
         } else {
           toast.error(`Failed to delete ${cafeName}`);
-          console.error("Delete operation reported failure");
         }
       } catch (error) {
         console.error("Exception during delete operation:", error);
-        toast.error(`Error deleting ${cafeName}: ${error}`);
+        toast.error(`Error deleting ${cafeName}`);
+      } finally {
+        setDeleteInProgress(null);
       }
     }
   };
@@ -235,8 +240,10 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           size="sm"
                           className="flex items-center gap-1 border-red-500 text-red-500 hover:bg-red-50"
                           onClick={() => handleDelete(cafe.id, cafe.name)}
+                          disabled={deleteInProgress === cafe.id}
                         >
-                          <Trash2 className="h-3 w-3" /> Delete
+                          <Trash2 className="h-3 w-3" /> 
+                          {deleteInProgress === cafe.id ? 'Deleting...' : 'Delete'}
                         </Button>
                       )}
                     </div>
