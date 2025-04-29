@@ -1,10 +1,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useData } from '@/contexts/DataContext';
 
-export const useCafeDelete = () => {
-  const { deleteCafe, refreshCafes } = useData();
+// Accept the deleteCafe and refreshCafes functions as parameters instead of using useData
+export const useCafeDelete = (
+  deleteCafe: (cafeId: string) => Promise<boolean>,
+  refreshCafes: () => Promise<void>
+) => {
   const [deleteInProgress, setDeleteInProgress] = useState<string | null>(null);
   const [cafeToDelete, setCafeToDelete] = useState<{id: string, name: string} | null>(null);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);

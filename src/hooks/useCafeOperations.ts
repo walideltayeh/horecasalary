@@ -3,13 +3,14 @@ import { useState } from 'react';
 import { Cafe } from '@/types';
 import { useCafeAdd } from './cafe/useCafeAdd';
 import { useCafeUpdate } from './cafe/useCafeUpdate';
-import { useCafeDelete } from './cafe/useCafeDelete';
+
+// Remove the useCafeDelete import to break the circular dependency
+// and pass the deleteCafe function as a parameter instead
 
 export const useCafeOperations = () => {
   const [loading, setLoading] = useState(true);
   const { addCafe } = useCafeAdd();
   const { updateCafeStatus, updateCafe } = useCafeUpdate();
-  const { deleteCafe } = useCafeDelete();
 
   return {
     loading,
@@ -17,6 +18,6 @@ export const useCafeOperations = () => {
     addCafe,
     updateCafe,
     updateCafeStatus,
-    deleteCafe
+    // deleteCafe is now removed from here and will be provided by the context directly
   };
 };

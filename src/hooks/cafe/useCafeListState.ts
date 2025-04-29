@@ -4,12 +4,12 @@ import { useData } from '@/contexts/DataContext';
 import { Cafe } from '@/types';
 import { useCafeRefresh } from './useCafeRefresh';
 import { useCafeEdit } from './useCafeEdit';
-import { useCafeDelete } from './useCafeDelete';
 import { useCafeStatusUpdate } from './useCafeStatusUpdate';
+import { useCafeDelete } from './useCafeDelete';
 import { useEventListeners } from './useEventListeners';
 
 export const useCafeListState = (filterByUser?: string, adminView = false) => {
-  const { cafes, getCafeSize, loading } = useData();
+  const { cafes, getCafeSize, loading, refreshCafes, deleteCafe } = useData();
   const [localCafes, setLocalCafes] = useState<Cafe[]>([]);
   const [filteredCafes, setFilteredCafes] = useState<Cafe[]>([]);
 
@@ -19,11 +19,13 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
   // Use extracted hook for edit functionality
   const { cafeToEdit, showEditDialog, handleEdit, setShowEditDialog, setCafeToEdit } = useCafeEdit();
   
-  // Use extracted hook for delete functionality
-  const { deleteInProgress, cafeToDelete, openDeleteConfirmation, closeDeleteConfirmation, handleDelete } = useCafeDelete();
-  
   // Use extracted hook for status updates
   const { handleUpdateStatus } = useCafeStatusUpdate(setLocalCafes, cafes);
+  
+  // Use extracted hook for delete functionality
+  // Pass in the deleteCafe and refreshCafes functions from context to avoid circular dependencies
+  const { deleteInProgress, cafeToDelete, openDeleteConfirmation, closeDeleteConfirmation, handleDelete } = 
+    useCafeDelete(deleteCafe, refreshCafes);
   
   // Set up event listeners
   useEventListeners(setLocalCafes, refreshing, deleteInProgress);

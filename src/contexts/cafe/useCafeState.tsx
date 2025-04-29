@@ -9,13 +9,15 @@ import { useCafeDataManager } from './hooks/useCafeDataManager';
 export const useCafeState = () => {
   const { user } = useAuth();
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
-  const { loading, setLoading, addCafe, updateCafe, updateCafeStatus, deleteCafe } = useCafeOperations();
+  
+  // Use the modified hooks without the deleteCafe dependency
+  const { loading, setLoading, addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
   
   // Use a separate hook for managing cafe data
   const { cafes, setCafes, pendingDeletions } = useCafeDataManager();
   
-  // Use the existing subscription hook
-  const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
+  // Import the deleteCafe function separately from the hooks
+  const { fetchCafes, deleteCafe } = useCafeSubscription(user, setCafes, setLoading);
   
   return { 
     cafes,
