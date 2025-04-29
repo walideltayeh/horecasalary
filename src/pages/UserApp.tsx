@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { Building, BarChart2, LogOut } from 'lucide-react';
@@ -6,14 +5,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from './Dashboard';
 import AddCafeForm from '@/components/cafe/AddCafeForm';
 import CafeList from '@/components/CafeList';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { refreshCafeData } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const UserApp: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = React.useState('dashboard');
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
+  
+  useEffect(() => {
+    console.log("UserApp mounted, refreshing data");
+    refreshCafeData();
+    
+    const intervalId = setInterval(() => {
+      console.log("UserApp periodic refresh");
+      refreshCafeData();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(intervalId);
+  }, []);
   
   if (!user || user.role === 'admin') {
     return <Navigate to="/login" />;
@@ -29,11 +42,8 @@ const UserApp: React.FC = () => {
       setIsLoggingOut(true);
       console.log("UserApp: Starting logout process");
       
-      // Call the logout function from auth context
       await logout();
       
-      // Note: The actual navigation happens in the useLogin hook
-      // This is just a fallback
       console.log("UserApp: Logout complete, fallback redirect");
     } catch (error) {
       console.error("Error during logout:", error);
@@ -43,9 +53,10 @@ const UserApp: React.FC = () => {
 
   const handleSurveyComplete = () => {
     setSurveyCompleted(true);
+    toast.success("Survey completed, refreshing data...");
+    refreshCafeData();
   };
 
-  // Content for the Cafe tab
   const renderCafeContent = () => {
     return (
       <div className="space-y-6">
@@ -54,16 +65,13 @@ const UserApp: React.FC = () => {
           <p className="text-gray-600">Add and manage cafe information</p>
         </div>
 
-        {/* Show the cafe form directly */}
         <AddCafeForm 
           surveyCompleted={surveyCompleted}
           onPreSubmit={async (cafeData) => {
-            // Add any pre-submission logic here
             return true;
           }}
         />
 
-        {/* List of cafes */}
         <Card>
           <CardHeader>
             <CardTitle>My Cafes</CardTitle>
@@ -79,7 +87,6 @@ const UserApp: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
       <header className="bg-custom-red text-white p-4 shadow-md">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold">HoReCa Mobile</h1>
@@ -91,13 +98,11 @@ const UserApp: React.FC = () => {
         </div>
       </header>
       
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4 pb-24">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'cafe' && renderCafeContent()}
       </main>
       
-      {/* Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
         <div className="flex justify-around">
           <button 

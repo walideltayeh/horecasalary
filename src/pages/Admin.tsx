@@ -13,6 +13,7 @@ import AdminHeader from '@/components/admin/AdminHeader';
 import CafeStatsCard from '@/components/admin/CafeStatsCard';
 import { useAdminRefresh } from '@/hooks/admin/useAdminRefresh';
 import { toast } from 'sonner';
+import { refreshCafeData } from '@/integrations/supabase/client';
 
 const Admin: React.FC = () => {
   const { isAdmin, addUser, deleteUser, updateUser, users, fetchUsers, isLoadingUsers } = useAuth();
@@ -52,6 +53,7 @@ const Admin: React.FC = () => {
           
           // Trigger global refresh event
           window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
+          refreshCafeData();
           
           if (users.length > 0 && cafes.length > 0) {
             toast.success(`Data refreshed successfully: ${users.length} users, ${cafes.length} cafes`);
@@ -84,6 +86,7 @@ const Admin: React.FC = () => {
       const cafeRefreshInterval = setInterval(() => {
         console.log("Admin periodic cafe refresh");
         refreshCafes();
+        refreshCafeData();
       }, 5000); // Refresh every 5 seconds while on Admin page
       
       const userRefreshInterval = setInterval(() => {
