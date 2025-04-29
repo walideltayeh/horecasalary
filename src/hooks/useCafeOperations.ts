@@ -145,9 +145,9 @@ export const useCafeOperations = () => {
           }
           
           // Step 2: Delete related records first - using a more efficient approach
-          // Delete related surveys and brand_sales in a single operation
-          const { error: cleanupError } = await supabase.rpc('safe_delete_cafe_related_data', {
-            cafe_id_param: cafeId
+          // Delete related surveys and brand_sales in a single operation using the edge function
+          const { error: cleanupError } = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+            body: { cafeId }
           });
           
           if (cleanupError) {
