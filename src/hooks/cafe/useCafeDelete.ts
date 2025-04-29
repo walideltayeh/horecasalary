@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,7 +10,6 @@ export const useCafeDelete = () => {
 
       // Track timeout and cancel state
       let isCancelled = false;
-      let abortController = new AbortController();
       
       // Show initial notification
       toast.info("Starting deletion process...", {
@@ -33,8 +31,7 @@ export const useCafeDelete = () => {
         const { data: functionData, error: functionError } = await supabase.functions.invoke(
           'safe_delete_cafe_related_data',
           {
-            body: { cafeId },
-            signal: abortController.signal
+            body: { cafeId }
           }
         );
         
@@ -80,8 +77,8 @@ export const useCafeDelete = () => {
       } catch (err: any) {
         clearTimeout(slowOperationTimeoutId);
         
-        // Check if operation was aborted
-        if (err.name === 'AbortError') {
+        // Since we can't use AbortController signal, we'll check for specific error types
+        if (err.name === 'AbortError' || isCancelled) {
           console.warn("DELETION: Operation was aborted");
           toast.error("Deletion operation was cancelled", {
             id: `delete-${cafeId}`
