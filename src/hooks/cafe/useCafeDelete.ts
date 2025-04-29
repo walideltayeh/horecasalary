@@ -78,12 +78,15 @@ export const useCafeDelete = (
           });
           setDeleteInProgress(null);
         }
-      }, 15000); // 15 second absolute timeout
+      }, 30000); // Increase timeout to 30 seconds for slower connections
       
       deleteTimeoutRef.current = watchdogTimeoutId;
       
       // Perform deletion in the background
-      const result = await deleteCafe(cafeToDelete.id);
+      const result = await deleteCafe(cafeToDelete.id).catch(error => {
+        console.error("Delete operation threw an exception:", error);
+        return false;
+      });
       
       // Clear the watchdog timeout
       if (deleteTimeoutRef.current) {

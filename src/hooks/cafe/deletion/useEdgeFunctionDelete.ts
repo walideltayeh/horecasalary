@@ -17,11 +17,21 @@ export const useEdgeFunctionDelete = () => {
       // Call the edge function to delete cafe and related data
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
         'safe_delete_cafe_related_data',
-        { body: { cafeId } }
+        { 
+          body: { cafeId },
+          // Add timeout to prevent UI hanging indefinitely
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
       if (functionError) {
         console.log("DELETION: Edge function error:", functionError);
+        toast.error(`Deletion failed: ${functionError.message || "Edge function error"}`, {
+          id: `delete-${cafeId}`,
+          duration: 4000
+        });
         return false;
       }
       
@@ -47,6 +57,10 @@ export const useEdgeFunctionDelete = () => {
       }
     } catch (err: any) {
       console.error("DELETION: Error during edge function call:", err);
+      toast.error(`Deletion failed: ${err.message || "Unexpected error"}`, {
+        id: `delete-${cafeId}`,
+        duration: 4000
+      });
       return false;
     }
   };
