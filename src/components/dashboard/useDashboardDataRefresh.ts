@@ -1,5 +1,6 @@
 
 import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
 interface DashboardDataRefreshProps {
   refreshCafes: () => void;
@@ -10,8 +11,8 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
   
   // Add effect to listen for data updates
   useEffect(() => {
-    const handleDataUpdated = () => {
-      console.log("Dashboard detected data update event");
+    const handleDataUpdated = (event: any) => {
+      console.log("Dashboard detected data update event", event.detail);
       
       // Prevent multiple refreshes in quick succession
       if (refreshInProgressRef.current) {
