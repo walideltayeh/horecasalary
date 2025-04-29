@@ -9,6 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { broadcastDeletionEvent } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
 
+// Define proper types for the edge function response
+type EdgeFunctionResponse = {
+  data?: { success: boolean; message?: string; error?: string };
+  error?: { message: string };
+};
+
 export const useCafeState = () => {
   const { user } = useAuth();
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
@@ -37,7 +43,7 @@ export const useCafeState = () => {
       });
       
       // First try to delete using the edge function
-      const { data: functionData, error: functionError } = await Promise.race([
+      const result = await Promise.race([
         supabase.functions.invoke(
           'safe_delete_cafe_related_data',
           { 
@@ -48,17 +54,20 @@ export const useCafeState = () => {
           }
         ),
         // Add a timeout promise to prevent hanging
-        new Promise((_, reject) => 
+        new Promise<EdgeFunctionResponse>((_, reject) => 
           setTimeout(() => reject(new Error('Edge function timed out')), 10000)
         )
       ]).catch(error => {
         console.error("Edge function error or timeout:", error);
-        return { error: { message: error.message || "Edge function timeout" } };
+        return { error: { message: error.message || "Edge function timeout" } } as EdgeFunctionResponse;
       });
       
-      if (functionError) {
+      // Now properly cast the result to the expected type
+      const response = result as EdgeFunctionResponse;
+      
+      if (response.error) {
         console.log("DELETION: Edge function failed, falling back to client-side deletion");
-        toast.error(`Edge function error: ${functionError.message}. Trying fallback method...`, {
+        toast.error(`Edge function error: ${response.error.message}. Trying fallback method...`, {
           id: `delete-${cafeId}`
         });
         
@@ -71,8 +80,8 @@ export const useCafeState = () => {
         return result;
       }
       
-      if (functionData?.success) {
-        console.log("DELETION: Edge function success:", functionData);
+      if (response.data?.success) {
+        console.log("DELETION: Edge function success:", response.data);
         
         // Notify on success
         toast.success("Deletion completed successfully", {
@@ -88,8 +97,8 @@ export const useCafeState = () => {
         
         return true;
       } else {
-        console.error("DELETION: Edge function returned error:", functionData);
-        toast.error(`Deletion failed: ${functionData?.error || "Unknown error"}`, {
+        console.error("DELETION: Edge function returned error:", response.data);
+        toast.error(`Deletion failed: ${response.data?.error || "Unknown error"}`, {
           id: `delete-${cafeId}`,
           duration: 4000
         });
