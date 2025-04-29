@@ -38,7 +38,6 @@ const CafeTable: React.FC<CafeTableProps> = ({
             <TableHead>Name</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Location</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead>Owner</TableHead>
             {adminView && <TableHead>Created By</TableHead>}
             <TableHead>Date Added</TableHead>
@@ -50,7 +49,7 @@ const CafeTable: React.FC<CafeTableProps> = ({
             <CafeTableSkeleton adminView={adminView} />
           ) : filteredCafes.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={adminView ? 8 : 7} className="text-center py-4 text-muted-foreground">
+              <TableCell colSpan={adminView ? 7 : 6} className="text-center py-4 text-muted-foreground">
                 No cafes found. {!adminView && "Add some cafes to see them here."}
               </TableCell>
             </TableRow>

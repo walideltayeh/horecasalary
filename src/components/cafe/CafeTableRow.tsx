@@ -3,7 +3,6 @@ import React from 'react';
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Cafe, CafeSize } from '@/types';
 import CafeSizeBadge from './CafeSizeBadge';
-import CafeStatusBadge from './CafeStatusBadge';
 import CafeRowActions from './CafeRowActions';
 
 interface CafeTableRowProps {
@@ -34,9 +33,6 @@ const CafeTableRow: React.FC<CafeTableRowProps> = ({
         <CafeSizeBadge cafeSize={getCafeSize(cafe.numberOfHookahs)} />
       </TableCell>
       <TableCell>{cafe.governorate}, {cafe.city}</TableCell>
-      <TableCell>
-        <CafeStatusBadge status={cafe.status} />
-      </TableCell>
       <TableCell>{cafe.ownerName}</TableCell>
       {adminView && <TableCell>{cafe.createdBy}</TableCell>}
       <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>

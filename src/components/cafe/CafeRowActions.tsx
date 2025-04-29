@@ -2,7 +2,7 @@
 import React from 'react';
 import { Cafe } from '@/types';
 import { Button } from "@/components/ui/button";
-import { Check, Clock, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Check, Clock, Loader2, Pencil, Trash2, FileText } from 'lucide-react';
 import CafeStatusBadge from './CafeStatusBadge';
 
 interface CafeRowActionsProps {
@@ -29,7 +29,23 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
   const anyDeletionInProgress = deleteInProgress !== null;
   
   return (
-    <div className="flex justify-end gap-2">
+    <div className="flex justify-end gap-2 items-center">
+      {/* Status Box - Display the current status with an icon */}
+      <div className="mr-auto">
+        <div className="flex items-center gap-1">
+          {cafe.status === 'Contracted' && (
+            <FileText className="h-3 w-3 text-green-600" />
+          )}
+          {cafe.status === 'Visited' && (
+            <Check className="h-3 w-3 text-blue-600" />
+          )}
+          {cafe.status === 'Pending' && (
+            <Clock className="h-3 w-3 text-gray-600" />
+          )}
+          <CafeStatusBadge status={cafe.status} />
+        </div>
+      </div>
+
       {canEdit && (
         <Button 
           variant="outline" 
@@ -74,9 +90,6 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
         >
           <Check className="h-3 w-3" /> Mark Contracted
         </Button>
-      )}
-      {canEdit && cafe.status === 'Contracted' && (
-        <span className="text-green-500 text-xs">✓ Contracted</span>
       )}
       {canEdit && (
         <Button
