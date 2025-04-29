@@ -20,11 +20,8 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value }) => (
   </Card>
 );
 
-interface StatsOverviewProps {
-  cafes: Cafe[];
-}
-
-export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
+export const StatsOverview: React.FC = () => {
+  const { cafes } = useData();
   const [stats, setStats] = useState({
     total: 0,
     visited: 0,
@@ -42,6 +39,16 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
       contracted: contractedCafes
     });
   }, [cafes]);
+
+  // Listen for data updates
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      console.log('StatsOverview detected data update');
+    };
+    
+    window.addEventListener('horeca_data_updated', handleDataUpdate);
+    return () => window.removeEventListener('horeca_data_updated', handleDataUpdate);
+  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
