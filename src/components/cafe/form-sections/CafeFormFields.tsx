@@ -51,10 +51,15 @@ export const CafeFormFields: React.FC<CafeFormFieldsProps> = ({
         availableCities={[]}
       />
 
-      <CafeStatusSelect
-        selectedStatus={formState.status}
-        onSelectChange={handleSelectChange}
-      />
+      <div className="space-y-2">
+        <Label className="block">
+          Cafe Status <span className="text-red-500">*</span>
+        </Label>
+        <CafeStatusSelect
+          selectedStatus={formState.status}
+          onSelectChange={handleSelectChange}
+        />
+      </div>
 
       <div className="space-y-2">
         <Label className="block">
