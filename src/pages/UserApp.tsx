@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { Building, BarChart2, LogOut } from 'lucide-react';
@@ -16,14 +17,16 @@ const UserApp: React.FC = () => {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   
+  // Reduce refresh frequency - from 30 seconds to 2 minutes
   useEffect(() => {
-    console.log("UserApp mounted, refreshing data");
+    console.log("UserApp mounted, refreshing data once");
     refreshCafeData();
     
+    // Reduce refresh frequency to every 2 minutes instead of 30 seconds
     const intervalId = setInterval(() => {
-      console.log("UserApp periodic refresh");
+      console.log("UserApp periodic refresh (reduced frequency)");
       refreshCafeData();
-    }, 30000); // Refresh every 30 seconds
+    }, 120000); // Refresh every 2 minutes instead of every 30 seconds
     
     return () => clearInterval(intervalId);
   }, []);

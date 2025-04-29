@@ -41,14 +41,14 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     refreshCafeData();
   };
   
-  // Set up periodic refresh - using shorter intervals for admin view
+  // Reduce refresh frequency for better performance
   useEffect(() => {
     // Force immediate refresh on mount
     console.log("CafeList mounted, forcing data refresh");
     handleRefresh();
     
     // Set different refresh intervals for admin vs regular view
-    const refreshInterval = adminView ? 5000 : 30000; // 5 seconds for admin, 30 for regular users
+    const refreshInterval = adminView ? 20000 : 60000; // 20 seconds for admin (reduced from 5s), 60s for regular users (increased from 30s)
     
     const refreshTimer = setInterval(() => {
       console.log(`Automatic refresh timer triggered in CafeList (${adminView ? 'admin view' : 'user view'})`);
@@ -60,15 +60,17 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     };
   }, [refreshCafes, adminView]);
   
-  // Filter cafes based on filterByUser if provided
-  const filteredCafes = filterByUser 
-    ? cafes.filter(cafe => cafe.createdBy === filterByUser)
-    : cafes;
+  // Filter cafes based on filterByUser if provided, unless admin view
+  const filteredCafes = adminView 
+    ? cafes // Show all cafes in admin view regardless of filterByUser
+    : filterByUser 
+      ? cafes.filter(cafe => cafe.createdBy === filterByUser)
+      : cafes;
   
-  console.log(`CafeList render #${renderCount.current} with ${filteredCafes.length} cafes, loading: ${loading}`);
+  console.log(`CafeList render #${renderCount.current} with ${filteredCafes.length} cafes, loading: ${loading}, isAdmin: ${isAdmin}, adminView: ${adminView}`);
   console.log("Total cafes in context:", cafes.length);
   
-  if (filterByUser) {
+  if (filterByUser && !adminView) {
     console.log("Filtering by user:", filterByUser);
   }
     
@@ -79,7 +81,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           {loading ? (
             <p className="text-gray-500 text-sm">Loading cafe data...</p>
           ) : (
-            <p className="text-gray-500 text-sm">{filteredCafes.length} cafes found</p>
+            <p className="text-gray-500 text-sm">{filteredCafes.length} cafes found {adminView ? '(Admin view)' : ''}</p>
           )}
         </div>
         <div className="flex gap-2">
@@ -157,7 +159,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                   <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {!adminView && cafe.status === 'Pending' && (
+                      {/* Show status update buttons for both admin view and user's own cafes */}
+                      {(adminView || cafe.createdBy === user?.id) && cafe.status === 'Pending' && (
                         <>
                           <Button 
                             variant="outline" 
@@ -177,7 +180,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           </Button>
                         </>
                       )}
-                      {!adminView && cafe.status === 'Visited' && (
+                      {(adminView || cafe.createdBy === user?.id) && cafe.status === 'Visited' && (
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -187,10 +190,11 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           <Check className="h-3 w-3" /> Mark Contracted
                         </Button>
                       )}
-                      {!adminView && cafe.status === 'Contracted' && (
+                      {(adminView || cafe.createdBy === user?.id) && cafe.status === 'Contracted' && (
                         <span className="text-green-500 text-xs">✓ Contracted</span>
                       )}
-                      {isAdmin && (
+                      {/* Allow admin to delete any cafe */}
+                      {(isAdmin || cafe.createdBy === user?.id) && (
                         <Button
                           variant="outline"
                           size="sm"

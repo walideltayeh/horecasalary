@@ -8,13 +8,17 @@ import { useUsers } from './auth/useUsers';
  */
 export function useAuthState() {
   const { user, isLoading, session } = useAuthSession();
-  const isAdmin = !!user && user.role === 'admin';
   
-  // Pass isAdmin and loading status to useUsers
+  // Enhanced admin detection - explicitly check for admin role
+  const isAdmin = !!user && user.role === 'admin';
+  console.log("useAuthState - User:", user?.id, "isAdmin:", isAdmin);
+  
+  // Pass isAdmin and loading status to useUsers with enhanced debugging
   const { users, setUsers, isLoadingUsers, error, fetchUsers } = useUsers(isAdmin, !isLoading);
 
   // Forward the fetchUsers function call with its parameter
   const fetchUsersWithForce = (force: boolean = false) => {
+    console.log("Fetching users with force =", force, "isAdmin =", isAdmin);
     return fetchUsers(force);
   };
 
@@ -26,6 +30,8 @@ export function useAuthState() {
     isLoadingUsers, 
     error,
     session, 
-    fetchUsers: fetchUsersWithForce
+    fetchUsers: fetchUsersWithForce,
+    // Explicitly include isAdmin in the return value
+    isAdmin 
   };
 }

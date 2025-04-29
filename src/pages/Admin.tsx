@@ -25,8 +25,7 @@ const Admin: React.FC = () => {
   const { handleRefreshCafes, enableRealtimeForTable } = useAdminRefresh();
   const [refreshAttemptCount, setRefreshAttemptCount] = useState(0);
 
-  // Super aggressive data refresh when the component is mounted
-  // and when authenticated status changes
+  // Reduced aggressiveness in data refresh
   useEffect(() => {
     if (isAdmin && authenticated) {
       console.log("Admin page mounted or auth changed, performing INITIAL data refresh");
@@ -44,7 +43,7 @@ const Admin: React.FC = () => {
           console.log(`Forcing immediate data refresh (attempt ${refreshAttemptCount + 1})`);
           toast.info("Refreshing all data...");
           
-          // Force fetch users immediately
+          // Force fetch users immediately with higher priority
           await fetchUsers(true);
           
           // Force refresh cafes immediately
@@ -77,22 +76,23 @@ const Admin: React.FC = () => {
     }
   }, [isAdmin, authenticated, fetchUsers, refreshCafes, handleRefreshCafes, enableRealtimeForTable, refreshAttemptCount, users.length, cafes.length]);
 
-  // Additional periodic refreshes for cafes when on Admin page
+  // Reduced frequency of periodic refreshes for cafes
   useEffect(() => {
     if (isAdmin && authenticated) {
-      console.log("Setting up Admin page refresh intervals");
+      console.log("Setting up Admin page refresh intervals with reduced frequency");
       
-      // Then periodic refresh - more frequent for admin page
+      // Reduce frequency - from 5 seconds to 15 seconds
       const cafeRefreshInterval = setInterval(() => {
         console.log("Admin periodic cafe refresh");
         refreshCafes();
         refreshCafeData();
-      }, 5000); // Refresh every 5 seconds while on Admin page
+      }, 15000); // Reduced from 5s to 15s
       
+      // Reduce frequency - from 5 seconds to 15 seconds
       const userRefreshInterval = setInterval(() => {
         console.log("Admin periodic user refresh");
         fetchUsers(true);
-      }, 5000); // Refresh users every 5 seconds
+      }, 15000); // Reduced from 5s to 15s
       
       return () => {
         console.log("Clearing Admin page refresh intervals");

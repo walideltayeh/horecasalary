@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef } from 'react';
 import { Cafe } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,11 +13,11 @@ export const useCafeSubscription = (
   const lastFetchTimeRef = useRef<number>(0);
   const isAdminRef = useRef<boolean>(false);
 
-  // Check if user is admin - update whenever user changes
+  // Enhanced admin check with debugging
   useEffect(() => {
     if (user) {
       isAdminRef.current = user.role === 'admin';
-      console.log("useCafeSubscription: User role updated, isAdmin:", isAdminRef.current);
+      console.log("useCafeSubscription: User role updated, isAdmin:", isAdminRef.current, "userId:", user.id);
     } else {
       isAdminRef.current = false;
     }
@@ -43,7 +42,7 @@ export const useCafeSubscription = (
       setLoading(true);
       lastFetchTimeRef.current = now;
       
-      console.log("Fetching cafes from database... isAdmin:", isAdminRef.current);
+      console.log("Fetching cafes from database... isAdmin:", isAdminRef.current, "userID:", user?.id);
       const query = supabase
         .from('cafes')
         .select(`
@@ -58,9 +57,9 @@ export const useCafeSubscription = (
         `)
         .order('created_at', { ascending: false });
       
-      // IMPORTANT: Never filter by user, even for non-admins
-      // This ensures all users (including admins) can see all cafes
-      // RLS policies on the database side will handle permissions
+      // IMPORTANT: For admin users, we deliberately don't filter by user
+      // This ensures admins see ALL cafes
+      // Regular users will be filtered by RLS at the database level
         
       const { data, error } = await query;
         
@@ -70,7 +69,7 @@ export const useCafeSubscription = (
         throw error;
       }
       
-      console.log("Cafes fetched:", data?.length || 0, data);
+      console.log("Cafes fetched:", data?.length || 0);
       
       if (data) {
         const mappedCafes = data.map(cafe => ({
@@ -90,7 +89,7 @@ export const useCafeSubscription = (
           longitude: cafe.longitude
         }));
         
-        console.log("Mapped cafes:", mappedCafes.length);
+        console.log("Mapped cafes:", mappedCafes.length, "isAdmin:", isAdminRef.current);
         setCafes(mappedCafes);
       }
     } catch (err: any) {
@@ -100,7 +99,7 @@ export const useCafeSubscription = (
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [setCafes, setLoading]);
+  }, [setCafes, setLoading, user?.id]);
 
   // Set up all event listeners for data updates
   useEffect(() => {
@@ -245,14 +244,15 @@ export const useCafeSubscription = (
     };
   }, [fetchCafes]);
 
-  // Add additional interval for fallback polling - more aggressive for admins
+  // Reduce frequency of fallback polling
   useEffect(() => {
     // Set up a periodic refresh with different intervals based on admin status
+    // Less frequent for both admin and regular users
     const intervalId = setInterval(() => {
       console.log(`Periodic cafe refresh triggered (${isAdminRef.current ? 'admin' : 'user'} mode)`);
       // Force refresh for admins, normal refresh for users
       fetchCafes(isAdminRef.current);
-    }, isAdminRef.current ? 5000 : 10000); // 5 seconds for admin, 10 for regular users
+    }, isAdminRef.current ? 20000 : 30000); // 20 seconds for admin (reduced from 5s), 30s for regular users
     
     return () => clearInterval(intervalId);
   }, [fetchCafes]);
