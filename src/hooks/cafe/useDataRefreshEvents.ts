@@ -3,6 +3,7 @@ import { useEffect, useCallback } from 'react';
 
 /**
  * Hook for setting up event listeners for data refresh events
+ * Now centrally manages all refresh events
  */
 export const useDataRefreshEvents = (
   onRefresh: (force?: boolean) => Promise<void>

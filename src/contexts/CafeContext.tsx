@@ -32,7 +32,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Keep track of cafes that are being deleted
   const pendingDeletions = useRef<Set<string>>(new Set());
   
-  // Manual refresh function with improved reliability
+  // Manual refresh function with improved reliability but no automatic refreshes
   const refreshCafes = useCallback(async () => {
     console.log("Manual refresh triggered via context");
     const now = Date.now();
@@ -53,12 +53,6 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Notify other components via events for cross-component synchronization
       refreshCafeData();
       
-      // Additional delay to ensure data propagation
-      setTimeout(() => {
-        console.log("Follow-up verification refresh");
-        fetchCafes(true);
-      }, 1000);
-      
       toast.success("Cafe data refreshed successfully");
     } catch (error) {
       console.error("Error during manual refresh:", error);
@@ -66,18 +60,10 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [fetchCafes, lastRefreshTime]);
 
-  // Force an initial data fetch on mount
+  // Force an initial data fetch on mount but NO periodic refreshes
   useEffect(() => {
     console.log("CafeProvider mounted, forcing initial data fetch");
     fetchCafes(true);
-    
-    // Set up a periodic refresh every 2 minutes as a fallback
-    const intervalId = setInterval(() => {
-      console.log("Periodic cafe refresh triggered");
-      fetchCafes();
-    }, 120000); // Every 2 minutes
-    
-    return () => clearInterval(intervalId);
   }, [fetchCafes]);
   
   // Listen for deletion events (both from within the app and from other tabs)
@@ -116,7 +102,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [fetchCafes]);
 
-  // Custom cafe adding function with improved refresh handling
+  // Custom cafe adding function
   const handleAddCafe = async (cafe: Omit<Cafe, 'id' | 'createdAt'>) => {
     console.log("Adding cafe:", cafe);
     const cafeId = await addCafe(cafe);
@@ -124,47 +110,30 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Immediate fetch to update state
       await fetchCafes(true);
       
-      // Global notification to update other components
-      refreshCafeData();
+      // Dispatch event to notify all components
+      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
       
-      // Additional delayed refresh for consistency
-      setTimeout(() => {
-        fetchCafes(true);
-      }, 500);
-      
-      toast.success("Cafe added and data refreshed");
+      toast.success("Cafe added successfully");
     }
     return cafeId;
   };
 
-  // Custom updateCafeStatus with improved refresh handling
+  // Custom updateCafeStatus with event-based notification
   const handleUpdateCafeStatus = async (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => {
     const result = await updateCafeStatus(cafeId, status);
     if (result) {
-      // Multiple refresh patterns to ensure data consistency
-      refreshCafeData();
-      await fetchCafes(true);
-      
-      // Additional refresh after a short delay
-      setTimeout(() => {
-        fetchCafes(true);
-      }, 500);
+      // Dispatch event to trigger refresh across components
+      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
     }
     return result;
   };
   
-  // Custom updateCafe with improved refresh handling
+  // Custom updateCafe with event-based notification
   const handleUpdateCafe = async (cafeId: string, cafeData: Partial<Cafe>) => {
     const result = await updateCafe(cafeId, cafeData);
     if (result) {
-      // Multiple refresh patterns to ensure data consistency
-      refreshCafeData();
-      await fetchCafes(true);
-      
-      // Additional refresh after a short delay
-      setTimeout(() => {
-        fetchCafes(true);
-      }, 500);
+      // Dispatch event to trigger refresh across components
+      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
     }
     return result;
   };
@@ -192,14 +161,8 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result) {
         console.log(`Cafe ${cafeId} successfully deleted`);
         
-        // Perform multiple refreshes to ensure consistency
-        refreshCafeData();
-        await fetchCafes(true);
-        
-        // Follow-up refresh for redundancy
-        setTimeout(async () => {
-          await fetchCafes(true);
-        }, 1000);
+        // Dispatch event to trigger refresh across components
+        window.dispatchEvent(new CustomEvent('horeca_data_updated'));
       } else {
         // If deletion failed, restore the cafe in local state
         console.log(`Deletion failed for cafe ${cafeId}, restoring in local state`);

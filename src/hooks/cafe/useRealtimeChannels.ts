@@ -5,14 +5,16 @@ import { toast } from 'sonner';
 
 /**
  * Hook for managing real-time channel subscriptions to cafe-related tables
+ * Now uses a more selective update approach
  */
 export const useRealtimeChannels = (
   onDataChange: (force?: boolean) => Promise<void>
 ) => {
   const channelsRef = useRef<any[]>([]);
+  const lastUpdateTimeRef = useRef<number>(0);
 
   const setupChannels = useCallback(async () => {
-    console.log("Setting up cafe realtime channels...");
+    console.log("Setting up cafe realtime channels with selective updates...");
     
     // Clean up existing channels first
     if (channelsRef.current.length > 0) {
@@ -23,7 +25,20 @@ export const useRealtimeChannels = (
     }
 
     try {
-      console.log("Setting up realtime channels for cafe data");
+      // Create a debounced update handler to prevent excessive refreshes
+      const triggerUpdate = () => {
+        const now = Date.now();
+        // Only refresh if it's been at least 2 seconds since last update
+        if (now - lastUpdateTimeRef.current > 2000) {
+          console.log("Realtime update triggered - refreshing data");
+          lastUpdateTimeRef.current = now;
+          
+          // Dispatch event rather than performing direct refresh
+          window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+        } else {
+          console.log("Realtime update debounced");
+        }
+      };
       
       // Create a channel for all database changes
       const channel = supabase
@@ -36,7 +51,7 @@ export const useRealtimeChannels = (
           },
           (payload) => {
             console.log("Cafe change detected:", payload);
-            onDataChange(true);
+            triggerUpdate();
           }
         )
         .subscribe((status) => {
@@ -56,7 +71,7 @@ export const useRealtimeChannels = (
           },
           (payload) => {
             console.log("Cafe survey change detected:", payload);
-            onDataChange(true);
+            triggerUpdate();
           }
         )
         .subscribe((status) => {
@@ -76,7 +91,7 @@ export const useRealtimeChannels = (
           },
           (payload) => {
             console.log("Brand sales change detected:", payload);
-            onDataChange(true);
+            triggerUpdate();
           }
         )
         .subscribe((status) => {
@@ -92,7 +107,7 @@ export const useRealtimeChannels = (
         supabase.functions.invoke('enable-realtime', { body: { table_name: 'brand_sales' }})
       ]);
       
-      console.log("Realtime subscription activated for all cafe-related tables");
+      console.log("Realtime subscription activated with selective updates");
     } catch (err) {
       console.error("Error setting up realtime subscriptions:", err);
       toast.error('Failed to set up realtime updates');
@@ -106,7 +121,7 @@ export const useRealtimeChannels = (
       });
       channelsRef.current = [];
     };
-  }, [onDataChange]);
+  }, []);
 
   return { setupChannels };
 };

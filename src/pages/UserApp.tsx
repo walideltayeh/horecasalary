@@ -17,18 +17,21 @@ const UserApp: React.FC = () => {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   
-  // Further reduce refresh frequency - from 2 minutes to 5 minutes
+  // Initial data refresh only - removed periodic refreshing
   useEffect(() => {
     console.log("UserApp mounted, refreshing data once");
     refreshCafeData();
     
-    // Reduce refresh frequency to every 5 minutes
-    const intervalId = setInterval(() => {
-      console.log("UserApp periodic refresh (reduced frequency)");
-      refreshCafeData();
-    }, 300000); // Refresh every 5 minutes
+    // Set up event listener for data updates
+    const handleDataUpdated = () => {
+      console.log("UserApp received data update event");
+    };
     
-    return () => clearInterval(intervalId);
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    
+    return () => {
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+    };
   }, []);
   
   if (!user || user.role === 'admin') {

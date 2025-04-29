@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -70,15 +71,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           console.log(`UI: Cafe ${cafeName} deleted successfully`);
           toast.success(`Cafe ${cafeName} deleted successfully`);
           
-          // Set cafes locally first for immediate UI update
-          const filteredCafes = cafes.filter(cafe => cafe.id !== cafeId);
-          
-          // Force refresh after a small delay
-          setRefreshing(true);
-          setTimeout(async () => {
-            await refreshCafes();
-            setRefreshing(false);
-          }, 1000);
+          // Dispatch event to trigger refresh across components
+          window.dispatchEvent(new CustomEvent('horeca_data_updated'));
         } else {
           console.error(`UI: Failed to delete cafe ${cafeName}`);
           toast.error(`Failed to delete ${cafeName}`);
@@ -110,7 +104,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     
     try {
       await refreshCafes();
-      refreshCafeData();
       toast.success("Data refreshed successfully");
     } catch (error) {
       console.error("Error during refresh:", error);
@@ -120,45 +113,41 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     }
   };
   
-  // Set up listener for deletion events
+  // Set up listener for data update events
   useEffect(() => {
-    const handleCafeDeleted = (event: CustomEvent) => {
-      const { cafeId } = event.detail;
-      console.log(`Cafe deletion event received for ${cafeId}`);
-      refreshCafes();
+    const handleDataUpdated = () => {
+      console.log("CafeList detected data update event");
+      setRefreshing(true);
+      refreshCafes().finally(() => setRefreshing(false));
     };
     
-    window.addEventListener('cafe_deleted' as any, handleCafeDeleted as any);
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
     
     return () => {
-      window.removeEventListener('cafe_deleted' as any, handleCafeDeleted as any);
-    };
-  }, [refreshCafes]);
-  
-  useEffect(() => {
-    console.log("CafeList mounted, forcing data refresh");
-    handleRefresh();
-    
-    const refreshInterval = adminView ? 40000 : 120000;
-    const refreshTimer = setInterval(() => {
-      console.log(`Automatic refresh timer triggered in CafeList (${adminView ? 'admin view' : 'user view'})`);
-      refreshCafes();
-    }, refreshInterval);
-    
-    return () => {
-      clearInterval(refreshTimer);
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+      
       // Also clear any pending timeouts
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }
     };
-  }, [refreshCafes, adminView]);
+  }, [refreshCafes]);
   
-  const filteredCafes = adminView 
-    ? cafes
-    : filterByUser 
-      ? cafes.filter(cafe => cafe.createdBy === filterByUser)
-      : cafes;
+  // Log user and filter for debugging
+  console.log("CafeList render - Current user:", user);
+  console.log("CafeList render - isAdmin:", isAdmin);
+  console.log("CafeList render - filterByUser:", filterByUser);
+  
+  // Log cafes to help debug
+  console.log("CafeList render - all cafes:", cafes);
+  
+  let filteredCafes = cafes;
+  
+  if (!adminView && filterByUser) {
+    console.log(`Filtering cafes by user ID: ${filterByUser}`);
+    filteredCafes = cafes.filter(cafe => cafe.createdBy === filterByUser);
+    console.log("Filtered cafes:", filteredCafes);
+  }
   
   return (
     <div className="space-y-4">
@@ -220,7 +209,12 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                 </TableCell>
               </TableRow>
             ) : (
-              filteredCafes.map((cafe) => (
+              filteredCafes.map((cafe) => {
+                // Debug permissions for this specific cafe
+                const canEdit = isAdmin || (user && cafe.createdBy === user.id);
+                console.log(`Cafe ${cafe.id} permissions - isAdmin: ${isAdmin}, user.id: ${user?.id}, cafe.createdBy: ${cafe.createdBy}, canEdit: ${canEdit}`);
+                
+                return (
                 <TableRow key={cafe.id}>
                   <TableCell className="font-medium">{cafe.name}</TableCell>
                   <TableCell>
@@ -244,7 +238,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                   <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {(isAdmin || cafe.createdBy === user?.id) && (
+                      {canEdit && (
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -255,7 +249,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                         </Button>
                       )}
                     
-                      {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Pending' && (
+                      {canEdit && cafe.status === 'Pending' && (
                         <>
                           <Button 
                             variant="outline" 
@@ -275,7 +269,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           </Button>
                         </>
                       )}
-                      {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Visited' && (
+                      {canEdit && cafe.status === 'Visited' && (
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -285,10 +279,10 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                           <Check className="h-3 w-3" /> Mark Contracted
                         </Button>
                       )}
-                      {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Contracted' && (
+                      {canEdit && cafe.status === 'Contracted' && (
                         <span className="text-green-500 text-xs">✓ Contracted</span>
                       )}
-                      {(isAdmin || cafe.createdBy === user?.id) && (
+                      {canEdit && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -307,7 +301,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+              )})
             )}
           </TableBody>
         </Table>
@@ -324,7 +318,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           onSave={() => {
             setShowEditDialog(false);
             setCafeToEdit(null);
-            handleRefresh();
+            // Dispatch event to trigger refresh across components
+            window.dispatchEvent(new CustomEvent('horeca_data_updated'));
           }}
         />
       )}

@@ -114,17 +114,6 @@ export const enableRealtimeForTables = async () => {
           window.dispatchEvent(new CustomEvent('horeca_data_updated', {
             detail: { table, payload }
           }));
-          
-          // Run any registered callbacks
-          if (window.cafeDataRefreshCallbacks && Array.isArray(window.cafeDataRefreshCallbacks)) {
-            window.cafeDataRefreshCallbacks.forEach(callback => {
-              try {
-                callback();
-              } catch (e) {
-                console.error("Error in refresh callback:", e);
-              }
-            });
-          }
         }
       );
     });
@@ -178,26 +167,15 @@ export const registerRefreshCallback = (callback: () => void) => {
   return () => {}; // Empty unregister function
 };
 
-// Force a data refresh - enhanced version with more notification channels
+// Force a data refresh - event-based instead of direct function calls
 export const refreshCafeData = () => {
-  console.log('[refreshCafeData] Triggering manual refresh');
+  console.log('[refreshCafeData] Triggering data refresh through events');
   
   // Dispatch event for same-tab communication
-  window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
+  window.dispatchEvent(new CustomEvent('horeca_data_updated'));
   
   // Update localStorage for cross-tab communication
   localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
-  
-  // Run any registered callbacks
-  if (window.cafeDataRefreshCallbacks && Array.isArray(window.cafeDataRefreshCallbacks)) {
-    window.cafeDataRefreshCallbacks.forEach(callback => {
-      try {
-        callback();
-      } catch (e) {
-        console.error("Error in refresh callback:", e);
-      }
-    });
-  }
   
   // Additional global flag to ensure all components can detect the refresh
   try {

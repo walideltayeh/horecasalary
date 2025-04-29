@@ -1,21 +1,37 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
- * Hook that sets up periodic refresh intervals based on user role
+ * Hook that sets up refresh on data events rather than continuous polling
  */
 export const usePeriodicRefresh = (
   onRefresh: (force?: boolean) => Promise<void>,
   isAdmin: React.MutableRefObject<boolean>
 ) => {
-  // Set up a periodic refresh with different intervals based on admin status
+  const lastRefreshTimeRef = useRef<number>(0);
+
+  // Replace periodic refresh with event-based refresh
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      console.log(`Periodic cafe refresh triggered (${isAdmin.current ? 'admin' : 'user'} mode)`);
-      // Force refresh for admins, normal refresh for users
-      onRefresh(isAdmin.current);
-    }, isAdmin.current ? 20000 : 30000); // 20 seconds for admin (reduced from 5s), 30s for regular users
+    // Initial fetch once on mount
+    onRefresh(false);
     
-    return () => clearInterval(intervalId);
-  }, [onRefresh, isAdmin]);
+    // Set up event listeners for data changes
+    const handleDataUpdated = () => {
+      const now = Date.now();
+      // Debounce rapid updates (minimum 2 seconds between refreshes)
+      if (now - lastRefreshTimeRef.current > 2000) {
+        console.log("Event-based refresh triggered");
+        lastRefreshTimeRef.current = now;
+        onRefresh(false);
+      }
+    };
+    
+    // Listen for data update events
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    
+    // Clean up event listeners
+    return () => {
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+    };
+  }, [onRefresh]);
 };
