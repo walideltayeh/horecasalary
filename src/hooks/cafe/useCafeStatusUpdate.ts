@@ -35,7 +35,13 @@ export const useCafeStatusUpdate = (
         
         // Force a refresh to ensure synchronized state
         console.log("Forcing refresh after status update");
-        setTimeout(() => refreshCafes(), 300);
+        setTimeout(() => {
+          refreshCafes();
+          // Dispatch a second event to ensure all components refresh
+          window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+            detail: { action: 'refreshComplete', cafeId, newStatus }
+          }));
+        }, 300);
       }
     } catch (error) {
       if (mounted.current) {

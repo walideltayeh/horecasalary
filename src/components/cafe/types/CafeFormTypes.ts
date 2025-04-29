@@ -1,3 +1,4 @@
+
 export interface CafeFormState {
   name: string;
   ownerName: string;
@@ -19,3 +20,4 @@ export interface CafeFormProps {
   cafeSize?: string;
   availableCities?: string[];
 }
+

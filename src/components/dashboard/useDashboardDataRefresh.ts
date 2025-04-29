@@ -23,6 +23,15 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
       refreshInProgressRef.current = true;
       console.log("Dashboard initiating data refresh");
       
+      // Show toast for status updates
+      if (event.detail?.action === 'statusUpdate') {
+        const { cafeId, newStatus } = event.detail;
+        toast.info(`Cafe status updated to ${newStatus}`, {
+          id: `status-update-${cafeId}`,
+          duration: 2000
+        });
+      }
+      
       // Refresh data when update event is detected
       refreshCafes();
       

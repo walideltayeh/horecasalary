@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import CafeSurveyWrapper from './CafeSurveyWrapper';
 import { Label } from "@/components/ui/label";
+import CafeStatusSelect from './CafeStatusSelect';
 
 interface AddCafeFormProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -148,6 +149,12 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         availableCities={[]}
       />
 
+      {/* Add Status Selection Component */}
+      <CafeStatusSelect
+        selectedStatus={formState.status}
+        onSelectChange={handleSelectChange}
+      />
+
       <div className="space-y-2">
         <Label className="block">
           Cafe Photo <span className="text-red-500">*</span>
@@ -190,7 +197,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
               createdBy: user?.id || 'unknown',
               latitude: coordinates.latitude || 0,
               longitude: coordinates.longitude || 0,
-              status: 'Pending'
+              status: formState.status
             }}
             onComplete={handleSurveyComplete}
             onCancel={handleCancelSurvey}

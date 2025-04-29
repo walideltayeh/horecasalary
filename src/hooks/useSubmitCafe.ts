@@ -30,7 +30,8 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
         ...cafeData,
         ...coordinates,
         createdBy: user?.id || 'unknown',
-        status: 'Pending' as const
+        // Use the selected status from the form instead of hardcoding 'Pending'
+        status: cafeData.status
       };
       
       if (onPreSubmit) {
