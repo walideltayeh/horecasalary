@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building, CheckCircle, PieChart, BarChart2, DollarSign } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
@@ -14,10 +14,31 @@ const Dashboard: React.FC = () => {
     getContractCounts, 
     calculateSalary,
     kpiSettings,
+    refreshCafes
   } = useData();
   
   const { user, users, isAdmin } = useAuth();
   const [selectedTab, setSelectedTab] = useState<string>(user?.id || 'summary');
+  
+  // Add effect to listen for data updates
+  useEffect(() => {
+    const handleDataUpdated = () => {
+      console.log("Dashboard detected data update event");
+      // Refresh data when update event is detected
+      refreshCafes();
+    };
+    
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    return () => {
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+    };
+  }, [refreshCafes]);
+  
+  // Add effect to refresh data on component mount
+  useEffect(() => {
+    console.log("Dashboard mounted, refreshing data");
+    refreshCafes();
+  }, [refreshCafes]);
   
   const visitCounts = getVisitCounts();
   const contractCounts = getContractCounts();

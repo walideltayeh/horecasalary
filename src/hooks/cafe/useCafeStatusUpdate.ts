@@ -25,8 +25,12 @@ export const useCafeStatusUpdate = (
         toast.error(`Failed to update cafe status`);
       } else {
         toast.success(`Cafe status updated to ${newStatus}`);
+        
+        // Broadcast a data update event to trigger refresh across components
+        window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+        
         // Force a refresh to ensure synchronized state
-        refreshCafes();
+        setTimeout(() => refreshCafes(), 300);
       }
     } catch (error) {
       if (mounted.current) {

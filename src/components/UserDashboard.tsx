@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from '@/contexts/DataContext';
 import CafeList from './CafeList';
@@ -17,8 +17,26 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
     kpiSettings,
     calculateUserSalary,
     getUserVisitCounts,
-    getUserContractCounts
+    getUserContractCounts,
+    refreshCafes
   } = useData();
+  
+  // Add effect to refresh data when the component mounts
+  useEffect(() => {
+    console.log(`UserDashboard for ${userName} mounted, refreshing data`);
+    refreshCafes();
+    
+    // Also listen for data update events
+    const handleDataUpdated = () => {
+      console.log(`UserDashboard for ${userName} detected data update`);
+      refreshCafes();
+    };
+    
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    return () => {
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+    };
+  }, [refreshCafes, userName]);
   
   const salaryStats = calculateUserSalary(userId);
   const visitCounts = getUserVisitCounts(userId);
