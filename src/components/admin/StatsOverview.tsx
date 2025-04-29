@@ -1,3 +1,4 @@
+
 import React from 'react';
 import CafeStatsCard from './CafeStatsCard';
 import { Cafe } from '@/types';
@@ -21,3 +22,5 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     </div>
   );
 };
+
+export default StatsOverview;

@@ -7,7 +7,7 @@ import UserDashboard from '@/components/UserDashboard';
 import UserSalaryCards from '@/components/dashboard/UserSalaryCards';
 import UserKpiStats from '@/components/dashboard/UserKpiStats';
 import UserBonusSummary from '@/components/dashboard/UserBonusSummary';
-import AdminDashboardSummary from '@/components/dashboard/AdminDashboardSummary';
+import { AdminDashboardSummary } from '@/components/dashboard/AdminDashboardSummary'; // Fixed import (named import)
 import AdminUserTabs from '@/components/dashboard/AdminUserTabs';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { useDashboardDataRefresh } from '@/components/dashboard/useDashboardDataRefresh';

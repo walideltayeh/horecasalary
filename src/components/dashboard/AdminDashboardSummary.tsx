@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatsOverview } from '../admin/StatsOverview';
-import { AdminUserTabs } from '../dashboard/AdminUserTabs';
+import AdminUserTabs from '../dashboard/AdminUserTabs'; // Fixed import (default import)
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafes } from '@/contexts/CafeContext';
 import { useDashboardDataRefresh } from './useDashboardDataRefresh';
@@ -51,3 +51,5 @@ export const AdminDashboardSummary: React.FC = () => {
     </div>
   );
 };
+
+export default AdminDashboardSummary; // Added default export alongside named export
