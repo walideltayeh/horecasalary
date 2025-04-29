@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   const [cafeToEdit, setCafeToEdit] = useState<Cafe | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   
-  // Track render counts to help debug
   const renderCount = React.useRef(0);
   renderCount.current++;
   
@@ -34,13 +32,32 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
 
   const handleDelete = async (cafeId: string, cafeName: string) => {
     if (window.confirm(`Are you sure you want to delete ${cafeName}?`)) {
-      const success = await deleteCafe(cafeId);
-      if (success) {
-        toast.success(`Cafe ${cafeName} deleted successfully`);
-        refreshCafeData(); // Force refresh after delete
-        refreshCafes();
-      } else {
-        toast.error(`Failed to delete ${cafeName}`);
+      console.log(`Attempting to delete cafe: ${cafeName} (${cafeId})`);
+      
+      toast.loading(`Deleting cafe ${cafeName}...`);
+      
+      try {
+        const success = await deleteCafe(cafeId);
+        
+        if (success) {
+          toast.success(`Cafe ${cafeName} deleted successfully`);
+          
+          console.log("Triggering multi-stage refresh after deletion");
+          
+          refreshCafeData();
+          refreshCafes();
+          
+          setTimeout(() => {
+            console.log("Secondary refresh after deletion");
+            refreshCafes();
+          }, 1000);
+        } else {
+          toast.error(`Failed to delete ${cafeName}`);
+          console.error("Delete operation reported failure");
+        }
+      } catch (error) {
+        console.error("Exception during delete operation:", error);
+        toast.error(`Error deleting ${cafeName}: ${error}`);
       }
     }
   };
@@ -52,20 +69,15 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   
   const handleRefresh = async () => {
     toast.info("Refreshing cafe data from server...");
-    // Trigger both local and global refresh
     await refreshCafes();
     refreshCafeData();
   };
   
-  // Reduce refresh frequency for better performance
   useEffect(() => {
-    // Force immediate refresh on mount
     console.log("CafeList mounted, forcing data refresh");
     handleRefresh();
     
-    // Set different refresh intervals for admin vs regular view
-    const refreshInterval = adminView ? 40000 : 120000; // 40 seconds for admin, 2 minutes for regular users
-    
+    const refreshInterval = adminView ? 40000 : 120000;
     const refreshTimer = setInterval(() => {
       console.log(`Automatic refresh timer triggered in CafeList (${adminView ? 'admin view' : 'user view'})`);
       refreshCafes();
@@ -76,9 +88,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     };
   }, [refreshCafes, adminView]);
   
-  // Filter cafes based on adminView - if admin, show all cafes; if user, filter by user ID
   const filteredCafes = adminView 
-    ? cafes // Show all cafes in admin view
+    ? cafes
     : filterByUser 
       ? cafes.filter(cafe => cafe.createdBy === filterByUser)
       : cafes;
@@ -131,7 +142,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           </TableHeader>
           <TableBody>
             {loading ? (
-              // Loading skeleton
               Array(3).fill(0).map((_, i) => (
                 <TableRow key={`skeleton-${i}`}>
                   <TableCell><Skeleton className="h-4 w-full" /></TableCell>
@@ -175,7 +185,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                   <TableCell>{new Date(cafe.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {/* Edit button for both admin and cafe creator */}
                       {(isAdmin || cafe.createdBy === user?.id) && (
                         <Button 
                           variant="outline" 
@@ -187,7 +196,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                         </Button>
                       )}
                     
-                      {/* Status update buttons */}
                       {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Pending' && (
                         <>
                           <Button 
@@ -221,7 +229,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
                       {(isAdmin || cafe.createdBy === user?.id) && cafe.status === 'Contracted' && (
                         <span className="text-green-500 text-xs">✓ Contracted</span>
                       )}
-                      {/* Delete button - only for admin or cafe creator */}
                       {(isAdmin || cafe.createdBy === user?.id) && (
                         <Button
                           variant="outline"
@@ -241,7 +248,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
         </Table>
       </div>
       
-      {/* Edit dialog */}
       {cafeToEdit && (
         <CafeEditDialog 
           cafe={cafeToEdit} 

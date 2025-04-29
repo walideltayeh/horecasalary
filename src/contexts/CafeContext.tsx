@@ -30,7 +30,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Set up real-time subscriptions and fetch initial data
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
   
-  // Manual refresh function
+  // Manual refresh function with improved reliability
   const refreshCafes = useCallback(async () => {
     console.log("Manual refresh triggered via context");
     const now = Date.now();
@@ -45,8 +45,18 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.info("Refreshing cafe data...");
     
     try {
+      // Force refresh with strong cache invalidation
       await fetchCafes(true);
-      refreshCafeData(); // Notify other components via events
+      
+      // Notify other components via events for cross-component synchronization
+      refreshCafeData();
+      
+      // Additional delay to ensure data propagation
+      setTimeout(() => {
+        console.log("Follow-up verification refresh");
+        fetchCafes(true);
+      }, 1000);
+      
       toast.success("Cafe data refreshed successfully");
     } catch (error) {
       console.error("Error during manual refresh:", error);
@@ -68,48 +78,80 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(intervalId);
   }, [fetchCafes]);
 
-  // Custom cafe adding function that also triggers cross-tab notification
+  // Custom cafe adding function with improved refresh handling
   const handleAddCafe = async (cafe: Omit<Cafe, 'id' | 'createdAt'>) => {
     console.log("Adding cafe:", cafe);
     const cafeId = await addCafe(cafe);
     if (cafeId) {
-      // Trigger an immediate fetch in this tab
-      refreshCafeData();
+      // Immediate fetch to update state
       await fetchCafes(true);
+      
+      // Global notification to update other components
+      refreshCafeData();
+      
+      // Additional delayed refresh for consistency
+      setTimeout(() => {
+        fetchCafes(true);
+      }, 500);
+      
       toast.success("Cafe added and data refreshed");
     }
     return cafeId;
   };
 
-  // Custom updateCafeStatus that also triggers cross-tab notification
+  // Custom updateCafeStatus with improved refresh handling
   const handleUpdateCafeStatus = async (cafeId: string, status: 'Pending' | 'Visited' | 'Contracted') => {
     const result = await updateCafeStatus(cafeId, status);
     if (result) {
-      // Trigger an immediate fetch in this tab
+      // Multiple refresh patterns to ensure data consistency
       refreshCafeData();
       await fetchCafes(true);
+      
+      // Additional refresh after a short delay
+      setTimeout(() => {
+        fetchCafes(true);
+      }, 500);
     }
     return result;
   };
   
-  // Custom updateCafe that also triggers cross-tab notification
+  // Custom updateCafe with improved refresh handling
   const handleUpdateCafe = async (cafeId: string, cafeData: Partial<Cafe>) => {
     const result = await updateCafe(cafeId, cafeData);
     if (result) {
-      // Trigger an immediate fetch in this tab
+      // Multiple refresh patterns to ensure data consistency
       refreshCafeData();
       await fetchCafes(true);
+      
+      // Additional refresh after a short delay
+      setTimeout(() => {
+        fetchCafes(true);
+      }, 500);
     }
     return result;
   };
   
-  // Custom deleteCafe that also triggers cross-tab notification
+  // Custom deleteCafe with improved refresh handling
   const handleDeleteCafe = async (cafeId: string) => {
     const result = await deleteCafe(cafeId);
     if (result) {
-      // Trigger an immediate fetch in this tab
+      // Enhanced refresh pattern with multiple approaches
+      console.log("Cafe deleted, performing thorough refresh");
+      
+      // Global notification
       refreshCafeData();
+      
+      // Immediate fetch
       await fetchCafes(true);
+      
+      // Follow-up fetch to ensure consistency
+      setTimeout(async () => {
+        console.log("Follow-up refresh after deletion");
+        await fetchCafes(true);
+        
+        // Update local state directly as backup strategy
+        setCafes(prevCafes => prevCafes.filter(cafe => cafe.id !== cafeId));
+      }, 1000);
     }
     return result;
   };
@@ -136,6 +178,24 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     return () => {
       window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, [fetchCafes]);
+
+  // Set up listener for deletion events
+  useEffect(() => {
+    const handleDataUpdate = (event: CustomEvent) => {
+      console.log("Received data update event:", event.detail);
+      // If it's a deletion event, force refresh
+      if (event.detail?.payload?.eventType === 'DELETE') {
+        console.log("DELETE event detected, forcing refresh");
+        fetchCafes(true);
+      }
+    };
+    
+    window.addEventListener('horeca_data_updated' as any, handleDataUpdate as any);
+    
+    return () => {
+      window.removeEventListener('horeca_data_updated' as any, handleDataUpdate as any);
     };
   }, [fetchCafes]);
 

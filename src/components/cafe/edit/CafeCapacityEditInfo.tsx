@@ -26,7 +26,12 @@ export const CafeCapacityEditInfo: React.FC<CafeCapacityEditInfoProps> = ({
           value={formData.numberOfHookahs}
           onChange={handleInputChange}
           min={0}
+          aria-label="Number of Hookahs"
+          className="focus:border-blue-500"
         />
+        <div className="text-xs text-gray-500">
+          Used for cafe size categorization
+        </div>
       </div>
       
       <div className="grid gap-2">
@@ -38,6 +43,8 @@ export const CafeCapacityEditInfo: React.FC<CafeCapacityEditInfoProps> = ({
           value={formData.numberOfTables}
           onChange={handleInputChange}
           min={0}
+          aria-label="Number of Tables"
+          className="focus:border-blue-500"
         />
       </div>
     </div>
