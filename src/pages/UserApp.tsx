@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from './Dashboard';
 import AddCafeForm from '@/components/cafe/AddCafeForm';
 import CafeList from '@/components/CafeList';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { refreshCafeData } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,20 +16,38 @@ const UserApp: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState('dashboard');
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
+  const mounted = useRef(true);
   
-  // Initial data refresh only - removed periodic refreshing
+  // Cleanup on unmount
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  
+  // Initial data refresh only once when mounted
   useEffect(() => {
     console.log("UserApp mounted, refreshing data once");
-    refreshCafeData();
+    
+    // Small delay to let other components initialize first
+    const timeoutId = setTimeout(() => {
+      if (mounted.current) {
+        refreshCafeData();
+        console.log("Initial cafe data refresh triggered");
+      }
+    }, 500);
     
     // Set up event listener for data updates
     const handleDataUpdated = () => {
       console.log("UserApp received data update event");
+      // No need to do anything here, as CafeList handles its own updates
     };
     
     window.addEventListener('horeca_data_updated', handleDataUpdated);
     
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
     };
   }, []);

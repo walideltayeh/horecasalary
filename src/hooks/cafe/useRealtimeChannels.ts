@@ -5,13 +5,15 @@ import { toast } from 'sonner';
 
 /**
  * Hook for managing real-time channel subscriptions to cafe-related tables
- * Now uses a more selective update approach
+ * Uses a more efficient approach with selective updates instead of full refreshes
  */
 export const useRealtimeChannels = (
   onDataChange: (force?: boolean) => Promise<void>
 ) => {
   const channelsRef = useRef<any[]>([]);
   const lastUpdateTimeRef = useRef<number>(0);
+  const pendingUpdatesRef = useRef<Set<string>>(new Set());
+  const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setupChannels = useCallback(async () => {
     console.log("Setting up cafe realtime channels with selective updates...");
@@ -25,22 +27,43 @@ export const useRealtimeChannels = (
     }
 
     try {
-      // Create a debounced update handler to prevent excessive refreshes
-      const triggerUpdate = () => {
+      // Function to process updates in batches for better performance
+      const processUpdates = () => {
+        if (pendingUpdatesRef.current.size === 0) return;
+        
+        console.log(`Processing ${pendingUpdatesRef.current.size} pending updates`);
+        
+        // Reset pending updates
+        pendingUpdatesRef.current.clear();
+        
+        // Trigger a single refresh
         const now = Date.now();
-        // Only refresh if it's been at least 2 seconds since last update
-        if (now - lastUpdateTimeRef.current > 2000) {
-          console.log("Realtime update triggered - refreshing data");
+        if (now - lastUpdateTimeRef.current > 1000) {  // Only if last refresh was >1s ago
           lastUpdateTimeRef.current = now;
           
           // Dispatch event rather than performing direct refresh
           window.dispatchEvent(new CustomEvent('horeca_data_updated'));
-        } else {
-          console.log("Realtime update debounced");
         }
       };
       
-      // Create a channel for all database changes
+      // Create a smarter update handler that collects changes and processes them in batches
+      const scheduleUpdate = (type: string, tableName: string) => {
+        // Add to pending updates
+        pendingUpdatesRef.current.add(`${type}:${tableName}`);
+        
+        // Clear previous timeout if exists
+        if (updateTimeoutRef.current) {
+          clearTimeout(updateTimeoutRef.current);
+        }
+        
+        // Set a new timeout to process all pending updates
+        updateTimeoutRef.current = setTimeout(() => {
+          processUpdates();
+          updateTimeoutRef.current = null;
+        }, 500); // 500ms debounce
+      };
+      
+      // Create a single channel for all database changes
       const channel = supabase
         .channel('db-changes')
         .on('postgres_changes', 
@@ -50,19 +73,10 @@ export const useRealtimeChannels = (
             table: 'cafes'
           },
           (payload) => {
-            console.log("Cafe change detected:", payload);
-            triggerUpdate();
+            console.log("Cafe change detected:", payload.eventType);
+            scheduleUpdate(payload.eventType, 'cafes');
           }
         )
-        .subscribe((status) => {
-          console.log(`Cafe channel subscribed with status: ${status}`);
-        });
-        
-      channelsRef.current.push(channel);
-      
-      // Also listen for changes in the cafe_surveys table
-      const surveysChannel = supabase
-        .channel('survey-changes')
         .on('postgres_changes',
           {
             event: '*',
@@ -70,19 +84,10 @@ export const useRealtimeChannels = (
             table: 'cafe_surveys'
           },
           (payload) => {
-            console.log("Cafe survey change detected:", payload);
-            triggerUpdate();
+            console.log("Cafe survey change detected:", payload.eventType);
+            scheduleUpdate(payload.eventType, 'cafe_surveys');
           }
         )
-        .subscribe((status) => {
-          console.log(`Survey channel subscribed with status: ${status}`);
-        });
-        
-      channelsRef.current.push(surveysChannel);
-      
-      // Listen for changes in the brand_sales table
-      const salesChannel = supabase
-        .channel('sales-changes')
         .on('postgres_changes',
           {
             event: '*',
@@ -90,24 +95,28 @@ export const useRealtimeChannels = (
             table: 'brand_sales'
           },
           (payload) => {
-            console.log("Brand sales change detected:", payload);
-            triggerUpdate();
+            console.log("Brand sales change detected:", payload.eventType);
+            scheduleUpdate(payload.eventType, 'brand_sales');
           }
         )
         .subscribe((status) => {
-          console.log(`Brand sales channel subscribed with status: ${status}`);
+          console.log(`Realtime channels subscribed with status: ${status}`);
         });
         
-      channelsRef.current.push(salesChannel);
+      channelsRef.current.push(channel);
       
       // Enable realtime for all relevant tables using the enable-realtime function
-      await Promise.all([
-        supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafes' }}),
-        supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafe_surveys' }}),
-        supabase.functions.invoke('enable-realtime', { body: { table_name: 'brand_sales' }})
-      ]);
-      
-      console.log("Realtime subscription activated with selective updates");
+      try {
+        await Promise.all([
+          supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafes' }}),
+          supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafe_surveys' }}),
+          supabase.functions.invoke('enable-realtime', { body: { table_name: 'brand_sales' }})
+        ]);
+        console.log("Realtime subscription activated");
+      } catch (err) {
+        console.warn("Non-critical error enabling realtime:", err);
+        // Continue anyway as the function might not exist or fail for other reasons
+      }
     } catch (err) {
       console.error("Error setting up realtime subscriptions:", err);
       toast.error('Failed to set up realtime updates');
@@ -116,6 +125,13 @@ export const useRealtimeChannels = (
     // Return a cleanup function
     return () => {
       console.log("Cleaning up realtime subscriptions");
+      // Clear any pending timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+      
+      // Remove all channels
       channelsRef.current.forEach(channel => {
         supabase.removeChannel(channel);
       });

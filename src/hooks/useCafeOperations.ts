@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Cafe } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,186 +108,132 @@ export const useCafeOperations = () => {
     }
   };
 
-  // Completely rewritten deletion function with more robust error handling and cleanup
+  // Improved deletion function with optimistic updates, non-blocking operations
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     try {
       console.log(`DELETION: Starting deletion process for cafe ${cafeId}`);
       
-      // Step 1: Verify cafe exists
-      const { data: existingCafe, error: fetchError } = await supabase
-        .from('cafes')
-        .select('name')
-        .eq('id', cafeId)
-        .maybeSingle();
+      // Use a cancelable promise pattern to improve control over long-running operations
+      let isCanceled = false;
+      let deletePromise: Promise<boolean>;
       
-      if (fetchError) {
-        console.error("DELETION: Error fetching cafe:", fetchError);
-        toast.error(`Error checking cafe: ${fetchError.message}`);
-        return false;
-      }
+      const timeoutId = setTimeout(() => {
+        console.log("DELETION: Operation taking longer than expected, but still running");
+        toast.info("Deletion is taking longer than expected, please wait...");
+      }, 3000);
       
-      if (!existingCafe) {
-        console.warn("DELETION: Cafe doesn't exist - may have been already deleted");
-        toast.error("Cafe not found - it may have been already deleted");
-        return true; // Return true since it's already gone
-      }
-      
-      // Step 2: Delete related brand_sales records first
-      const { data: relatedSurveys } = await supabase
-        .from('cafe_surveys')
-        .select('id')
-        .eq('cafe_id', cafeId);
-      
-      if (relatedSurveys && relatedSurveys.length > 0) {
-        console.log(`DELETION: Found ${relatedSurveys.length} related surveys to delete first`);
-        
-        // Get survey IDs
-        const surveyIds = relatedSurveys.map(survey => survey.id);
-        
-        // Delete brand_sales records linked to these surveys
-        const { error: brandSalesError } = await supabase
-          .from('brand_sales')
-          .delete()
-          .in('survey_id', surveyIds);
-        
-        if (brandSalesError) {
-          console.error("DELETION: Failed to delete related brand_sales:", brandSalesError);
-          // Continue anyway, try to delete surveys and cafe
-        } else {
-          console.log("DELETION: Successfully deleted related brand_sales");
-        }
-        
-        // Delete surveys
-        const { error: surveysError } = await supabase
-          .from('cafe_surveys')
-          .delete()
-          .eq('cafe_id', cafeId);
-          
-        if (surveysError) {
-          console.error("DELETION: Failed to delete related surveys:", surveysError);
-          // Continue anyway, try to delete the cafe
-        } else {
-          console.log("DELETION: Successfully deleted related surveys");
-        }
-      }
-      
-      // Step 3: Delete the cafe with multiple retries
-      let success = false;
-      let attempts = 0;
-      const maxAttempts = 5; // Increased from 3 to 5 attempts
-      
-      while (!success && attempts < maxAttempts) {
-        attempts++;
-        console.log(`DELETION: Attempt ${attempts}/${maxAttempts} to delete cafe ${cafeId}`);
-        
+      // Wrap the actual deletion in a non-blocking promise
+      deletePromise = (async () => {
         try {
-          // Small delay between retries, increasing with each attempt
-          if (attempts > 1) {
-            const delayMs = attempts * 300;
-            console.log(`DELETION: Waiting ${delayMs}ms before retry ${attempts}`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
+          // Step 1: Verify cafe exists
+          const { data: existingCafe, error: fetchError } = await supabase
+            .from('cafes')
+            .select('name')
+            .eq('id', cafeId)
+            .maybeSingle();
+          
+          if (fetchError) {
+            console.error("DELETION: Error fetching cafe:", fetchError);
+            toast.error(`Error checking cafe: ${fetchError.message}`);
+            return false;
           }
           
-          const { data, error } = await supabase
+          if (!existingCafe) {
+            console.warn("DELETION: Cafe doesn't exist - may have been already deleted");
+            toast.error("Cafe not found - it may have been already deleted");
+            return true; // Return true since it's already gone
+          }
+          
+          // Step 2: Delete related records first - using a more efficient approach
+          // Delete related surveys and brand_sales in a single operation
+          const { error: cleanupError } = await supabase.rpc('safe_delete_cafe_related_data', {
+            cafe_id_param: cafeId
+          });
+          
+          if (cleanupError) {
+            console.log("DELETION: Using alternative deletion method due to:", cleanupError);
+            
+            // Step 2b: Fallback - delete related surveys directly
+            const { data: relatedSurveys } = await supabase
+              .from('cafe_surveys')
+              .select('id')
+              .eq('cafe_id', cafeId);
+            
+            if (relatedSurveys && relatedSurveys.length > 0) {
+              console.log(`DELETION: Found ${relatedSurveys.length} related surveys to delete first`);
+              
+              // Get survey IDs
+              const surveyIds = relatedSurveys.map(survey => survey.id);
+              
+              // Delete brand_sales records linked to these surveys
+              await supabase
+                .from('brand_sales')
+                .delete()
+                .in('survey_id', surveyIds);
+              
+              // Delete surveys
+              await supabase
+                .from('cafe_surveys')
+                .delete()
+                .eq('cafe_id', cafeId);
+            }
+          }
+          
+          // Check if the operation was canceled
+          if (isCanceled) {
+            console.log("DELETION: Operation was canceled");
+            return false;
+          }
+          
+          // Step 3: Delete the cafe itself
+          const { error: deleteError } = await supabase
             .from('cafes')
             .delete()
-            .eq('id', cafeId)
-            .select();
+            .eq('id', cafeId);
           
-          if (error) {
-            console.error(`DELETION: Error on attempt ${attempts}:`, error);
-            
-            // Special handling for foreign key violations
-            if (error.code === "23503") {
-              console.log("DELETION: Foreign key violation - attempting to clean up related records");
-              
-              // Instead of using RPC, we'll handle the cleanup directly
-              // First, try to find surveys and delete those
-              const { data: surveys } = await supabase
-                .from('cafe_surveys')
-                .select('id')
-                .eq('cafe_id', cafeId);
-                
-              if (surveys && surveys.length > 0) {
-                console.log(`Found ${surveys.length} more surveys to delete`);
-                
-                // Delete related brand sales for these surveys
-                for (const survey of surveys) {
-                  await supabase
-                    .from('brand_sales')
-                    .delete()
-                    .eq('survey_id', survey.id);
-                }
-                
-                // Delete the surveys
-                await supabase
-                  .from('cafe_surveys')
-                  .delete()
-                  .eq('cafe_id', cafeId);
-              }
-              
-              // Try again using execute_sql for direct SQL execution as a last resort
-              if (attempts === maxAttempts - 1) {
-                console.log("DELETION: Using SQL execution as last resort");
-                try {
-                  const sql = `
-                    DELETE FROM brand_sales WHERE survey_id IN 
-                    (SELECT id FROM cafe_surveys WHERE cafe_id = '${cafeId}');
-                    
-                    DELETE FROM cafe_surveys WHERE cafe_id = '${cafeId}';
-                    
-                    DELETE FROM cafes WHERE id = '${cafeId}';
-                  `;
-                  
-                  await supabase.rpc('execute_sql', { sql });
-                } catch (sqlError) {
-                  console.error("Error during SQL execution:", sqlError);
-                }
-              }
-            }
-            
-            // If this was the last attempt, show error to user
-            if (attempts === maxAttempts) {
-              toast.error(`Failed to delete cafe: ${error.message}`);
-              return false;
-            }
-            
-            // Continue to next attempt
-            continue;
+          if (deleteError) {
+            console.error("DELETION: Failed to delete cafe:", deleteError);
+            toast.error(`Failed to delete cafe: ${deleteError.message}`);
+            return false;
           }
           
-          // If we get here, deletion was successful
           console.log("DELETION: Cafe successfully deleted");
-          success = true;
           
-          // Dispatch a custom event to notify all components
-          window.dispatchEvent(new CustomEvent('cafe_deleted', {
-            detail: { cafeId, cafeName: existingCafe.name }
-          }));
-          
-          // Also update localStorage for cross-tab communication
+          // Dispatch a custom event to notify all components immediately
           try {
+            window.dispatchEvent(new CustomEvent('cafe_deleted', {
+              detail: { cafeId, cafeName: existingCafe.name }
+            }));
+            
+            // Also update localStorage for cross-tab communication
             localStorage.setItem('last_deleted_cafe', cafeId);
             localStorage.setItem('last_deletion_time', String(Date.now()));
           } catch (e) {
-            console.warn("DELETION: Could not update localStorage");
+            console.warn("DELETION: Could not dispatch events:", e);
           }
           
           return true;
         } catch (err: any) {
-          console.error(`DELETION: Unexpected error on attempt ${attempts}:`, err);
-          
-          // If this was the last attempt, show error to user
-          if (attempts === maxAttempts) {
-            toast.error(`Unexpected error: ${err.message || 'Unknown error'}`);
-            return false;
-          }
+          console.error('DELETION: Unexpected error in deletion process:', err);
+          toast.error(`Unexpected error: ${err.message || 'Unknown error'}`);
+          return false;
         }
-      }
+      })();
       
-      // If we got here, all attempts failed
-      toast.error("Failed to delete cafe after multiple attempts");
-      return false;
+      // Create a timeout promise that resolves after a maximum time
+      const timeoutPromise = new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          isCanceled = true;
+          resolve(false);
+          toast.error("Deletion operation timed out. The app may be in an inconsistent state.");
+          console.error("DELETION: Operation timed out completely");
+        }, 15000); // 15 seconds max timeout
+      });
+      
+      // Race the deletion against a timeout
+      const result = await Promise.race([deletePromise, timeoutPromise]);
+      clearTimeout(timeoutId);
+      return result;
     } catch (err: any) {
       console.error('DELETION: Critical error in deletion process:', err);
       toast.error('An unexpected error occurred while deleting the cafe');
