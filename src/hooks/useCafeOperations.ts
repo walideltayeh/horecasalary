@@ -108,35 +108,77 @@ export const useCafeOperations = () => {
     }
   };
 
+  // Completely overhauled deletion function with better error handling 
+  // and multiple fallback approaches
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     try {
-      console.log(`Attempting to delete cafe with ID: ${cafeId}`);
+      console.log(`DELETION: Starting process for cafe ID: ${cafeId}`);
       
-      // Enhanced deletion logic with better error handling
-      const { data, error } = await supabase
+      // Step 1: Verify cafe exists before attempting deletion
+      const { data: existingCafe, error: fetchError } = await supabase
+        .from('cafes')
+        .select('name')
+        .eq('id', cafeId)
+        .single();
+      
+      if (fetchError || !existingCafe) {
+        console.error("DELETION ERROR: Cafe doesn't exist or permission denied", fetchError);
+        toast.error("Cafe not found or you don't have permission to delete it");
+        return false;
+      }
+      
+      console.log(`DELETION: Confirmed cafe exists: ${existingCafe.name}`);
+      
+      // Step 2: Attempt deletion with explicit return of deleted data
+      const { data: deletedData, error: deleteError } = await supabase
         .from('cafes')
         .delete()
         .eq('id', cafeId)
-        .select();
-
-      if (error) {
-        console.error("Error deleting cafe:", error);
-        toast.error(`Failed to delete cafe: ${error.message}`);
+        .select()
+        .maybeSingle();
+      
+      // Handle deletion error
+      if (deleteError) {
+        console.error("DELETION ERROR:", deleteError);
+        
+        // Check if it's a permission error
+        if (deleteError.code === '42501' || deleteError.message.includes('permission denied')) {
+          toast.error("Permission denied. You cannot delete this cafe.");
+        } else {
+          toast.error(`Failed to delete cafe: ${deleteError.message}`);
+        }
         return false;
       }
       
-      if (!data || data.length === 0) {
-        console.warn("No cafe was deleted, possibly due to RLS policy or cafe not found");
-        toast.error("Could not delete cafe - you may not have permission or it doesn't exist");
-        return false;
+      // If no data returned but also no error, it might be an RLS policy blocking
+      if (!deletedData) {
+        console.warn("DELETION WARNING: No data returned from deletion operation");
+        
+        // Verify if the cafe still exists (if it doesn't, deletion was successful)
+        const { data: checkData } = await supabase
+          .from('cafes')
+          .select('id')
+          .eq('id', cafeId)
+          .single();
+        
+        if (!checkData) {
+          console.log("DELETION: Cafe confirmed deleted (not found after deletion)");
+          toast.success("Cafe deleted successfully");
+          return true;
+        } else {
+          console.error("DELETION FAILED: Cafe still exists after deletion attempt");
+          toast.error("Failed to delete cafe - you may not have permission");
+          return false;
+        }
       }
       
-      console.log("Cafe deleted successfully:", data);
+      // Successful deletion with returned data
+      console.log("DELETION SUCCESS: Cafe deleted successfully", deletedData);
       toast.success("Cafe deleted successfully");
       return true;
     } catch (err: any) {
-      console.error('Error deleting cafe:', err);
-      toast.error(err.message || 'Failed to delete cafe');
+      console.error('DELETION ERROR: Unexpected exception:', err);
+      toast.error('An unexpected error occurred while deleting the cafe');
       return false;
     }
   };
