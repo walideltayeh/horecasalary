@@ -112,7 +112,7 @@ export const useCafeOperations = () => {
     try {
       console.log(`Deleting cafe ${cafeId}`);
       
-      // Enhanced error handling and improved deletion logic
+      // Simplified deletion logic with improved error handling
       const { error } = await supabase
         .from('cafes')
         .delete()
