@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Cafe } from '@/types';
 import { useCafeFetch } from './cafe/useCafeFetch';
 import { useRealtimeChannels } from './cafe/useRealtimeChannels';
@@ -26,6 +26,9 @@ export const useCafeSubscription = (
   // Set up periodic refresh based on user role
   usePeriodicRefresh(fetchCafes, isAdminRef);
 
+  // Store cleanup function reference
+  const cleanupChannelsRef = useRef<(() => void) | null>(null);
+
   // Initialize subscription and fetch initial data
   useEffect(() => {
     console.log("Setting up cafe subscriptions...");
@@ -33,16 +36,20 @@ export const useCafeSubscription = (
     // Set up event listeners
     const cleanupEvents = setupEventListeners();
     
-    // Set up realtime channels
-    const cleanupChannels = setupChannels();
+    // Set up realtime channels (this returns a Promise that resolves to a cleanup function)
+    setupChannels().then(cleanupFunction => {
+      // Store the cleanup function for later use
+      cleanupChannelsRef.current = cleanupFunction;
+    });
     
     // Always fetch cafes on mount, user change, or after subscription setup
     fetchCafes(true);
     
     return () => {
       cleanupEvents();
-      if (typeof cleanupChannels === 'function') {
-        cleanupChannels();
+      // Call the cleanup function if it exists
+      if (cleanupChannelsRef.current) {
+        cleanupChannelsRef.current();
       }
     };
   }, [fetchCafes, setupEventListeners, setupChannels]);
