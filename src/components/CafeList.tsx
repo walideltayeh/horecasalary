@@ -109,6 +109,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       // Set up a watchdog timeout for ultra-stuck operations
       const watchdogTimeoutId = setTimeout(() => {
         if (mounted.current && deleteInProgress === cafeToDelete.id) {
+          console.log("UI: Deletion watchdog timeout triggered - forcing state reset");
           toast.error('Deletion operation timed out - please refresh your page');
           setDeleteInProgress(null);
         }
@@ -145,7 +146,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           setLocalCafes(cafes);
         }
         
-        // Reset the delete in progress state
+        // IMPORTANT FIX: Always reset the delete in progress state regardless of result
         setDeleteInProgress(null);
       }
     } catch (error: any) {
@@ -153,8 +154,11 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       if (mounted.current) {
         console.error(`UI: Error during deletion:`, error);
         toast.error(`Error: ${error.message || 'Unknown error'}`);
+        
+        // IMPORTANT FIX: Make sure state is reset even in case of errors
         setDeleteInProgress(null);
         closeDeleteConfirmation();
+        
         // Restore the deleted cafe in the local state
         setLocalCafes(cafes);
       }
@@ -210,6 +214,11 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       // Update local state immediately for better responsiveness
       if (mounted.current) {
         setLocalCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
+        
+        // IMPORTANT FIX: Clear the deleteInProgress state if this was the cafe being deleted
+        if (deleteInProgress === cafeId) {
+          setDeleteInProgress(null);
+        }
       }
     };
     
@@ -220,7 +229,7 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
     };
-  }, [refreshCafes, refreshing]);
+  }, [refreshCafes, refreshing, deleteInProgress]); // Added deleteInProgress as dependency
   
   let filteredCafes = localCafes;
   

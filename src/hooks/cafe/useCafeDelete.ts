@@ -113,6 +113,9 @@ export const useCafeDelete = () => {
           console.error('DELETION: Unexpected error in deletion process:', err);
           toast.error(`Unexpected error: ${err.message || 'Unknown error'}`);
           return false;
+        } finally {
+          // IMPORTANT FIX: Always clear timeout to prevent memory leaks
+          clearTimeout(timeoutId);
         }
       })();
       
