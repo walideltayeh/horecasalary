@@ -82,8 +82,13 @@ export const useCafeDelete = (
       
       deleteTimeoutRef.current = watchdogTimeoutId;
       
-      // Perform deletion in the background
-      const result = await deleteCafe(cafeToDelete.id).catch(error => {
+      // Perform deletion in the background with a timeout
+      const deletionPromise = deleteCafe(cafeToDelete.id);
+      const timeoutPromise = new Promise<boolean>((_, reject) => 
+        setTimeout(() => reject(new Error('Deletion timed out')), 25000)
+      );
+      
+      const result = await Promise.race([deletionPromise, timeoutPromise]).catch(error => {
         console.error("Delete operation threw an exception:", error);
         return false;
       });
@@ -111,7 +116,10 @@ export const useCafeDelete = (
           // Force a refresh after a small delay (but only if mounted)
           setTimeout(() => {
             if (mounted.current) {
-              refreshCafes();
+              refreshCafes().catch(error => {
+                console.error("Error refreshing cafes:", error);
+                toast.error("Error refreshing cafe list. Please refresh the page manually.");
+              });
             }
           }, 1000);
         } else {
@@ -121,7 +129,10 @@ export const useCafeDelete = (
           });
           
           // Restore the deleted cafe in the local state by refreshing
-          refreshCafes();
+          refreshCafes().catch(error => {
+            console.error("Error refreshing cafes:", error);
+            toast.error("Error refreshing cafe list. Please refresh the page manually.");
+          });
         }
       }
     } catch (error: any) {
@@ -136,7 +147,10 @@ export const useCafeDelete = (
         setDeleteInProgress(null);
         
         // Restore the cafe list
-        refreshCafes();
+        refreshCafes().catch(error => {
+          console.error("Error refreshing cafes:", error);
+          toast.error("Error refreshing cafe list. Please refresh the page manually.");
+        });
       }
     } finally {
       // Belt-and-suspenders approach: ensure state is always cleaned up

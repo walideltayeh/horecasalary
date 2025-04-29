@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeSubscription } from '@/hooks/useCafeSubscription';
 import { useCafeDataManager } from './hooks/useCafeDataManager';
+import { useEdgeFunctionDelete } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
 
 export const useCafeState = () => {
   const { user } = useAuth();
@@ -16,15 +17,22 @@ export const useCafeState = () => {
   const { cafes, setCafes, pendingDeletions } = useCafeDataManager();
   
   // Import the fetchCafes from useCafeSubscription
-  // Note: useCafeSubscription doesn't return deleteCafe directly
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
   
-  // For now, we'll define a stub for deleteCafe until we properly fix the flow
+  // Use the edge function delete hook
+  const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
+  
+  // Implement a proper deleteCafe function that uses the edge function
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     console.log("Delete cafe called for:", cafeId);
-    // This will be properly implemented later
-    await fetchCafes(true); // Refresh the cafes after deletion
-    return true; // Return true to indicate successful deletion
+    
+    // Use the edge function to perform deletion
+    const result = await deleteViaEdgeFunction(cafeId);
+    
+    // Even if deletion fails, refresh to ensure UI is up to date
+    await fetchCafes(true);
+    
+    return result;
   };
   
   return { 
