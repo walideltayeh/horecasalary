@@ -20,10 +20,11 @@ export const useCafeState = () => {
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
   
   // For now, we'll define a stub for deleteCafe until we properly fix the flow
-  const deleteCafe = async (cafeId: string) => {
+  const deleteCafe = async (cafeId: string): Promise<boolean> => {
     console.log("Delete cafe called for:", cafeId);
     // This will be properly implemented later
     await fetchCafes(true); // Refresh the cafes after deletion
+    return true; // Return true to indicate successful deletion
   };
   
   return { 
