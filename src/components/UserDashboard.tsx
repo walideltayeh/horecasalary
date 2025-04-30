@@ -26,7 +26,6 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   
   // Add effect to refresh data only once when the component mounts
   useEffect(() => {
-    console.log(`UserDashboard for ${userName} mounted, refreshing data`);
     refreshCafes();
     
     // Only listen for critical updates
@@ -37,14 +36,12 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
           detail.action === 'cafeCreated' || 
           detail.action === 'cafeDeleted') {
             
-        // Add heavy throttling
+        // Add throttling
         const now = Date.now();
-        if (now - lastRefreshTime.current < 10000) {
-          console.log("UserDashboard refresh throttled");
+        if (now - lastRefreshTime.current < 5000) {
           return;
         }
             
-        console.log(`UserDashboard for ${userName} detected critical update:`, detail.action);
         lastRefreshTime.current = now;
         refreshCafes();
       }

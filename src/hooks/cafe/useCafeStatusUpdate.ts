@@ -13,8 +13,6 @@ export const useCafeStatusUpdate = (
   const mounted = useRef(true);
   
   const handleUpdateStatus = async (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
-    console.log(`Updating cafe status: ${cafeId} to ${newStatus}`);
-    
     // Find the cafe to check validation
     const cafe = cafes.find(c => c.id === cafeId);
     
@@ -43,17 +41,17 @@ export const useCafeStatusUpdate = (
       } else {
         // Only show critical success notifications
         if (newStatus === 'Contracted') {
-          toast.success(`Cafe status updated to ${newStatus}`);
+          toast.success(`Cafe status updated to Contracted`);
         }
         
-        // Broadcast a data update event with specific action - no toast
+        // Broadcast a data update event with specific action for immediate refresh
         window.dispatchEvent(new CustomEvent('horeca_data_updated', {
           detail: { 
             action: 'statusUpdate', 
             cafeId, 
             newStatus,
             timestamp: Date.now(),
-            forceRefresh: true // Add a flag to force refresh for important updates
+            forceRefresh: true
           }
         }));
       }

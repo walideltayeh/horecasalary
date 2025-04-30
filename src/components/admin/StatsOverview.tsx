@@ -19,11 +19,12 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
   useEffect(() => {
     const totalCafes = cafes.length;
     const pendingCafes = cafes.filter(cafe => cafe.status === 'Pending').length;
-    const visitedCafes = cafes.filter(cafe => cafe.status === 'Visited').length;
+    // Count both Visited AND Contracted as visited for total visited count
+    const visitedCafes = cafes.filter(cafe => 
+      cafe.status === 'Visited' || cafe.status === 'Contracted').length;
     const contractedCafes = cafes.filter(cafe => cafe.status === 'Contracted').length;
     
     setStats({ totalCafes, pendingCafes, visitedCafes, contractedCafes });
-    console.log("StatsOverview updated with new cafe data:", totalCafes, "cafes");
   }, [cafes]);
 
   return (

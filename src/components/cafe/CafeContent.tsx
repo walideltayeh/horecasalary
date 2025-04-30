@@ -14,8 +14,12 @@ interface CafeContentProps {
 const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurveyComplete }) => {
   const handleSurveyComplete = () => {
     onSurveyComplete();
-    console.log("Survey completed");
-    // Remove the automatic data refresh after survey completion
+    
+    // Force a refresh after survey completion
+    const event = new CustomEvent('horeca_data_updated', { 
+      detail: { action: 'cafeCreated', forceRefresh: true }
+    });
+    window.dispatchEvent(event);
   };
 
   return (

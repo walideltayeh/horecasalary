@@ -30,22 +30,18 @@ const Dashboard: React.FC = () => {
   
   // Add extra forced refreshes on mount for consistent data
   useEffect(() => {
-    console.log("Dashboard initial render - triggering multiple refreshes for consistency");
-    
     // Initial refresh
     refreshCafes();
     
     // Secondary refresh after a short delay
     const timer1 = setTimeout(() => {
-      console.log("Dashboard secondary refresh to ensure data consistency");
       refreshCafes();
-    }, 1000);
+    }, 500);
     
     // Tertiary refresh after a longer delay
     const timer2 = setTimeout(() => {
-      console.log("Dashboard tertiary refresh to finalize data");
       refreshCafes();
-    }, 2500);
+    }, 1500);
     
     return () => {
       clearTimeout(timer1);
@@ -53,16 +49,7 @@ const Dashboard: React.FC = () => {
     };
   }, [refreshCafes]);
   
-  // Debug counters
-  useEffect(() => {
-    if (cafes && cafes.length > 0) {
-      console.log("Dashboard detected cafes data:", cafes.length, "cafes");
-      console.log("Cafe statuses:", cafes.map(cafe => cafe.status));
-      console.log("Contracted cafes:", cafes.filter(cafe => cafe.status === 'Contracted'));
-      console.log("Visited cafes:", cafes.filter(cafe => cafe.status === 'Visited' || cafe.status === 'Contracted'));
-    }
-  }, [cafes]);
-  
+  // Calculate stats
   const visitCounts = getVisitCounts();
   const contractCounts = getContractCounts();
   const salaryStats = calculateSalary();

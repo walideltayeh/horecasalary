@@ -16,9 +16,16 @@ const UserApp: React.FC = () => {
   const mounted = useRef(true);
   const { handleLogout, isLoggingOut } = useLogoutHandler();
   
-  // Cleanup on unmount
+  // Clear notification timeouts on unmount
   useEffect(() => {
     mounted.current = true;
+    
+    // Force data refresh on mount to ensure accurate counts
+    const event = new CustomEvent('horeca_data_updated', {
+      detail: { action: 'cafeCreated', forceRefresh: true }
+    });
+    window.dispatchEvent(event);
+    
     return () => {
       mounted.current = false;
     };
