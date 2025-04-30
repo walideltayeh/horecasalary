@@ -20,4 +20,3 @@ export interface CafeFormProps {
   cafeSize?: string;
   availableCities?: string[];
 }
-

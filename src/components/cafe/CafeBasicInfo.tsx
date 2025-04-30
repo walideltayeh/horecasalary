@@ -3,11 +3,13 @@ import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CafeFormProps } from './types/CafeFormTypes';
+import CafeStatusSelect from './CafeStatusSelect';
 
 export const CafeBasicInfo = ({ 
   formState, 
-  onInputChange 
-}: Pick<CafeFormProps, 'formState' | 'onInputChange'>) => {
+  onInputChange,
+  onSelectChange 
+}: Pick<CafeFormProps, 'formState' | 'onInputChange'> & { onSelectChange?: (name: string, value: string) => void }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
@@ -53,6 +55,18 @@ export const CafeBasicInfo = ({
           className="input-with-red-outline"
           required
         />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="status">
+          Cafe Status <span className="text-red-500">*</span>
+        </Label>
+        {onSelectChange && (
+          <CafeStatusSelect
+            selectedStatus={formState.status}
+            onSelectChange={onSelectChange}
+          />
+        )}
       </div>
     </div>
   );
