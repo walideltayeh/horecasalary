@@ -9,6 +9,7 @@ export const getCafeSize = (numberOfHookahs: number): CafeSize => {
 };
 
 export const getVisitCounts = (cafes: Cafe[]) => {
+  // Fixed to properly count both 'Visited' AND 'Contracted' cafes as visited
   const visitedCafes = cafes.filter(cafe => cafe.status === 'Visited' || cafe.status === 'Contracted');
   
   const small = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length;
@@ -19,6 +20,7 @@ export const getVisitCounts = (cafes: Cafe[]) => {
 };
 
 export const getContractCounts = (cafes: Cafe[]) => {
+  // This is already correct, but ensuring it only counts 'Contracted' cafes
   const contractedCafes = cafes.filter(cafe => cafe.status === 'Contracted');
   
   const small = contractedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length;
@@ -27,4 +29,3 @@ export const getContractCounts = (cafes: Cafe[]) => {
   
   return { small, medium, large, total: small + medium + large };
 };
-
