@@ -44,6 +44,17 @@ export const useEditCafeDialog = (
     if (name === 'numberOfHookahs' || name === 'numberOfTables') {
       parsedValue = parseInt(value);
       if (isNaN(parsedValue)) parsedValue = 0;
+      
+      // If hookahs are set to 0, and status is Contracted, reset status to Visited
+      if (name === 'numberOfHookahs' && parsedValue === 0 && formData.status === 'Contracted') {
+        setFormData(prev => ({
+          ...prev,
+          status: 'Visited',
+          [name]: parsedValue,
+        }));
+        toast.info("Status changed to Visited as cafes in negotiation cannot be Contracted");
+        return;
+      }
     }
     
     setFormData((prev) => ({

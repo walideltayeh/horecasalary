@@ -48,6 +48,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
             <CafeStatusSelect
               selectedStatus={formData.status as 'Pending' | 'Visited' | 'Contracted'}
               onSelectChange={handleSelectChange}
+              numberOfHookahs={formData.numberOfHookahs}
             />
           </div>
           
