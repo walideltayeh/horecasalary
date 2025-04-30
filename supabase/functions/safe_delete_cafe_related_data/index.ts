@@ -20,7 +20,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
-    const { cafeId } = await req.json();
+    // Parse the request body
+    let cafeId;
+    try {
+      const body = await req.json();
+      cafeId = body.cafeId;
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      );
+    }
     
     if (!cafeId) {
       console.error("Missing cafeId parameter");
@@ -114,7 +128,11 @@ serve(async (req) => {
     console.log(`Successfully deleted cafe ${cafeId} and all related data`);
     
     return new Response(
-      JSON.stringify({ success: true, message: `Cafe ${cafeId} and all related data deleted successfully` }),
+      JSON.stringify({ 
+        success: true, 
+        message: `Cafe ${cafeId} and all related data deleted successfully`,
+        timestamp: new Date().toISOString()
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

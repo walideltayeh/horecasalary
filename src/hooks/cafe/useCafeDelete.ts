@@ -82,14 +82,14 @@ export const useCafeDelete = (
       
       deleteTimeoutRef.current = watchdogTimeoutId;
       
-      // Perform deletion in the background with a timeout
-      const deletionPromise = deleteCafe(cafeToDelete.id);
-      const timeoutPromise = new Promise<boolean>((_, reject) => 
-        setTimeout(() => reject(new Error('Deletion timed out')), 25000)
-      );
-      
-      const result = await Promise.race([deletionPromise, timeoutPromise]).catch(error => {
-        console.error("Delete operation threw an exception:", error);
+      // Perform deletion with a stronger timeout mechanism
+      const deletionResult = await Promise.race([
+        deleteCafe(cafeToDelete.id),
+        new Promise<boolean>((_, reject) => 
+          setTimeout(() => reject(new Error('Deletion operation timed out')), 25000)
+        )
+      ]).catch(error => {
+        console.error("Delete operation error or timeout:", error);
         return false;
       });
       
@@ -101,38 +101,39 @@ export const useCafeDelete = (
       
       // Only update state if component is still mounted
       if (mounted.current) {
-        console.log(`UI: Delete operation completed with result: ${result}`);
+        console.log(`UI: Delete operation completed with result: ${deletionResult}`);
         
         // CRITICAL: Always reset deletion progress state
         setDeleteInProgress(null);
         
         // Handle result
-        if (result === true) {
+        if (deletionResult === true) {
           console.log(`UI: Cafe ${cafeToDelete.name} deleted successfully`);
           toast.success(`Successfully deleted ${cafeToDelete.name}`, {
             id: `delete-success-${cafeToDelete.id}`
           });
           
-          // Force a refresh after a small delay (but only if mounted)
+          // Force a refresh after a small delay
           setTimeout(() => {
             if (mounted.current) {
+              console.log("Refreshing cafe list after successful deletion");
               refreshCafes().catch(error => {
                 console.error("Error refreshing cafes:", error);
-                toast.error("Error refreshing cafe list. Please refresh the page manually.");
               });
+              
+              // Dispatch event for cross-component updates
+              window.dispatchEvent(new CustomEvent('horeca_data_updated'));
             }
           }, 1000);
         } else {
           console.error(`UI: Failed to delete cafe ${cafeToDelete.name}`);
-          toast.error(`Failed to delete ${cafeToDelete.name}`, {
-            id: `delete-error-${cafeToDelete.id}`
+          toast.error(`Failed to delete ${cafeToDelete.name}. Please try again or delete it manually.`, {
+            id: `delete-error-${cafeToDelete.id}`,
+            duration: 5000
           });
           
-          // Restore the deleted cafe in the local state by refreshing
-          refreshCafes().catch(error => {
-            console.error("Error refreshing cafes:", error);
-            toast.error("Error refreshing cafe list. Please refresh the page manually.");
-          });
+          // Refresh to ensure UI is consistent
+          refreshCafes().catch(console.error);
         }
       }
     } catch (error: any) {
@@ -140,17 +141,15 @@ export const useCafeDelete = (
       if (mounted.current) {
         console.error(`UI: Error during deletion:`, error);
         toast.error(`Error: ${error.message || 'Unknown error'}`, {
-          id: `delete-error-${cafeToDelete.id}`
+          id: `delete-error-${cafeToDelete.id}`,
+          duration: 5000
         });
         
         // CRITICAL FIX: Make sure state is reset even in case of errors
         setDeleteInProgress(null);
         
         // Restore the cafe list
-        refreshCafes().catch(error => {
-          console.error("Error refreshing cafes:", error);
-          toast.error("Error refreshing cafe list. Please refresh the page manually.");
-        });
+        refreshCafes().catch(console.error);
       }
     } finally {
       // Belt-and-suspenders approach: ensure state is always cleaned up
