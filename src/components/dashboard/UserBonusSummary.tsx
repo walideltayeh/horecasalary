@@ -13,6 +13,9 @@ interface UserBonusSummaryProps {
     bonusLargeCafe: number;
     bonusMediumCafe: number;
     bonusSmallCafe: number;
+    targetContractsLarge: number;
+    targetContractsMedium: number;
+    targetContractsSmall: number;
   };
   bonusAmount: number;
 }
@@ -31,7 +34,7 @@ const UserBonusSummary: React.FC<UserBonusSummaryProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-gray-50 p-4 rounded-md">
             <div className="text-gray-600">Large Cafes</div>
-            <div className="text-2xl font-bold">{contractCounts.large}</div>
+            <div className="text-2xl font-bold">{contractCounts.large}/{kpiSettings.targetContractsLarge}</div>
             <div className="text-sm text-gray-500">
               ${kpiSettings.bonusLargeCafe} per cafe
             </div>
@@ -42,7 +45,7 @@ const UserBonusSummary: React.FC<UserBonusSummaryProps> = ({
           
           <div className="bg-gray-50 p-4 rounded-md">
             <div className="text-gray-600">Medium Cafes</div>
-            <div className="text-2xl font-bold">{contractCounts.medium}</div>
+            <div className="text-2xl font-bold">{contractCounts.medium}/{kpiSettings.targetContractsMedium}</div>
             <div className="text-sm text-gray-500">
               ${kpiSettings.bonusMediumCafe} per cafe
             </div>
@@ -53,7 +56,7 @@ const UserBonusSummary: React.FC<UserBonusSummaryProps> = ({
           
           <div className="bg-gray-50 p-4 rounded-md">
             <div className="text-gray-600">Small Cafes</div>
-            <div className="text-2xl font-bold">{contractCounts.small}</div>
+            <div className="text-2xl font-bold">{contractCounts.small}/{kpiSettings.targetContractsSmall}</div>
             <div className="text-sm text-gray-500">
               ${kpiSettings.bonusSmallCafe} per cafe
             </div>
