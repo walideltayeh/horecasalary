@@ -3,7 +3,7 @@ import { useEffect, useCallback, useRef } from 'react';
 
 /**
  * Hook for setting up event listeners for data refresh events
- * Implements stronger debouncing and prevents excessive refreshes
+ * Implements improved debouncing with lower throttling for critical updates
  */
 export const useDataRefreshEvents = (
   onRefresh: (force?: boolean) => Promise<void>
@@ -13,7 +13,7 @@ export const useDataRefreshEvents = (
   const pendingRefreshRef = useRef<boolean>(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Clean, debounced refresh function with much stronger debouncing
+  // Clean, debounced refresh function with improved debouncing
   const debouncedRefresh = useCallback(async (force?: boolean) => {
     // Clear any existing timeout
     if (debounceTimeoutRef.current) {
@@ -30,8 +30,9 @@ export const useDataRefreshEvents = (
         return;
       }
       
-      // Skip if not forced and we refreshed recently (increased to 15 seconds)
-      if (!force && now - lastRefreshTimeRef.current < 15000) {
+      // Reduced throttling from 15s to 5s for non-forced refreshes
+      // Skip if not forced and we refreshed recently
+      if (!force && now - lastRefreshTimeRef.current < 5000) {
         console.log("Refresh skipped due to recent refresh");
         return;
       }
@@ -45,17 +46,17 @@ export const useDataRefreshEvents = (
         // Check if another refresh was requested while we were refreshing
         if (pendingRefreshRef.current) {
           pendingRefreshRef.current = false;
-          // Increased delay before executing the pending refresh to 3 seconds
+          // Reduced delay before executing the pending refresh
           setTimeout(() => {
             debouncedRefresh(false);
-          }, 3000);
+          }, 1500);
         }
       } catch (error) {
         console.error("Error in debouncedRefresh:", error);
       } finally {
         refreshInProgressRef.current = false;
       }
-    }, 1500); // Increased debounce delay to 1.5s
+    }, 800); // Reduced debounce delay for better responsiveness
   }, [onRefresh]);
   
   // Set up event listeners for data updates with improved throttling
@@ -63,34 +64,43 @@ export const useDataRefreshEvents = (
     console.log("Setting up cafe data event listeners with improved throttling...");
     
     // Listen for manual refresh requests
-    const handleRefreshRequested = () => {
-      console.log("Manual refresh requested");
-      debouncedRefresh(true);
+    const handleRefreshRequested = (event: CustomEvent) => {
+      const force = event.detail?.force === true;
+      console.log(`Manual refresh requested, force: ${force}`);
+      debouncedRefresh(force);
     };
     
-    // Listen for data update events (filtered to important actions)
+    // Listen for data update events with better handling for critical events
     const handleDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
-      // Only trigger refresh on important actions
-      if (detail.action === 'statusUpdate' || 
-          detail.action === 'cafeCreated' || 
-          detail.action === 'cafeEdited') {
-        console.log("Important data update detected:", detail.action);
+      // Determine if this is a critical update that should force a refresh
+      const isCriticalUpdate = 
+        detail.forceRefresh === true ||
+        detail.action === 'statusUpdate' || 
+        detail.action === 'cafeCreated' || 
+        detail.action === 'cafeEdited';
+      
+      if (isCriticalUpdate) {
+        console.log("Critical data update detected:", detail.action);
+        debouncedRefresh(true); // Force refresh for critical updates
+      } else if (!detail.action) {
+        // For general updates, refresh but don't force
+        console.log("General data update detected");
         debouncedRefresh(false);
       } else {
-        console.log("Non-critical update detected, skipping refresh");
+        console.log("Non-critical update detected:", detail.action);
       }
     };
     
     // Register listeners
-    window.addEventListener('horeca_data_refresh_requested', handleRefreshRequested);
-    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    window.addEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
+    window.addEventListener('horeca_data_updated', handleDataUpdated as EventListener);
     
     return () => {
       // Clean up all listeners
-      window.removeEventListener('horeca_data_refresh_requested', handleRefreshRequested);
-      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+      window.removeEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
+      window.removeEventListener('horeca_data_updated', handleDataUpdated as EventListener);
       
       // Clear any pending timeout
       if (debounceTimeoutRef.current) {

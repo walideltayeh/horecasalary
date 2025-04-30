@@ -49,9 +49,17 @@ export const useCafeStatusUpdate = (
             action: 'statusUpdate', 
             cafeId, 
             newStatus,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            forceRefresh: true // Add a flag to force refresh for important updates
           }
         }));
+        
+        // Force a refresh of cafe data to ensure counters are updated
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested', {
+            detail: { force: true }
+          }));
+        }, 300);
       }
     } catch (error) {
       if (mounted.current) {

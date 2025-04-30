@@ -17,18 +17,54 @@ export const useEventListeners = (
     const handleDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
-      // Only refresh on important events
-      if (!detail.action || 
-          detail.action === 'statusUpdate' || 
-          detail.action === 'cafeCreated' || 
-          detail.action === 'cafeEdited') {
+      // Determine if this is a critical update that should force a refresh
+      const isCriticalUpdate = 
+        detail.forceRefresh === true ||
+        detail.action === 'statusUpdate' || 
+        detail.action === 'cafeCreated' || 
+        detail.action === 'cafeEdited';
+      
+      if (isCriticalUpdate) {
+        console.log("CafeList detected critical data update event:", detail.action);
         
-        console.log("CafeList detected important data update event:", detail.action);
-        
-        // Strong throttling to prevent cascading refreshes
+        // Reduced throttling for critical updates to 3 seconds
         const now = Date.now();
-        if (now - lastRefreshTime.current < 15000) { // 15 second cooldown
-          console.log("Refresh throttled due to recent update");
+        if (now - lastRefreshTime.current < 3000) { 
+          console.log("Critical refresh throttled but scheduled for execution soon");
+          
+          // Clear any existing timeout
+          if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current);
+          }
+          
+          // Schedule refresh soon
+          refreshTimeoutRef.current = setTimeout(() => {
+            console.log("Executing throttled critical refresh");
+            lastRefreshTime.current = Date.now();
+            if (mounted.current && !refreshing && handleRefresh) {
+              handleRefresh();
+            }
+          }, 3000);
+          
+          return;
+        }
+        
+        if (mounted.current && !refreshing && handleRefresh) {
+          // Clear any existing timeout
+          if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current);
+          }
+          
+          // Execute immediately for critical updates
+          console.log("Triggering immediate refresh for critical update");
+          lastRefreshTime.current = Date.now();
+          handleRefresh();
+        }
+      } else if (!detail.action) {
+        // For general updates with reduced throttling
+        const now = Date.now();
+        if (now - lastRefreshTime.current < 8000) { // 8 second cooldown for non-critical
+          console.log("General refresh throttled");
           return;
         }
         
@@ -40,13 +76,11 @@ export const useEventListeners = (
           
           // Use timeout to debounce multiple events
           refreshTimeoutRef.current = setTimeout(() => {
-            console.log("Triggering refresh due to data update event");
+            console.log("Triggering refresh for general update");
             lastRefreshTime.current = Date.now();
             handleRefresh();
-          }, 2000); // 2 second debounce
+          }, 1000); // 1 second debounce
         }
-      } else {
-        console.log("CafeList ignoring non-critical update:", detail.action);
       }
     };
     
@@ -71,17 +105,51 @@ export const useEventListeners = (
             console.log("Executing refresh after deletion");
             lastRefreshTime.current = Date.now();
             handleRefresh();
-          }, 3000); // Increased delay to 3s
+          }, 2000); // Reduced delay to 2s
+        }
+      }
+    };
+    
+    // Add a direct refresh handler
+    const handleRefreshRequested = (event: CustomEvent) => {
+      const force = event.detail?.force === true;
+      
+      if (force) {
+        console.log("Forced refresh requested, executing immediately");
+        if (mounted.current && handleRefresh) {
+          // Clear any existing timeout
+          if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current);
+          }
+          
+          lastRefreshTime.current = Date.now();
+          handleRefresh();
+        }
+      } else {
+        console.log("Normal refresh requested");
+        // Use standard debouncing
+        if (mounted.current && !refreshing && handleRefresh) {
+          // Clear any existing timeout
+          if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current);
+          }
+          
+          refreshTimeoutRef.current = setTimeout(() => {
+            lastRefreshTime.current = Date.now();
+            handleRefresh();
+          }, 800);
         }
       }
     };
     
     window.addEventListener('horeca_data_updated', handleDataUpdated);
     window.addEventListener('cafe_deleted', handleCafeDeleted as EventListener);
+    window.addEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
     
     return () => {
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
+      window.removeEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }

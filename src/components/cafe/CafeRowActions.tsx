@@ -4,6 +4,7 @@ import { Cafe } from '@/types';
 import { Button } from "@/components/ui/button";
 import { Check, Clock, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { getCafeSize } from '@/utils/cafeUtils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CafeRowActionsProps {
   cafe: Cafe;
@@ -57,30 +58,65 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
           >
             <Clock className="h-3 w-3" /> Mark Visited
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
-            onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-            disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
-            title={isInNegotiation ? "Cafes in negotiation cannot be marked as contracted" : ""}
-          >
-            <Check className="h-3 w-3" /> Mark Contracted
-          </Button>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className={`flex items-center gap-1 ${
+                      isInNegotiation 
+                        ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-60'
+                        : 'border-green-500 text-green-500 hover:bg-green-50'
+                    }`}
+                    onClick={() => !isInNegotiation && handleUpdateStatus(cafe.id, 'Contracted')}
+                    disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
+                  >
+                    <Check className="h-3 w-3" /> Mark Contracted
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {isInNegotiation && (
+                <TooltipContent>
+                  <p>Cafes in negotiation (0 hookahs) cannot be marked as contracted</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </>
       )}
+      
       {canEdit && cafe.status === 'Visited' && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
-          onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-          disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
-          title={isInNegotiation ? "Cafes in negotiation cannot be marked as contracted" : ""}
-        >
-          <Check className="h-3 w-3" /> Mark Contracted
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`flex items-center gap-1 ${
+                    isInNegotiation 
+                      ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-60'
+                      : 'border-green-500 text-green-500 hover:bg-green-50'
+                  }`}
+                  onClick={() => !isInNegotiation && handleUpdateStatus(cafe.id, 'Contracted')}
+                  disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
+                >
+                  <Check className="h-3 w-3" /> Mark Contracted
+                </Button>
+              </div>
+            </TooltipTrigger>
+            {isInNegotiation && (
+              <TooltipContent>
+                <p>Cafes in negotiation (0 hookahs) cannot be marked as contracted</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       )}
+      
       {canEdit && (
         <Button
           variant="outline"
