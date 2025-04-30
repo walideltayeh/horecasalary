@@ -32,7 +32,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) onClose();
     }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Cafe</DialogTitle>
         </DialogHeader>

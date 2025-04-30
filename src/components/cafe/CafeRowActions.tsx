@@ -3,6 +3,7 @@ import React from 'react';
 import { Cafe } from '@/types';
 import { Button } from "@/components/ui/button";
 import { Check, Clock, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { getCafeSize } from '@/utils/cafeUtils';
 
 interface CafeRowActionsProps {
   cafe: Cafe;
@@ -26,6 +27,10 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
   
   // Global deletion state - any cafe is being deleted
   const anyDeletionInProgress = deleteInProgress !== null;
+  
+  // Determine if cafe is in negotiation (0 hookahs)
+  const isInNegotiation = cafe.numberOfHookahs === 0;
+  const cafeSize = getCafeSize(cafe.numberOfHookahs);
   
   return (
     <div className="flex justify-end gap-2">
@@ -57,7 +62,8 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
             size="sm" 
             className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
             onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-            disabled={isDeleting || anyDeletionInProgress}
+            disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
+            title={isInNegotiation ? "Cafes in negotiation cannot be marked as contracted" : ""}
           >
             <Check className="h-3 w-3" /> Mark Contracted
           </Button>
@@ -69,7 +75,8 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
           size="sm" 
           className="flex items-center gap-1 border-green-500 text-green-500 hover:bg-green-50"
           onClick={() => handleUpdateStatus(cafe.id, 'Contracted')}
-          disabled={isDeleting || anyDeletionInProgress}
+          disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
+          title={isInNegotiation ? "Cafes in negotiation cannot be marked as contracted" : ""}
         >
           <Check className="h-3 w-3" /> Mark Contracted
         </Button>

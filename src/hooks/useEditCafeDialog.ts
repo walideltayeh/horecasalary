@@ -4,6 +4,7 @@ import { Cafe } from '@/types';
 import { useCafes } from '@/contexts/CafeContext';
 import { toast } from 'sonner';
 import { getCitiesForGovernorate } from '@/utils/locationUtils';
+import { canUpdateCafeStatus } from '@/utils/cafeUtils';
 
 export const useEditCafeDialog = (
   cafe: Cafe,
@@ -52,6 +53,14 @@ export const useEditCafeDialog = (
   };
   
   const handleSelectChange = (key: string, value: string) => {
+    // Special validation for status changes
+    if (key === 'status' && value === 'Contracted') {
+      if (formData.numberOfHookahs === 0) {
+        toast.error("Cafes in negotiation (0 hookahs) cannot be marked as contracted");
+        return;
+      }
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [key]: value,
@@ -101,6 +110,14 @@ export const useEditCafeDialog = (
       if (!phoneRegex.test(formData.ownerNumber.replace(/\D/g, ''))) {
         console.error("Invalid phone format in edit form");
         toast.error('Please enter a valid phone number (10-15 digits)');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Validate status changes for cafes in negotiation
+      if (formData.status === 'Contracted' && formData.numberOfHookahs === 0) {
+        console.error("Cannot mark cafe in negotiation as contracted");
+        toast.error("Cafes in negotiation (0 hookahs) cannot be marked as contracted");
         setIsSubmitting(false);
         return;
       }

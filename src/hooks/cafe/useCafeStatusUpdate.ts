@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { Cafe } from '@/types';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
+import { canUpdateCafeStatus } from '@/utils/cafeUtils';
 
 export const useCafeStatusUpdate = (
   setLocalCafes: React.Dispatch<React.SetStateAction<Cafe[]>>,
@@ -13,6 +14,20 @@ export const useCafeStatusUpdate = (
   
   const handleUpdateStatus = async (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
     console.log(`Updating cafe status: ${cafeId} to ${newStatus}`);
+    
+    // Find the cafe to check validation
+    const cafe = cafes.find(c => c.id === cafeId);
+    
+    if (!cafe) {
+      toast.error("Cafe not found");
+      return;
+    }
+    
+    // Validate status update
+    if (!canUpdateCafeStatus(cafe, newStatus)) {
+      toast.error(`Cannot mark a cafe in negotiation (0 hookahs) as Contracted`);
+      return;
+    }
     
     // Optimistic update
     setLocalCafes(prev => 
