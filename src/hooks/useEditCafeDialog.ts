@@ -20,6 +20,7 @@ export const useEditCafeDialog = (
     governorate: cafe.governorate,
     city: cafe.city,
     photoUrl: cafe.photoUrl || '',
+    status: cafe.status
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
@@ -95,6 +96,8 @@ export const useEditCafeDialog = (
         return;
       }
       
+      console.log("Submitting updated cafe data:", formData);
+      
       // Submit the form
       const success = await updateCafe(cafe.id, formData);
       
@@ -102,9 +105,9 @@ export const useEditCafeDialog = (
         toast.success("Cafe updated successfully");
         onSave();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating cafe:", error);
-      toast.error("Failed to update cafe");
+      toast.error(`Failed to update cafe: ${error.message || "Unknown error"}`);
     } finally {
       setIsSubmitting(false);
     }

@@ -50,6 +50,8 @@ export const useCafeUpdate = () => {
       if (cafeData.governorate) updateData.governorate = cafeData.governorate;
       if (cafeData.city) updateData.city = cafeData.city;
       
+      console.log("Sending to Supabase:", updateData);
+      
       const { error } = await supabase
         .from('cafes')
         .update(updateData)

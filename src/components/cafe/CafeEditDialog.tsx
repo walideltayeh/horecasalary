@@ -8,6 +8,8 @@ import { CafeBasicEditInfo } from './edit/CafeBasicEditInfo';
 import { CafeCapacityEditInfo } from './edit/CafeCapacityEditInfo';
 import { CafeLocationEditInfo } from './edit/CafeLocationEditInfo';
 import { useEditCafeDialog } from '@/hooks/useEditCafeDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface CafeEditDialogProps {
   cafe: Cafe;
@@ -41,6 +43,23 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
             handleInputChange={handleInputChange} 
           />
           
+          <div className="space-y-2">
+            <Label htmlFor="status">Cafe Status</Label>
+            <Select 
+              value={formData.status} 
+              onValueChange={(value) => handleSelectChange('status', value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Visited">Visited</SelectItem>
+                <SelectItem value="Contracted">Contracted</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <CafeCapacityEditInfo 
             formData={formData} 
             handleInputChange={handleInputChange} 
@@ -53,6 +72,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           />
           
           <div className="grid gap-2">
+            <Label>Cafe Photo</Label>
             <PhotoUpload 
               onPhotoChange={(url) => handleSelectChange('photoUrl', url)}
               initialUrl={formData.photoUrl} 

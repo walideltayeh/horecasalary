@@ -58,9 +58,6 @@ export const CafeBasicInfo = ({
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="status">
-          Cafe Status <span className="text-red-500">*</span>
-        </Label>
         {onSelectChange && (
           <CafeStatusSelect
             selectedStatus={formState.status}

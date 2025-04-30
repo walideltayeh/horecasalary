@@ -1,6 +1,5 @@
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Navigation } from 'lucide-react';
 import { LocationDialog } from './LocationDialog';
 
@@ -24,7 +23,6 @@ export const GPSCapture = ({
 }: GPSCaptureProps) => {
   return (
     <div className="space-y-2">
-      <Label>GPS Location</Label>
       <div className="flex gap-4 items-center">
         <Button 
           type="button"

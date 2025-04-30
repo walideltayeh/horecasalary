@@ -74,7 +74,16 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
       return;
     }
     
-    await submitCafe(formState, coordinates);
+    try {
+      const result = await submitCafe(formState, coordinates);
+      if (result) {
+        console.log("Cafe submitted successfully with ID:", result);
+        toast.success("Cafe added successfully!");
+      }
+    } catch (error: any) {
+      console.error("Error in form submit:", error);
+      toast.error(`Submission failed: ${error.message || 'Unknown error'}`);
+    }
   };
 
   return (

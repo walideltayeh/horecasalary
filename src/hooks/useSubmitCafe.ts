@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useCafes } from '@/contexts/CafeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
+import { toast } from 'sonner';
 
 interface UseSubmitCafeProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -16,22 +17,26 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
 
   const handleSubmit = async (
     cafeData: CafeFormState, 
-    coordinates: { latitude: number, longitude: number }
+    coordinates: { latitude: number | null, longitude: number | null }
   ) => {
     try {
+      if (!coordinates.latitude || !coordinates.longitude) {
+        throw new Error("GPS coordinates are required");
+      }
+
       setIsSubmitting(true);
       console.log("Processing cafe submission with data:", cafeData);
 
       if (cafeData.numberOfHookahs >= 1 && !surveyCompleted) {
-        console.log("Cafe has hookahs but survey not completed, checking with onPreSubmit...");
+        console.log("Cafe has hookahs but survey not completed");
+        return null;
       }
     
       const completeData = {
         ...cafeData,
-        ...coordinates,
-        createdBy: user?.id || 'unknown',
-        // Use the selected status from the form instead of hardcoding 'Pending'
-        status: cafeData.status
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        createdBy: user?.id || 'unknown'
       };
       
       if (onPreSubmit) {
@@ -41,7 +46,13 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
         }
       }
       
-      return await addCafe(completeData);
+      const cafeId = await addCafe(completeData);
+      console.log("Cafe added with ID:", cafeId);
+      
+      // Trigger a refresh of cafe data after adding
+      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+      
+      return cafeId;
     } catch (error: any) {
       console.error('Error submitting cafe:', error);
       throw error;
