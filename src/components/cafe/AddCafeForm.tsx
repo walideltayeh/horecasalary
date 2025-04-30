@@ -4,7 +4,7 @@ import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
 import { CafeFormLayout } from './layout/CafeFormLayout';
 import { CafeSubmitHandler } from './form-handlers/CafeSubmitHandler';
-import { CafeFormFields } from './form-sections/CafeFormFields';
+import CafeFormFields from './form-sections/CafeFormFields';
 import { CafeSurveySection } from './form-sections/CafeSurveySection';
 import CafeSurveyWrapper from './CafeSurveyWrapper';
 
@@ -82,8 +82,11 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
           formState={formState}
           handleInputChange={handleInputChange}
           handleSelectChange={handleSelectChange}
+          handleStatusChange={handleSelectChange}
           getCafeSize={getCafeSize}
           coordinates={coordinates}
+          availableCities={[]}
+          setLocationCoordinates={() => {}}
           handleCaptureGPS={handleCaptureGPS}
           isCapturingLocation={isCapturingLocation}
           showLocationDialog={showLocationDialog}

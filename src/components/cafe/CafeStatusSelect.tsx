@@ -13,7 +13,7 @@ const CafeStatusSelect: React.FC<CafeStatusSelectProps> = ({ selectedStatus, onS
       value={selectedStatus} 
       onValueChange={(value) => onSelectChange('status', value)}
     >
-      <SelectTrigger className="w-full border-red-500">
+      <SelectTrigger className="w-full input-with-red-outline">
         <SelectValue placeholder="Select status" />
       </SelectTrigger>
       <SelectContent>
