@@ -30,6 +30,13 @@ const CafeTable: React.FC<CafeTableProps> = ({
   handleUpdateStatus,
   openDeleteConfirmation
 }) => {
+  // Count cafes by size and status
+  const sizeCounts = {
+    small: filteredCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length,
+    medium: filteredCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Medium').length,
+    large: filteredCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Large').length
+  };
+
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>

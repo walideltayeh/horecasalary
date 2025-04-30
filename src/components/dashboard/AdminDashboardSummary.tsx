@@ -6,11 +6,12 @@ import { StatsOverview } from '../admin/StatsOverview';
 import AdminUserTabs from './AdminUserTabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafes } from '@/contexts/CafeContext';
-import { useDashboardDataRefresh } from './useDashboardDataRefresh';
+import { useData } from '@/contexts/DataContext';
 
 export const AdminDashboardSummary: React.FC = () => {
   const { users } = useAuth();
   const { cafes, refreshCafes } = useCafes();
+  const { kpiSettings } = useData();
   
   // Force data refresh on component mount
   useEffect(() => {
