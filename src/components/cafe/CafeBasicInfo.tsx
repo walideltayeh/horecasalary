@@ -10,6 +10,7 @@ interface CafeBasicInfoProps {
     ownerName: string;
     ownerNumber: string;
     status: 'Pending' | 'Visited' | 'Contracted';
+    numberOfHookahs?: number;
   };
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleStatusChange: (name: string, value: string) => void;
@@ -64,6 +65,7 @@ const CafeBasicInfo: React.FC<CafeBasicInfoProps> = ({ formState, handleInputCha
             <CafeStatusSelect
               selectedStatus={formState.status}
               onSelectChange={handleStatusChange}
+              numberOfHookahs={formState.numberOfHookahs || 0}
             />
           </div>
         </div>
