@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from '@/contexts/DataContext';
 import CafeList from './CafeList';
-import UserKpiStats from './dashboard/UserKpiStats';
+import UserKpiStats from './UserKpiStats';
 import UserSalaryCards from './dashboard/UserSalaryCards';
 
 interface UserDashboardProps {

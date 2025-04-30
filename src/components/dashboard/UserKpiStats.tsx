@@ -22,6 +22,7 @@ interface UserKpiStatsProps {
     large: number;
     medium: number;
     small: number;
+    inNegotiation?: number; // Added the in-negotiation count
     total: number;
   };
   contractCounts: {
@@ -69,6 +70,7 @@ const UserKpiStats: React.FC<UserKpiStatsProps> = ({
           large: visitCounts.large,
           medium: visitCounts.medium,
           small: visitCounts.small,
+          inNegotiation: visitCounts.inNegotiation || 0,
           total: visitCounts.total
         }}
         targets={{
@@ -77,6 +79,7 @@ const UserKpiStats: React.FC<UserKpiStatsProps> = ({
           small: kpiSettings.targetVisitsSmall,
           total: kpiSettings.targetVisitsLarge + kpiSettings.targetVisitsMedium + kpiSettings.targetVisitsSmall
         }}
+        showNegotiation={true}
       />
 
       {/* Contract KPI */}

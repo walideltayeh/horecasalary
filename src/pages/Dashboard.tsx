@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserDashboard from '@/components/UserDashboard';
 import UserSalaryCards from '@/components/dashboard/UserSalaryCards';
-import UserKpiStats from '@/components/dashboard/UserKpiStats';
+import UserKpiStats from '@/components/UserKpiStats';
 import UserBonusSummary from '@/components/dashboard/UserBonusSummary';
 import { AdminDashboardSummary } from '@/components/dashboard/AdminDashboardSummary';
 import AdminUserTabs from '@/components/dashboard/AdminUserTabs';
