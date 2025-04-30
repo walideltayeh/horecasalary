@@ -13,6 +13,7 @@ interface KpiCounts {
 
 interface KpiProgressCardProps {
   title: string;
+  amount?: string; // Added amount prop for displaying the KPI amount
   icon: React.ReactNode;
   percentage: number;
   thresholdPercentage: number;
@@ -24,6 +25,7 @@ interface KpiProgressCardProps {
 
 const KpiProgressCard: React.FC<KpiProgressCardProps> = ({
   title,
+  amount,
   icon,
   percentage,
   thresholdPercentage,
@@ -37,6 +39,7 @@ const KpiProgressCard: React.FC<KpiProgressCardProps> = ({
       <CardHeader>
         <CardTitle className="text-md font-medium flex items-center">
           {icon} {title}
+          {amount && <span className="ml-1 font-bold text-custom-red">({amount})</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
