@@ -39,6 +39,9 @@ interface UserKpiStatsProps {
     targetContractsLarge: number;
     targetContractsMedium: number;
     targetContractsSmall: number;
+    totalPackage: number;
+    basicSalaryPercentage: number;
+    visitKpiPercentage: number;
   };
 }
 
@@ -48,11 +51,16 @@ const UserKpiStats: React.FC<UserKpiStatsProps> = ({
   contractCounts,
   kpiSettings
 }) => {
+  // Calculate the entitled amounts from KPI settings
+  const totalKpiSalary = kpiSettings.totalPackage * ((100 - kpiSettings.basicSalaryPercentage) / 100);
+  const entitledVisitKpi = totalKpiSalary * (kpiSettings.visitKpiPercentage / 100);
+  const entitledContractKpi = totalKpiSalary - entitledVisitKpi;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Visit KPI */}
       <KpiProgressCard
-        title={`Visit KPI Status ($${salaryStats.visitKpi.toFixed(2)})`}
+        title={`Visit KPI Status ($${entitledVisitKpi.toFixed(2)})`}
         icon={<Building className="mr-2 h-4 w-4" />}
         percentage={salaryStats.visitStatus.percentage}
         thresholdPercentage={kpiSettings.visitThresholdPercentage}
@@ -73,7 +81,7 @@ const UserKpiStats: React.FC<UserKpiStatsProps> = ({
 
       {/* Contract KPI */}
       <KpiProgressCard
-        title={`Contract KPI Status ($${salaryStats.contractKpi.toFixed(2)})`}
+        title={`Contract KPI Status ($${entitledContractKpi.toFixed(2)})`}
         icon={<CheckCircle className="mr-2 h-4 w-4" />}
         percentage={salaryStats.contractStatus.percentage}
         thresholdPercentage={kpiSettings.contractThresholdPercentage}
