@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatsOverview } from '../admin/StatsOverview';
-import AdminUserTabs from '../dashboard/AdminUserTabs'; // Fixed import (default import)
+import AdminUserTabs from './AdminUserTabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafes } from '@/contexts/CafeContext';
 import { useDashboardDataRefresh } from './useDashboardDataRefresh';
@@ -12,8 +12,24 @@ export const AdminDashboardSummary: React.FC = () => {
   const { users } = useAuth();
   const { cafes, refreshCafes } = useCafes();
   
-  // Set up data refresh
-  useDashboardDataRefresh({ refreshCafes });
+  // Force data refresh on component mount
+  useEffect(() => {
+    console.log("AdminDashboardSummary mounted, refreshing data");
+    refreshCafes();
+  }, [refreshCafes]);
+  
+  // Set up event listeners for data updates
+  useEffect(() => {
+    const handleDataUpdated = () => {
+      console.log("AdminDashboardSummary detected data update event");
+      refreshCafes();
+    };
+    
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    return () => {
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+    };
+  }, [refreshCafes]);
 
   return (
     <div className="space-y-6">
@@ -52,4 +68,4 @@ export const AdminDashboardSummary: React.FC = () => {
   );
 };
 
-export default AdminDashboardSummary; // Added default export alongside named export
+export default AdminDashboardSummary;

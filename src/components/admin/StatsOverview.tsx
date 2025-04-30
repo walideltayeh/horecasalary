@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import CafeStatsCard from './CafeStatsCard';
 import { Cafe } from '@/types';
-import { useCafes } from '@/contexts/CafeContext';
 
 interface StatsOverviewProps {
   cafes: Cafe[];
@@ -26,19 +25,6 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     setStats({ totalCafes, pendingCafes, visitedCafes, contractedCafes });
     console.log("StatsOverview updated with new cafe data:", totalCafes, "cafes");
   }, [cafes]);
-  
-  // Set up listener for data update events
-  useEffect(() => {
-    const handleDataUpdated = () => {
-      console.log("StatsOverview detected data update event");
-      // We don't need to do anything here as the parent component will refresh the cafes prop
-    };
-    
-    window.addEventListener('horeca_data_updated', handleDataUpdated);
-    return () => {
-      window.removeEventListener('horeca_data_updated', handleDataUpdated);
-    };
-  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

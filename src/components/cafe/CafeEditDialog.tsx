@@ -8,8 +8,8 @@ import { CafeBasicEditInfo } from './edit/CafeBasicEditInfo';
 import { CafeCapacityEditInfo } from './edit/CafeCapacityEditInfo';
 import { CafeLocationEditInfo } from './edit/CafeLocationEditInfo';
 import { useEditCafeDialog } from '@/hooks/useEditCafeDialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import CafeStatusSelect from './CafeStatusSelect';
 
 interface CafeEditDialogProps {
   cafe: Cafe;
@@ -45,19 +45,10 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           
           <div className="space-y-2">
             <Label htmlFor="status">Cafe Status <span className="text-red-500">*</span></Label>
-            <Select 
-              value={formData.status} 
-              onValueChange={(value) => handleSelectChange('status', value)}
-            >
-              <SelectTrigger className="w-full input-with-red-outline">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Visited">Visited</SelectItem>
-                <SelectItem value="Contracted">Contracted</SelectItem>
-              </SelectContent>
-            </Select>
+            <CafeStatusSelect
+              selectedStatus={formData.status as 'Pending' | 'Visited' | 'Contracted'}
+              onSelectChange={handleSelectChange}
+            />
           </div>
           
           <CafeCapacityEditInfo 

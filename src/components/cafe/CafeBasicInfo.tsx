@@ -2,70 +2,74 @@
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CafeFormProps } from './types/CafeFormTypes';
 import CafeStatusSelect from './CafeStatusSelect';
 
-export const CafeBasicInfo = ({ 
-  formState, 
-  onInputChange,
-  onSelectChange 
-}: Pick<CafeFormProps, 'formState' | 'onInputChange'> & { onSelectChange?: (name: string, value: string) => void }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div className="space-y-2">
-        <Label htmlFor="name">
-          Name of Cafe <span className="text-red-500">*</span>
-        </Label>
-        <Input 
-          id="name" 
-          name="name"
-          value={formState.name}
-          onChange={onInputChange}
-          placeholder="Enter cafe name" 
-          className="input-with-red-outline"
-          required
-        />
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="ownerName">
-          Owner's Name <span className="text-red-500">*</span>
-        </Label>
-        <Input 
-          id="ownerName" 
-          name="ownerName"
-          value={formState.ownerName}
-          onChange={onInputChange}
-          placeholder="Enter owner's name" 
-          className="input-with-red-outline"
-          required
-        />
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="ownerNumber">
-          Owner's Phone Number <span className="text-red-500">*</span>
-        </Label>
-        <Input 
-          id="ownerNumber" 
-          name="ownerNumber"
-          value={formState.ownerNumber}
-          onChange={onInputChange}
-          placeholder="Enter owner's phone number" 
-          className="input-with-red-outline"
-          required
-        />
-      </div>
+interface CafeBasicInfoProps {
+  formState: {
+    name: string;
+    ownerName: string;
+    ownerNumber: string;
+    status: 'Pending' | 'Visited' | 'Contracted';
+  };
+  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleStatusChange: (name: string, value: string) => void;
+}
 
-      <div className="space-y-2">
-        <Label htmlFor="status">
-          Cafe Status <span className="text-red-500">*</span>
-        </Label>
-        <CafeStatusSelect
-          selectedStatus={formState.status}
-          onSelectChange={onSelectChange}
-        />
+const CafeBasicInfo: React.FC<CafeBasicInfoProps> = ({ formState, handleInputChange, handleStatusChange }) => {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Cafe Name <span className="text-red-500">*</span></Label>
+          <Input
+            id="name"
+            name="name"
+            placeholder="Cafe name"
+            value={formState.name}
+            onChange={handleInputChange}
+            className="border-red-500"
+            required
+          />
+        </div>
+        
+        <div className="grid gap-2">
+          <Label htmlFor="ownerName">Owner's Name <span className="text-red-500">*</span></Label>
+          <Input
+            id="ownerName"
+            name="ownerName"
+            placeholder="Owner name"
+            value={formState.ownerName}
+            onChange={handleInputChange}
+            className="border-red-500"
+            required
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="ownerNumber">Owner's Phone Number <span className="text-red-500">*</span></Label>
+            <Input
+              id="ownerNumber"
+              name="ownerNumber"
+              placeholder="Phone number"
+              value={formState.ownerNumber}
+              onChange={handleInputChange}
+              className="border-red-500"
+              required
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="status">Cafe Status <span className="text-red-500">*</span></Label>
+            <CafeStatusSelect
+              selectedStatus={formState.status}
+              onSelectChange={handleStatusChange}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 };
+
+export default CafeBasicInfo;

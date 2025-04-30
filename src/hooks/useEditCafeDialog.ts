@@ -78,7 +78,8 @@ export const useEditCafeDialog = (
         { field: 'ownerNumber', label: 'Owner phone' },
         { field: 'governorate', label: 'Governorate' },
         { field: 'city', label: 'City' },
-        { field: 'status', label: 'Cafe status' }
+        { field: 'status', label: 'Cafe status' },
+        { field: 'photoUrl', label: 'Cafe photo' }
       ];
       
       const missingFields = requiredFields
@@ -111,7 +112,12 @@ export const useEditCafeDialog = (
       
       if (success) {
         console.log("Cafe updated successfully");
-        toast.success("Cafe updated successfully");
+        
+        // Force a refresh of all cafe data
+        window.dispatchEvent(new CustomEvent('horeca_data_updated', { 
+          detail: { action: 'cafeEdited', cafeId: cafe.id }
+        }));
+        
         onSave();
       } else {
         console.error("Update cafe returned false");

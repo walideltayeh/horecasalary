@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -25,7 +26,6 @@ export function useLogin() {
       
       if (data.user) {
         console.log("useLogin: Login successful for user:", data.user.id);
-        toast.success(`Welcome, ${data.user.email}!`);
         return true;
       }
       
@@ -69,7 +69,6 @@ export function useLogin() {
       }
       
       console.log("useLogin: Logout successful, redirecting to login page");
-      toast.info('Logged out successfully');
       
       // Allow time for state changes to propagate
       setTimeout(() => {

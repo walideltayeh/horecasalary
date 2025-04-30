@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubmitCafe } from '@/hooks/useSubmitCafe';
 import { CafeFormState } from '../types/CafeFormTypes';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 
 interface CafeSubmitHandlerProps {
   formState: CafeFormState;
@@ -100,11 +99,6 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
   return (
     <form onSubmit={handleSubmit}>
       {children}
-      <div className="mt-6 flex justify-end">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save Cafe"}
-        </Button>
-      </div>
     </form>
   );
 };
