@@ -1,7 +1,5 @@
 
 import { useEffect, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
-import { refreshCafeData } from '@/integrations/supabase/client';
 
 interface CafeEventsProps {
   fetchCafes: (force?: boolean) => Promise<void>;
@@ -10,18 +8,18 @@ interface CafeEventsProps {
 }
 
 export const useCafeEvents = ({ fetchCafes, setLastRefreshTime, lastRefreshTime }: CafeEventsProps) => {
-  // Manual refresh handler
+  // Manual refresh handler with increased throttling
   const refreshCafes = useCallback(async () => {
     console.log("Manual refresh triggered via context");
     const now = Date.now();
     
-    if (now - lastRefreshTime < 1000) {
-      console.log("Refresh throttled");
+    // Increase throttling to 10 seconds
+    if (now - lastRefreshTime < 10000) {
+      console.log("Refresh throttled - skipping");
       return;
     }
     
     setLastRefreshTime(now);
-    toast.info("Refreshing cafe data...");
     
     try {
       await fetchCafes(true);
@@ -31,11 +29,8 @@ export const useCafeEvents = ({ fetchCafes, setLastRefreshTime, lastRefreshTime 
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
         detail: { action: 'refresh', timestamp: now }
       }));
-      
-      toast.success("Cafe data refreshed successfully");
     } catch (error) {
       console.error("Error during manual refresh:", error);
-      toast.error("Failed to refresh cafe data");
     }
   }, [fetchCafes, lastRefreshTime, setLastRefreshTime]);
 

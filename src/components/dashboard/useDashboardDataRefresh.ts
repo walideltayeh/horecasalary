@@ -10,21 +10,15 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
   const lastRefreshTimeRef = useRef(Date.now());
   const pendingRefreshRef = useRef(false);
   
-  // Immediately refresh on mount to ensure counts are accurate
+  // Only refresh on initial mount and specific data changes
   useEffect(() => {
-    console.log("Dashboard mounted - forcing initial data refresh");
+    console.log("Dashboard mounted - initial data refresh");
     refreshCafes();
     
-    // Also set up a secondary refresh for cases where the first one might miss data
-    const initialDataTimer = setTimeout(() => {
-      console.log("Dashboard secondary data refresh to ensure data is current");
-      refreshCafes();
-    }, 1500);
-    
-    return () => clearTimeout(initialDataTimer);
+    // No secondary automatic refresh to reduce refreshes
   }, [refreshCafes]);
   
-  // Create a debounced refresh function with reduced throttling
+  // Create a heavily throttled refresh function
   const debouncedRefresh = useCallback((forceRefresh = false) => {
     if (refreshInProgressRef.current) {
       console.log("Dashboard refresh already in progress, marking pending refresh");
@@ -33,20 +27,13 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
     }
     
     const now = Date.now();
-    // Reduced throttling from 5 seconds to 2 seconds to be more responsive
-    if (!forceRefresh && now - lastRefreshTimeRef.current < 2000) { 
-      console.log("Dashboard refresh on cooldown, scheduling delayed refresh");
-      pendingRefreshRef.current = true;
-      setTimeout(() => {
-        if (pendingRefreshRef.current) {
-          console.log("Executing pending refresh");
-          debouncedRefresh(true); // Force the refresh when executing a pending one
-        }
-      }, 2000);
+    // Increased throttling to 10 seconds (was 2 seconds)
+    if (!forceRefresh && now - lastRefreshTimeRef.current < 10000) { 
+      console.log("Dashboard refresh on cooldown, skipping");
       return;
     }
     
-    // Refresh data when update event is detected
+    // Only refresh data when explicitly needed
     console.log("Dashboard data refresh triggered");
     refreshInProgressRef.current = true;
     lastRefreshTimeRef.current = now;
@@ -57,28 +44,32 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
     // Reset flag after delay
     setTimeout(() => {
       refreshInProgressRef.current = false;
-      // Check if a refresh was requested while we were refreshing
-      if (pendingRefreshRef.current) {
-        console.log("Executing pending refresh after completion");
-        debouncedRefresh(true); // Force the refresh when executing a pending one
+      // Only execute pending refresh for critical updates
+      if (pendingRefreshRef.current && forceRefresh) {
+        console.log("Executing pending critical refresh");
+        debouncedRefresh(true);
+      } else {
+        pendingRefreshRef.current = false;
       }
-    }, 1000);
+    }, 2000);
   }, [refreshCafes]);
   
-  // Listen for specific data update events with improved handling for important events
+  // Listen ONLY for specific critical data updates
   useEffect(() => {
     const handleDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
-      console.log("Dashboard received data update:", detail);
-      
-      // Force refresh for important updates like status changes
-      const forceRefresh = detail.forceRefresh === true || 
-                          detail.action === 'statusUpdate' || 
-                          detail.action === 'cafeCreated' ||
-                          detail.action === 'cafeEdited';
-                          
-      debouncedRefresh(forceRefresh);
+      // Only refresh for specific important actions, ignore general refreshes
+      if (detail.action === 'statusUpdate' || 
+          detail.action === 'cafeCreated' ||
+          detail.action === 'cafeEdited' ||
+          detail.action === 'cafeDeleted') {
+        
+        console.log(`Dashboard refresh for critical update: ${detail.action}`);
+        debouncedRefresh(true);
+      } else {
+        console.log("Ignoring non-critical update:", detail);
+      }
     };
     
     const handleCafeDeleted = (event: CustomEvent) => {
@@ -87,21 +78,12 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
       debouncedRefresh(true); // Always force refresh on deletion
     };
     
-    // Add handler for direct refresh requests
-    const handleRefreshRequested = (event: CustomEvent) => {
-      const force = event.detail?.force === true;
-      console.log(`Dashboard received refresh request, force: ${force}`);
-      debouncedRefresh(force);
-    };
-    
     window.addEventListener('horeca_data_updated', handleDataUpdated as EventListener);
     window.addEventListener('cafe_deleted', handleCafeDeleted as EventListener);
-    window.addEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
     
     return () => {
       window.removeEventListener('horeca_data_updated', handleDataUpdated as EventListener);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
-      window.removeEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
     };
   }, [debouncedRefresh]);
 };

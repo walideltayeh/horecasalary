@@ -4,7 +4,6 @@ import { User } from '@/types';
 import AddCafeForm from './AddCafeForm';
 import CafeList from '@/components/CafeList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { refreshCafeData } from '@/integrations/supabase/client';
 
 interface CafeContentProps {
   user: User | null;
@@ -15,8 +14,8 @@ interface CafeContentProps {
 const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurveyComplete }) => {
   const handleSurveyComplete = () => {
     onSurveyComplete();
-    console.log("Survey completed, refreshing data...");
-    refreshCafeData();
+    console.log("Survey completed");
+    // Remove the automatic data refresh after survey completion
   };
 
   return (

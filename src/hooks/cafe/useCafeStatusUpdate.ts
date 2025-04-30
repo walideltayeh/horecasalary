@@ -41,9 +41,12 @@ export const useCafeStatusUpdate = (
         setLocalCafes(cafes);
         toast.error(`Failed to update cafe status`);
       } else {
-        toast.success(`Cafe status updated to ${newStatus}`);
+        // Only show critical success notifications
+        if (newStatus === 'Contracted') {
+          toast.success(`Cafe status updated to ${newStatus}`);
+        }
         
-        // Broadcast a data update event to trigger refresh across components with specific action
+        // Broadcast a data update event with specific action - no toast
         window.dispatchEvent(new CustomEvent('horeca_data_updated', {
           detail: { 
             action: 'statusUpdate', 
@@ -53,13 +56,6 @@ export const useCafeStatusUpdate = (
             forceRefresh: true // Add a flag to force refresh for important updates
           }
         }));
-        
-        // Force a refresh of cafe data to ensure counters are updated
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested', {
-            detail: { force: true }
-          }));
-        }, 300);
       }
     } catch (error) {
       if (mounted.current) {

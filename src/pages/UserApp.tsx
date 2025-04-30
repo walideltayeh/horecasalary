@@ -15,29 +15,12 @@ const UserApp: React.FC = () => {
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const mounted = useRef(true);
   const { handleLogout, isLoggingOut } = useLogoutHandler();
-  const lastRefreshTimeRef = useRef<number>(Date.now());
   
   // Cleanup on unmount
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
-    };
-  }, []);
-  
-  // Set up event listener for data updates with throttling
-  useEffect(() => {
-    const handleDataUpdated = () => {
-      console.log("UserApp received data update event");
-      // Mark the time of the last update with no additional action
-      // This is only for tracking, removed any refresh triggering
-      lastRefreshTimeRef.current = Date.now();
-    };
-    
-    window.addEventListener('horeca_data_updated', handleDataUpdated);
-    
-    return () => {
-      window.removeEventListener('horeca_data_updated', handleDataUpdated);
     };
   }, []);
   
