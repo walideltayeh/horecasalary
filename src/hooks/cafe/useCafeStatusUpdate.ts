@@ -8,7 +8,7 @@ export const useCafeStatusUpdate = (
   setLocalCafes: React.Dispatch<React.SetStateAction<Cafe[]>>,
   cafes: Cafe[]
 ) => {
-  const { updateCafeStatus, refreshCafes } = useData();
+  const { updateCafeStatus } = useData();
   const mounted = useRef(true);
   
   const handleUpdateStatus = async (cafeId: string, newStatus: 'Pending' | 'Visited' | 'Contracted') => {
@@ -28,27 +28,20 @@ export const useCafeStatusUpdate = (
       } else {
         toast.success(`Cafe status updated to ${newStatus}`);
         
-        // Broadcast a data update event to trigger refresh across components
+        // Broadcast a data update event to trigger refresh across components with specific action
         window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-          detail: { action: 'statusUpdate', cafeId, newStatus }
+          detail: { 
+            action: 'statusUpdate', 
+            cafeId, 
+            newStatus,
+            timestamp: Date.now()
+          }
         }));
-        
-        // Force a refresh to ensure synchronized state - with a slight delay to ensure events are processed
-        console.log("Forcing refresh after status update");
-        setTimeout(() => {
-          refreshCafes();
-          // Dispatch a second event to ensure all components refresh
-          window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-            detail: { action: 'refreshComplete', cafeId, newStatus }
-          }));
-        }, 500); // Increased delay for more reliable refresh
       }
     } catch (error) {
       if (mounted.current) {
         setLocalCafes(cafes);
         toast.error(`Error updating status`);
-        // Force a refresh to ensure synchronized state
-        refreshCafes();
       }
     }
   };

@@ -14,28 +14,39 @@ export const useEventListeners = (
   
   // Set up listeners for data update events with improved throttling
   useEffect(() => {
-    const handleDataUpdated = () => {
-      console.log("CafeList detected data update event");
+    const handleDataUpdated = (event: CustomEvent) => {
+      const detail = event.detail || {};
       
-      // Strong throttling to prevent cascading refreshes
-      const now = Date.now();
-      if (now - lastRefreshTime.current < 5000) { // 5 second cooldown
-        console.log("Refresh throttled due to recent update");
-        return;
-      }
-      
-      if (mounted.current && !refreshing && handleRefresh) {
-        // Clear any existing timeout
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
+      // Only refresh on important events
+      if (!detail.action || 
+          detail.action === 'statusUpdate' || 
+          detail.action === 'cafeCreated' || 
+          detail.action === 'cafeEdited') {
+        
+        console.log("CafeList detected important data update event:", detail.action);
+        
+        // Strong throttling to prevent cascading refreshes
+        const now = Date.now();
+        if (now - lastRefreshTime.current < 15000) { // 15 second cooldown
+          console.log("Refresh throttled due to recent update");
+          return;
         }
         
-        // Use timeout to debounce multiple events
-        refreshTimeoutRef.current = setTimeout(() => {
-          console.log("Triggering refresh due to data update event");
-          lastRefreshTime.current = Date.now();
-          handleRefresh();
-        }, 1000); // 1 second debounce
+        if (mounted.current && !refreshing && handleRefresh) {
+          // Clear any existing timeout
+          if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current);
+          }
+          
+          // Use timeout to debounce multiple events
+          refreshTimeoutRef.current = setTimeout(() => {
+            console.log("Triggering refresh due to data update event");
+            lastRefreshTime.current = Date.now();
+            handleRefresh();
+          }, 2000); // 2 second debounce
+        }
+      } else {
+        console.log("CafeList ignoring non-critical update:", detail.action);
       }
     };
     
@@ -60,7 +71,7 @@ export const useEventListeners = (
             console.log("Executing refresh after deletion");
             lastRefreshTime.current = Date.now();
             handleRefresh();
-          }, 1500); // Increased delay to 1.5s
+          }, 3000); // Increased delay to 3s
         }
       }
     };
