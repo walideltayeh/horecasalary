@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeSubscription } from '@/hooks/useCafeSubscription';
@@ -12,12 +12,13 @@ import { toast } from 'sonner';
 export const useCafeState = () => {
   const { user } = useAuth();
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
+  const pendingDeletions = useRef<Set<string>>(new Set());
   
   // Use the modified hooks without the deleteCafe dependency
   const { loading, setLoading, addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
   
   // Use a separate hook for managing cafe data
-  const { cafes, setCafes, pendingDeletions } = useCafeDataManager();
+  const { cafes, setCafes, pendingDeletions: dataPendingDeletions } = useCafeDataManager();
   
   // Import the fetchCafes from useCafeSubscription
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
@@ -51,6 +52,7 @@ export const useCafeState = () => {
         duration: 3000
       });
       
+      // Use the enhanced client-side deletion with improved error handling
       const clientResult = await clientSideDeletion(cafeId);
       
       // Always refresh cafes after deletion attempt

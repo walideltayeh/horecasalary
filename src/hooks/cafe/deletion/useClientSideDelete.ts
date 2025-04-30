@@ -84,7 +84,7 @@ export const useClientSideDelete = () => {
         return false;
       }
       
-      // Step 5: Finally delete the cafe
+      // Step 5: Finally delete the cafe - now our RLS policy should allow the user to delete their own cafes
       const { error: deleteCafeError } = await supabase
         .from('cafes')
         .delete()

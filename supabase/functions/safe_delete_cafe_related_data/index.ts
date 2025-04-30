@@ -49,6 +49,82 @@ serve(async (req) => {
     
     console.log(`Starting deletion process for cafe ID: ${cafeId}`);
     
+    // Get the currently authenticated user to check permissions
+    const { data: { session }, error: authError } = await supabaseClient.auth.getSession();
+    
+    if (authError) {
+      console.error("Authentication error:", authError);
+      return new Response(
+        JSON.stringify({ error: "Authentication error", details: authError.message }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401
+        }
+      );
+    }
+    
+    if (!session) {
+      console.error("No active session found");
+      return new Response(
+        JSON.stringify({ error: "Not authenticated" }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401
+        }
+      );
+    }
+    
+    // Get cafe to check ownership
+    const { data: cafe, error: cafeError } = await supabaseClient
+      .from('cafes')
+      .select('created_by')
+      .eq('id', cafeId)
+      .single();
+    
+    if (cafeError) {
+      console.error("Error fetching cafe:", cafeError);
+      return new Response(
+        JSON.stringify({ error: cafeError.message, step: "fetching_cafe_details" }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404
+        }
+      );
+    }
+    
+    // Get the user's role to check if they are an admin
+    const { data: userInfo, error: userError } = await supabaseClient
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+    
+    if (userError) {
+      console.error("Error fetching user role:", userError);
+      return new Response(
+        JSON.stringify({ error: userError.message, step: "fetching_user_role" }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
+    
+    // Check if user has permission to delete this cafe
+    const isAdmin = userInfo?.role === 'admin';
+    const isOwner = cafe.created_by === session.user.id;
+    
+    if (!isAdmin && !isOwner) {
+      console.error("User does not have permission to delete this cafe");
+      return new Response(
+        JSON.stringify({ error: "Permission denied. You can only delete cafes you created." }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403
+        }
+      );
+    }
+    
     // Get all surveys related to this cafe
     const { data: surveys, error: surveyError } = await supabaseClient
       .from('cafe_surveys')

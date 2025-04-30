@@ -42,17 +42,18 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
       debouncedRefresh();
     };
     
-    const handleCafeDeleted = () => {
-      console.log("Dashboard received cafe_deleted event");
+    const handleCafeDeleted = (event: CustomEvent) => {
+      const cafeId = event.detail?.cafeId;
+      console.log(`Dashboard received cafe_deleted event for cafe: ${cafeId || 'unknown'}`);
       debouncedRefresh();
     };
     
     window.addEventListener('horeca_data_updated', handleDataUpdated);
-    window.addEventListener('cafe_deleted', handleCafeDeleted);
+    window.addEventListener('cafe_deleted', handleCafeDeleted as EventListener);
     
     return () => {
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
-      window.removeEventListener('cafe_deleted', handleCafeDeleted);
+      window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
     };
   }, [debouncedRefresh]);
   
