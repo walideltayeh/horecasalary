@@ -69,30 +69,38 @@ export const useEditCafeDialog = (
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+      console.log("Starting cafe edit submission for cafe ID:", cafe.id);
       
       // Validate the form
-      if (!formData.name.trim()) {
-        toast.error("Cafe name is required");
+      const requiredFields = [
+        { field: 'name', label: 'Cafe name' },
+        { field: 'ownerName', label: 'Owner name' },
+        { field: 'ownerNumber', label: 'Owner phone' },
+        { field: 'governorate', label: 'Governorate' },
+        { field: 'city', label: 'City' },
+        { field: 'status', label: 'Cafe status' }
+      ];
+      
+      const missingFields = requiredFields
+        .filter(({ field }) => {
+          const value = formData[field as keyof typeof formData];
+          return value === undefined || value === null || value === '';
+        })
+        .map(({ label }) => label);
+        
+      if (missingFields.length > 0) {
+        console.error("Missing fields in edit form:", missingFields);
+        toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+        setIsSubmitting(false);
         return;
       }
       
-      if (!formData.ownerName.trim()) {
-        toast.error("Owner name is required");
-        return;
-      }
-      
-      if (!formData.ownerNumber.trim()) {
-        toast.error("Owner number is required");
-        return;
-      }
-      
-      if (!formData.governorate) {
-        toast.error("Governorate is required");
-        return;
-      }
-      
-      if (!formData.city) {
-        toast.error("City is required");
+      // Validate phone number format
+      const phoneRegex = /^[0-9]{10,15}$/;
+      if (!phoneRegex.test(formData.ownerNumber.replace(/\D/g, ''))) {
+        console.error("Invalid phone format in edit form");
+        toast.error('Please enter a valid phone number (10-15 digits)');
+        setIsSubmitting(false);
         return;
       }
       
@@ -102,8 +110,12 @@ export const useEditCafeDialog = (
       const success = await updateCafe(cafe.id, formData);
       
       if (success) {
+        console.log("Cafe updated successfully");
         toast.success("Cafe updated successfully");
         onSave();
+      } else {
+        console.error("Update cafe returned false");
+        toast.error("Failed to update cafe. Please try again.");
       }
     } catch (error: any) {
       console.error("Error updating cafe:", error);

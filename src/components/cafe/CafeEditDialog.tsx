@@ -44,12 +44,12 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           />
           
           <div className="space-y-2">
-            <Label htmlFor="status">Cafe Status</Label>
+            <Label htmlFor="status">Cafe Status <span className="text-red-500">*</span></Label>
             <Select 
               value={formData.status} 
               onValueChange={(value) => handleSelectChange('status', value)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full input-with-red-outline">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
@@ -72,7 +72,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           />
           
           <div className="grid gap-2">
-            <Label>Cafe Photo</Label>
+            <Label>Cafe Photo <span className="text-red-500">*</span></Label>
             <PhotoUpload 
               onPhotoChange={(url) => handleSelectChange('photoUrl', url)}
               initialUrl={formData.photoUrl} 

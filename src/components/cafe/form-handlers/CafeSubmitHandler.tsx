@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubmitCafe } from '@/hooks/useSubmitCafe';
 import { CafeFormState } from '../types/CafeFormTypes';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 interface CafeSubmitHandlerProps {
   formState: CafeFormState;
@@ -30,6 +31,7 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted with data:", formState);
     
     // First, validate that all fields are filled
     const requiredFields = [
@@ -52,6 +54,7 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
       .map(({ label }) => label);
     
     if (missingFields.length > 0) {
+      console.error("Missing fields:", missingFields);
       toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
@@ -59,27 +62,34 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
     // Validate phone number format
     const phoneRegex = /^[0-9]{10,15}$/;
     if (!phoneRegex.test(formState.ownerNumber.replace(/\D/g, ''))) {
+      console.error("Invalid phone number format");
       toast.error('Please enter a valid phone number (10-15 digits)');
       return;
     }
     
     // Validate GPS coordinates
     if (!coordinates.latitude || !coordinates.longitude) {
+      console.error("Missing GPS coordinates");
       toast.error('Please capture the GPS location');
       return;
     }
     
     if (formState.numberOfHookahs >= 1 && !surveyCompleted) {
+      console.log("Survey needed but not completed");
       onShowSurvey();
       toast.info("Please complete the brand survey before submitting");
       return;
     }
     
     try {
+      console.log("Attempting submission with coordinates:", coordinates);
       const result = await submitCafe(formState, coordinates);
       if (result) {
         console.log("Cafe submitted successfully with ID:", result);
         toast.success("Cafe added successfully!");
+      } else {
+        console.error("Submission returned null result");
+        toast.error("Failed to save cafe. Please try again.");
       }
     } catch (error: any) {
       console.error("Error in form submit:", error);
@@ -90,6 +100,11 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
   return (
     <form onSubmit={handleSubmit}>
       {children}
+      <div className="mt-6 flex justify-end">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save Cafe"}
+        </Button>
+      </div>
     </form>
   );
 };
