@@ -97,7 +97,7 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form id="cafe-form" onSubmit={handleSubmit}>
       {children}
     </form>
   );
