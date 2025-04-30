@@ -5,7 +5,6 @@ import AddCafeForm from './AddCafeForm';
 import CafeList from '@/components/CafeList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { refreshCafeData } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface CafeContentProps {
   user: User | null;
@@ -16,7 +15,7 @@ interface CafeContentProps {
 const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurveyComplete }) => {
   const handleSurveyComplete = () => {
     onSurveyComplete();
-    toast.success("Survey completed, refreshing data...");
+    console.log("Survey completed, refreshing data...");
     refreshCafeData();
   };
 

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { KPISettings } from '@/types';
 import { toast } from 'sonner';
@@ -112,7 +113,7 @@ export const KPIProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             bonusMediumCafe: newData.bonus_medium_cafe,
             bonusSmallCafe: newData.bonus_small_cafe,
           });
-          toast.info('KPI settings have been updated');
+          // Removed toast notification here
         }
       )
       .subscribe();
@@ -170,18 +171,18 @@ export const KPIProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .eq('id', existingSettings[0].id);
           
         if (error) throw error;
-        toast.success("KPI settings updated and synced to server");
+        toast.success("KPI settings updated");
       } else {
         const { error } = await supabase
           .from('kpi_settings')
           .insert([mappedSettings]);
           
         if (error) throw error;
-        toast.success("KPI settings created and synced to server");
+        toast.success("KPI settings created");
       }
     } catch (err: any) {
       console.error('Error syncing KPI settings:', err);
-      toast.error(`Sync failed: ${err.message}. Using local settings.`);
+      toast.error(`Failed to save settings: ${err.message}`);
     } finally {
       setIsSyncing(false);
     }

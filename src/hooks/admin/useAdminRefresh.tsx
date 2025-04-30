@@ -1,17 +1,15 @@
 
 import { useCallback } from 'react';
 import { supabase, refreshCafeData } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 export const useAdminRefresh = () => {
   const handleRefreshCafes = useCallback(async () => {
     try {
-      toast.info("Refreshing cafe data...");
+      console.log("Refreshing cafe data...");
       await refreshCafeData();
-      toast.success("Cafe data refreshed");
+      console.log("Cafe data refreshed");
     } catch (error) {
       console.error("Error refreshing cafes:", error);
-      toast.error("Failed to refresh cafe data");
     }
   }, []);
 

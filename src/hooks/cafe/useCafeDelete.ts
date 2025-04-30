@@ -58,12 +58,6 @@ export const useCafeDelete = (
       // Show loading state on button
       setDeleteInProgress(cafeToDelete.id);
       
-      // Show toast notification
-      toast.info(`Deleting cafe ${cafeToDelete.name}...`, {
-        id: `delete-init-${cafeToDelete.id}`,
-        duration: 3000
-      });
-      
       console.log(`UI: Starting deletion of cafe: ${cafeToDelete.name} (${cafeToDelete.id})`);
       
       // Close the dialog immediately to improve UI responsiveness
@@ -73,9 +67,7 @@ export const useCafeDelete = (
       const watchdogTimeoutId = setTimeout(() => {
         if (mounted.current && deleteInProgress === cafeToDelete.id) {
           console.log("UI: Deletion watchdog timeout triggered - forcing state reset");
-          toast.error('Deletion operation timed out - please refresh your page', {
-            id: `delete-timeout-${cafeToDelete.id}`
-          });
+          toast.error('Deletion operation timed out - please refresh your page');
           setDeleteInProgress(null);
         }
       }, 30000); // Increase timeout to 30 seconds for slower connections
@@ -109,9 +101,7 @@ export const useCafeDelete = (
         // Handle result
         if (deletionResult === true) {
           console.log(`UI: Cafe ${cafeToDelete.name} deleted successfully`);
-          toast.success(`Successfully deleted ${cafeToDelete.name}`, {
-            id: `delete-success-${cafeToDelete.id}`
-          });
+          toast.success(`Successfully deleted ${cafeToDelete.name}`);
           
           // Force a refresh after a small delay
           setTimeout(() => {
@@ -127,10 +117,7 @@ export const useCafeDelete = (
           }, 1000);
         } else {
           console.error(`UI: Failed to delete cafe ${cafeToDelete.name}`);
-          toast.error(`Failed to delete ${cafeToDelete.name}. Please try again or delete it manually.`, {
-            id: `delete-error-${cafeToDelete.id}`,
-            duration: 5000
-          });
+          toast.error(`Failed to delete ${cafeToDelete.name}. Please try again or delete it manually.`);
           
           // Refresh to ensure UI is consistent
           refreshCafes().catch(console.error);
@@ -140,10 +127,7 @@ export const useCafeDelete = (
       // Only update state if component is still mounted
       if (mounted.current) {
         console.error(`UI: Error during deletion:`, error);
-        toast.error(`Error: ${error.message || 'Unknown error'}`, {
-          id: `delete-error-${cafeToDelete.id}`,
-          duration: 5000
-        });
+        toast.error(`Error: ${error.message || 'Unknown error'}`);
         
         // CRITICAL FIX: Make sure state is reset even in case of errors
         setDeleteInProgress(null);

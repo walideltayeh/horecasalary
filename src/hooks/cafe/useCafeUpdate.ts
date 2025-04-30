@@ -21,7 +21,6 @@ export const useCafeUpdate = () => {
       }
       
       console.log("Cafe status updated successfully");
-      toast.success(`Cafe status updated to ${status}`);
       
       // Broadcast the update event with more specific details
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
@@ -66,7 +65,6 @@ export const useCafeUpdate = () => {
       }
       
       console.log("Cafe updated successfully");
-      toast.success(`Cafe updated successfully`);
       
       // Broadcast the update event with more specific details
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {

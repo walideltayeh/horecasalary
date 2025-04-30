@@ -2,8 +2,8 @@
 import { useRef } from 'react';
 import { Cafe } from '@/types';
 import { useData } from '@/contexts/DataContext';
-import { toast } from 'sonner';
 import { canUpdateCafeStatus } from '@/utils/cafeUtils';
+import { toast } from 'sonner';
 
 export const useCafeStatusUpdate = (
   setLocalCafes: React.Dispatch<React.SetStateAction<Cafe[]>>,
