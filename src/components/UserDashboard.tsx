@@ -26,7 +26,24 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   
   // Add effect to refresh data only once when the component mounts
   useEffect(() => {
-    refreshCafes();
+    const refreshData = async () => {
+      console.log("UserDashboard - Initial data refresh");
+      await refreshCafes();
+    };
+    
+    refreshData();
+    
+    // Listen for stats update events for immediate refresh
+    const handleStatsUpdated = () => {
+      const now = Date.now();
+      if (now - lastRefreshTime.current < 5000) {
+        return; // Throttle updates
+      }
+      
+      lastRefreshTime.current = now;
+      console.log("UserDashboard - Refreshing due to stats update");
+      refreshCafes();
+    };
     
     // Only listen for critical updates
     const handleDataUpdated = (e: CustomEvent) => {
@@ -43,12 +60,15 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
         }
             
         lastRefreshTime.current = now;
+        console.log("UserDashboard - Refreshing due to data update:", detail.action);
         refreshCafes();
       }
     };
     
+    window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     window.addEventListener('horeca_data_updated', handleDataUpdated as any);
     return () => {
+      window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
       window.removeEventListener('horeca_data_updated', handleDataUpdated as any);
     };
   }, [refreshCafes, userName]);
@@ -57,6 +77,9 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   const visitCounts = getUserVisitCounts(userId);
   const contractCounts = getUserContractCounts(userId);
   const userCafes = cafes.filter(cafe => cafe.createdBy === userId);
+  
+  console.log("UserDashboard render - Visit counts:", visitCounts);
+  console.log("UserDashboard render - Contract counts:", contractCounts);
   
   return (
     <div className="space-y-6">

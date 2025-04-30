@@ -25,6 +25,11 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     const contractedCafes = cafes.filter(cafe => cafe.status === 'Contracted').length;
     
     setStats({ totalCafes, pendingCafes, visitedCafes, contractedCafes });
+    
+    // Dispatch an event to notify other components that stats have been updated
+    window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+      detail: { totalCafes, pendingCafes, visitedCafes, contractedCafes }
+    }));
   }, [cafes]);
 
   return (

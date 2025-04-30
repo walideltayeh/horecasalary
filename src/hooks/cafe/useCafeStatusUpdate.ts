@@ -54,6 +54,9 @@ export const useCafeStatusUpdate = (
             forceRefresh: true
           }
         }));
+        
+        // Also dispatch a specific event for stats updates
+        window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
       }
     } catch (error) {
       if (mounted.current) {

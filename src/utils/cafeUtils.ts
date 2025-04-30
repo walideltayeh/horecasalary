@@ -19,8 +19,10 @@ export const getVisitCounts = (cafes: Cafe[]) => {
   const small = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length;
   const medium = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Medium').length;
   const large = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Large').length;
+  const total = visitedCafes.length;
   
-  return { small, medium, large, total: visitedCafes.length };
+  console.log("Visit counts calculated:", { small, medium, large, total });
+  return { small, medium, large, total };
 };
 
 export const getContractCounts = (cafes: Cafe[]) => {
@@ -34,8 +36,10 @@ export const getContractCounts = (cafes: Cafe[]) => {
   const small = contractedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length;
   const medium = contractedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Medium').length;
   const large = contractedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Large').length;
+  const total = contractedCafes.length;
   
-  return { small, medium, large, total: contractedCafes.length };
+  console.log("Contract counts calculated:", { small, medium, large, total });
+  return { small, medium, large, total };
 };
 
 // Add new validation function to check if a cafe can be updated to a specific status

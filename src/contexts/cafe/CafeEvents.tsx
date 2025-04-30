@@ -31,6 +31,9 @@ export const useCafeEvents = ({
           timestamp: Date.now()
         }
       }));
+      
+      // Also dispatch stats updated event to ensure all components refresh
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
     } finally {
       refreshInProgressRef.current = false;
     }
@@ -53,6 +56,9 @@ export const useCafeDeletionEvents = ({
     // Force refresh data after a short delay
     setTimeout(() => {
       fetchCafes(true);
+      
+      // Also dispatch stats updated event
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
     }, 300);
   }, [fetchCafes]);
   

@@ -67,6 +67,29 @@ export const useEventListeners = (
       }
     };
     
+    // Handle cafe stats updated event
+    const handleStatsUpdated = () => {
+      console.log("Stats updated event received");
+      
+      // Throttle updates
+      const now = Date.now();
+      if (now - lastRefreshTime.current < 5000) {
+        return;
+      }
+      
+      if (mounted.current && !refreshing && handleRefresh) {
+        // Clear any existing timeout
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current);
+        }
+        
+        // Execute refresh for stats updates
+        lastRefreshTime.current = Date.now();
+        console.log("Refreshing due to stats update");
+        handleRefresh();
+      }
+    };
+    
     // Modify direct refresh handler to throttle requests
     const handleRefreshRequested = (event: CustomEvent) => {
       const force = event.detail?.force === true;
@@ -93,11 +116,13 @@ export const useEventListeners = (
     window.addEventListener('horeca_data_updated', handleDataUpdated);
     window.addEventListener('cafe_deleted', handleCafeDeleted as EventListener);
     window.addEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
+    window.addEventListener('cafe_stats_updated', handleStatsUpdated as EventListener);
     
     return () => {
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
       window.removeEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
+      window.removeEventListener('cafe_stats_updated', handleStatsUpdated as EventListener);
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }

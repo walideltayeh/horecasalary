@@ -30,29 +30,53 @@ const Dashboard: React.FC = () => {
   
   // Add extra forced refreshes on mount for consistent data
   useEffect(() => {
-    // Initial refresh
-    refreshCafes();
+    const initialRefresh = async () => {
+      console.log("Dashboard - Performing initial refresh");
+      await refreshCafes();
+    };
+    
+    initialRefresh();
     
     // Secondary refresh after a short delay
-    const timer1 = setTimeout(() => {
-      refreshCafes();
+    const timer1 = setTimeout(async () => {
+      console.log("Dashboard - Performing secondary refresh");
+      await refreshCafes();
+      
+      // Force stats updated event
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
     }, 500);
     
     // Tertiary refresh after a longer delay
-    const timer2 = setTimeout(() => {
-      refreshCafes();
+    const timer2 = setTimeout(async () => {
+      console.log("Dashboard - Performing tertiary refresh");
+      await refreshCafes();
+      
+      // Force stats updated event
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
     }, 1500);
+    
+    // Listen for stats update events
+    const handleStatsUpdated = () => {
+      console.log("Dashboard - Stats updated event received");
+      refreshCafes();
+    };
+    
+    window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
+      window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
     };
   }, [refreshCafes]);
   
-  // Calculate stats
+  // Calculate stats with immediate rendering
   const visitCounts = getVisitCounts();
   const contractCounts = getContractCounts();
   const salaryStats = calculateSalary();
+  
+  console.log("Dashboard render - Visit counts:", visitCounts);
+  console.log("Dashboard render - Contract counts:", contractCounts);
   
   // Admin dashboard view
   if (isAdmin) {

@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { User } from '@/types';
 import AddCafeForm from './AddCafeForm';
 import CafeList from '@/components/CafeList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useData } from '@/contexts/DataContext';
 
 interface CafeContentProps {
   user: User | null;
@@ -12,6 +13,24 @@ interface CafeContentProps {
 }
 
 const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurveyComplete }) => {
+  const { refreshCafes } = useData();
+
+  // Force initial data refresh on mount
+  useEffect(() => {
+    refreshCafes();
+    
+    // Also listen for stats update events
+    const handleStatsUpdated = () => {
+      console.log("CafeContent - Stats updated event received");
+      refreshCafes();
+    };
+    
+    window.addEventListener('cafe_stats_updated', handleStatsUpdated);
+    return () => {
+      window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
+    };
+  }, [refreshCafes]);
+  
   const handleSurveyComplete = () => {
     onSurveyComplete();
     
@@ -20,6 +39,9 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
       detail: { action: 'cafeCreated', forceRefresh: true }
     });
     window.dispatchEvent(event);
+    
+    // Also trigger a stats update
+    window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
   };
 
   return (
