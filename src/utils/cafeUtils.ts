@@ -10,7 +10,7 @@ export const getCafeSize = (numberOfHookahs: number): CafeSize => {
 
 export const getVisitCounts = (cafes: Cafe[]) => {
   if (!cafes || cafes.length === 0) {
-    return { small: 0, medium: 0, large: 0, total: 0 };
+    return { small: 0, medium: 0, large: 0, inNegotiation: 0, total: 0 };
   }
   
   // Include both 'Visited' AND 'Contracted' cafes as visited
@@ -19,10 +19,11 @@ export const getVisitCounts = (cafes: Cafe[]) => {
   const small = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length;
   const medium = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Medium').length;
   const large = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Large').length;
+  const inNegotiation = visitedCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'In Negotiation').length;
   const total = visitedCafes.length;
   
-  console.log("Visit counts calculated:", { small, medium, large, total });
-  return { small, medium, large, total };
+  console.log("Visit counts calculated:", { small, medium, large, inNegotiation, total });
+  return { small, medium, large, inNegotiation, total };
 };
 
 export const getContractCounts = (cafes: Cafe[]) => {

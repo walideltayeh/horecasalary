@@ -22,6 +22,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     small: 0,
     medium: 0,
     large: 0,
+    inNegotiation: 0, // Added inNegotiation count
     total: 0
   });
   
@@ -55,6 +56,8 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
       getCafeSize(cafe.numberOfHookahs) === 'Medium').length;
     const visitLarge = visitedOrContractedCafes.filter(cafe => 
       getCafeSize(cafe.numberOfHookahs) === 'Large').length;
+    const visitInNegotiation = visitedOrContractedCafes.filter(cafe => 
+      getCafeSize(cafe.numberOfHookahs) === 'In Negotiation').length;
     
     // For contracted cafes (only 'Contracted' status)
     const contractedOnlyCafes = cafes.filter(cafe => cafe.status === 'Contracted');
@@ -66,8 +69,19 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     const contractLarge = contractedOnlyCafes.filter(cafe => 
       getCafeSize(cafe.numberOfHookahs) === 'Large').length;
     
-    console.log("Visit counts by size:", { small: visitSmall, medium: visitMedium, large: visitLarge, total: visitedCafes });
-    console.log("Contract counts by size:", { small: contractSmall, medium: contractMedium, large: contractLarge, total: contractedCafes });
+    console.log("Visit counts by size:", { 
+      small: visitSmall, 
+      medium: visitMedium, 
+      large: visitLarge, 
+      inNegotiation: visitInNegotiation, 
+      total: visitedCafes 
+    });
+    console.log("Contract counts by size:", { 
+      small: contractSmall, 
+      medium: contractMedium, 
+      large: contractLarge, 
+      total: contractedCafes 
+    });
     
     // Update state
     setStats({ totalCafes, pendingCafes, visitedCafes, contractedCafes });
@@ -75,6 +89,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
       small: visitSmall,
       medium: visitMedium, 
       large: visitLarge,
+      inNegotiation: visitInNegotiation, // Store in-negotiation count
       total: visitedCafes
     });
     setContractDetails({
@@ -95,6 +110,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
           small: visitSmall,
           medium: visitMedium,
           large: visitLarge,
+          inNegotiation: visitInNegotiation, // Include in-negotiation count
           total: visitedCafes
         },
         contractCounts: {

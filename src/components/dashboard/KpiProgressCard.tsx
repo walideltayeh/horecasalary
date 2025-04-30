@@ -7,6 +7,7 @@ interface KpiCounts {
   large: number;
   medium: number;
   small: number;
+  inNegotiation?: number; // Added optional inNegotiation count
   total: number;
 }
 
@@ -18,6 +19,7 @@ interface KpiProgressCardProps {
   thresholdValue: number;
   counts: KpiCounts;
   targets: KpiCounts;
+  showNegotiation?: boolean; // Flag to determine whether to show the "Under Negotiation" section
 }
 
 const KpiProgressCard: React.FC<KpiProgressCardProps> = ({
@@ -27,7 +29,8 @@ const KpiProgressCard: React.FC<KpiProgressCardProps> = ({
   thresholdPercentage,
   thresholdValue,
   counts,
-  targets
+  targets,
+  showNegotiation = false // Default to false
 }) => {
   return (
     <Card>
@@ -72,6 +75,19 @@ const KpiProgressCard: React.FC<KpiProgressCardProps> = ({
               </div>
             </div>
           </div>
+          
+          {/* Display "Under Negotiation" section if showNegotiation is true */}
+          {showNegotiation && counts.inNegotiation !== undefined && (
+            <div className="mt-2 pt-2 border-t">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Under Negotiation</span>
+                <span className="font-bold">
+                  {counts.inNegotiation || 0}
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="mt-2 pt-2 border-t">
             <div className="flex justify-between">
               <span className="text-gray-600">Total</span>
