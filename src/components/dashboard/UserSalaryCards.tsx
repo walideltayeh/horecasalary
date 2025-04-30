@@ -27,7 +27,7 @@ const UserSalaryCards: React.FC<UserSalaryCardsProps> = ({ salaryStats, kpiSetti
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">
-            Basic Salary <span className="font-bold text-red-600">($${entitledBasicSalary.toFixed(2)})</span>
+            Basic Salary <span className="font-bold text-red-600">(${entitledBasicSalary.toFixed(2)})</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -41,7 +41,7 @@ const UserSalaryCards: React.FC<UserSalaryCardsProps> = ({ salaryStats, kpiSetti
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">
-            KPI Salary <span className="font-bold text-red-600">($${entitledKpiSalary.toFixed(2)})</span>
+            KPI Salary <span className="font-bold text-red-600">(${entitledKpiSalary.toFixed(2)})</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -57,7 +57,7 @@ const UserSalaryCards: React.FC<UserSalaryCardsProps> = ({ salaryStats, kpiSetti
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">
-            Total Salary <span className="font-bold text-red-600">($${entitledTotalSalary.toFixed(2)})</span>
+            Total Salary <span className="font-bold text-red-600">(${entitledTotalSalary.toFixed(2)})</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
