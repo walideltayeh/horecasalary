@@ -46,7 +46,7 @@ const CafeTableRow: React.FC<CafeTableRowProps> = ({
           {cafe.status === 'Pending' && (
             <Clock className="h-3 w-3 text-gray-600" />
           )}
-          <CafeStatusBadge status={cafe.status} />
+          <CafeStatusBadge status={cafe.status} numberOfHookahs={cafe.numberOfHookahs} />
         </div>
       </TableCell>
       <TableCell>{cafe.ownerName}</TableCell>
