@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import CafeStatsCard from './CafeStatsCard';
 import { Cafe } from '@/types';
-import { getVisitCounts, getContractCounts } from '@/utils/cafeUtils';
+import { getVisitCounts, getContractCounts, getCafeSize } from '@/utils/cafeUtils';
 import { useData } from '@/contexts/DataContext';
 
 interface StatsOverviewProps {
@@ -34,6 +34,9 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
   
   // Update stats whenever cafes change
   useEffect(() => {
+    console.log("StatsOverview - Recalculating statistics with cafes:", cafes.length);
+    
+    // Calculate basic stats
     const totalCafes = cafes.length;
     const pendingCafes = cafes.filter(cafe => cafe.status === 'Pending').length;
     // Count both Visited AND Contracted as visited for total visited count
@@ -41,13 +44,45 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
       cafe.status === 'Visited' || cafe.status === 'Contracted').length;
     const contractedCafes = cafes.filter(cafe => cafe.status === 'Contracted').length;
     
-    // Calculate detailed visit and contract counts
-    const visitCounts = getVisitCounts(cafes);
-    const contractCounts = getContractCounts(cafes);
+    // Calculate detailed size-based counts
+    // For visited cafes (includes both 'Visited' and 'Contracted' statuses)
+    const visitedOrContractedCafes = cafes.filter(cafe => 
+      cafe.status === 'Visited' || cafe.status === 'Contracted');
+      
+    const visitSmall = visitedOrContractedCafes.filter(cafe => 
+      getCafeSize(cafe.numberOfHookahs) === 'Small').length;
+    const visitMedium = visitedOrContractedCafes.filter(cafe => 
+      getCafeSize(cafe.numberOfHookahs) === 'Medium').length;
+    const visitLarge = visitedOrContractedCafes.filter(cafe => 
+      getCafeSize(cafe.numberOfHookahs) === 'Large').length;
     
+    // For contracted cafes (only 'Contracted' status)
+    const contractedOnlyCafes = cafes.filter(cafe => cafe.status === 'Contracted');
+    
+    const contractSmall = contractedOnlyCafes.filter(cafe => 
+      getCafeSize(cafe.numberOfHookahs) === 'Small').length;
+    const contractMedium = contractedOnlyCafes.filter(cafe => 
+      getCafeSize(cafe.numberOfHookahs) === 'Medium').length;
+    const contractLarge = contractedOnlyCafes.filter(cafe => 
+      getCafeSize(cafe.numberOfHookahs) === 'Large').length;
+    
+    console.log("Visit counts by size:", { small: visitSmall, medium: visitMedium, large: visitLarge, total: visitedCafes });
+    console.log("Contract counts by size:", { small: contractSmall, medium: contractMedium, large: contractLarge, total: contractedCafes });
+    
+    // Update state
     setStats({ totalCafes, pendingCafes, visitedCafes, contractedCafes });
-    setVisitDetails(visitCounts);
-    setContractDetails(contractCounts);
+    setVisitDetails({
+      small: visitSmall,
+      medium: visitMedium, 
+      large: visitLarge,
+      total: visitedCafes
+    });
+    setContractDetails({
+      small: contractSmall,
+      medium: contractMedium,
+      large: contractLarge,
+      total: contractedCafes
+    });
     
     // Dispatch an event to notify other components that stats have been updated
     window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
@@ -56,8 +91,18 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
         pendingCafes, 
         visitedCafes, 
         contractedCafes,
-        visitCounts,
-        contractCounts
+        visitCounts: {
+          small: visitSmall,
+          medium: visitMedium,
+          large: visitLarge,
+          total: visitedCafes
+        },
+        contractCounts: {
+          small: contractSmall,
+          medium: contractMedium,
+          large: contractLarge,
+          total: contractedCafes
+        }
       }
     }));
   }, [cafes]);

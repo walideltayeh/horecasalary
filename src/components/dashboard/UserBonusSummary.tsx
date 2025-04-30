@@ -25,6 +25,8 @@ const UserBonusSummary: React.FC<UserBonusSummaryProps> = ({
   kpiSettings, 
   bonusAmount 
 }) => {
+  console.log("UserBonusSummary rendering with contracts:", contractCounts);
+  
   return (
     <Card>
       <CardHeader>
