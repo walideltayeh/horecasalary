@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 /**
  * Hook for managing real-time channel subscriptions to cafe-related tables
- * Uses a more efficient approach with selective updates instead of full refreshes
+ * Uses a more efficient approach with reduced event handling
  */
 export const useRealtimeChannels = (
   onDataChange: (force?: boolean) => Promise<void>
@@ -16,7 +16,7 @@ export const useRealtimeChannels = (
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setupChannels = useCallback(async () => {
-    console.log("Setting up cafe realtime channels with selective updates...");
+    console.log("Setting up cafe realtime channels with optimized updates...");
     
     // Clean up existing channels first
     if (channelsRef.current.length > 0) {
@@ -27,7 +27,7 @@ export const useRealtimeChannels = (
     }
 
     try {
-      // Function to process updates in batches for better performance
+      // Function to process updates in batches with increased debounce time
       const processUpdates = () => {
         if (pendingUpdatesRef.current.size === 0) return;
         
@@ -36,9 +36,9 @@ export const useRealtimeChannels = (
         // Reset pending updates
         pendingUpdatesRef.current.clear();
         
-        // Trigger a single refresh
+        // Trigger a single refresh with increased throttling
         const now = Date.now();
-        if (now - lastUpdateTimeRef.current > 1000) {  // Only if last refresh was >1s ago
+        if (now - lastUpdateTimeRef.current > 5000) {  // Increased to 5s from 1s
           lastUpdateTimeRef.current = now;
           
           // Dispatch event rather than performing direct refresh
@@ -56,11 +56,11 @@ export const useRealtimeChannels = (
           clearTimeout(updateTimeoutRef.current);
         }
         
-        // Set a new timeout to process all pending updates
+        // Set a new timeout to process all pending updates with increased debounce time
         updateTimeoutRef.current = setTimeout(() => {
           processUpdates();
           updateTimeoutRef.current = null;
-        }, 500); // 500ms debounce
+        }, 1500); // Increased from 500ms to 1.5s debounce
       };
       
       // Create a single channel for all database changes
@@ -77,49 +77,21 @@ export const useRealtimeChannels = (
             scheduleUpdate(payload.eventType, 'cafes');
           }
         )
-        .on('postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'cafe_surveys'
-          },
-          (payload) => {
-            console.log("Cafe survey change detected:", payload.eventType);
-            scheduleUpdate(payload.eventType, 'cafe_surveys');
-          }
-        )
-        .on('postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'brand_sales'
-          },
-          (payload) => {
-            console.log("Brand sales change detected:", payload.eventType);
-            scheduleUpdate(payload.eventType, 'brand_sales');
-          }
-        )
         .subscribe((status) => {
           console.log(`Realtime channels subscribed with status: ${status}`);
         });
         
       channelsRef.current.push(channel);
       
-      // Enable realtime for all relevant tables using the enable-realtime function
       try {
-        await Promise.all([
-          supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafes' }}),
-          supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafe_surveys' }}),
-          supabase.functions.invoke('enable-realtime', { body: { table_name: 'brand_sales' }})
-        ]);
-        console.log("Realtime subscription activated");
+        await supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafes' }});
+        console.log("Realtime subscription activated for cafes table");
       } catch (err) {
         console.warn("Non-critical error enabling realtime:", err);
-        // Continue anyway as the function might not exist or fail for other reasons
       }
     } catch (err) {
       console.error("Error setting up realtime subscriptions:", err);
-      toast.error('Failed to set up realtime updates');
+      // Removed toast to prevent extra notifications
     }
 
     // Return a cleanup function

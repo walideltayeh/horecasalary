@@ -1,10 +1,9 @@
 
 import { useEffect, useRef } from 'react';
-import { toast } from 'sonner';
 
 /**
  * Hook for setting up periodic refresh of cafe data
- * Different refresh intervals for admin vs regular users
+ * With much less aggressive refresh intervals
  */
 export const usePeriodicRefresh = (
   onRefresh: (force?: boolean) => Promise<void>,
@@ -13,7 +12,7 @@ export const usePeriodicRefresh = (
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastAutoRefreshRef = useRef<number>(0);
   
-  // Set up a periodic refresh based on user role
+  // Set up a periodic refresh based on user role with much less frequent updates
   useEffect(() => {
     const setupRefreshInterval = () => {
       // Clear existing interval if any
@@ -22,8 +21,8 @@ export const usePeriodicRefresh = (
         intervalRef.current = null;
       }
       
-      // Set refresh interval based on user role
-      const refreshInterval = isAdminRef.current ? 30000 : 60000; // 30s for admin, 60s for regular users
+      // Set refresh interval based on user role - much less frequent now
+      const refreshInterval = isAdminRef.current ? 120000 : 180000; // 2 minutes for admin, 3 minutes for regular users
       
       // Create new interval
       intervalRef.current = setInterval(() => {

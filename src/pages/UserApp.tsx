@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from './Dashboard';
-import { refreshCafeData } from '@/integrations/supabase/client';
 import UserHeader from '@/components/layout/UserHeader';
 import UserNavigation from '@/components/layout/UserNavigation';
 import CafeContent from '@/components/cafe/CafeContent';
@@ -26,54 +25,21 @@ const UserApp: React.FC = () => {
     };
   }, []);
   
-  // Initial data refresh only once when mounted
+  // Set up event listener for data updates with throttling
   useEffect(() => {
-    console.log("UserApp mounted, refreshing data once");
-    
-    // Small delay to let other components initialize first
-    const timeoutId = setTimeout(() => {
-      if (mounted.current) {
-        refreshCafeData();
-        console.log("Initial cafe data refresh triggered");
-        lastRefreshTimeRef.current = Date.now();
-      }
-    }, 500);
-    
-    // Set up event listener for tab changes
-    const handleTabChange = () => {
-      // Only refresh if it's been a while since last refresh
-      const now = Date.now();
-      if (now - lastRefreshTimeRef.current > 2000) {
-        console.log("Tab changed, triggering refresh");
-        refreshCafeData();
-        lastRefreshTimeRef.current = now;
-      }
-    };
-    
-    // Set up event listener for data updates
     const handleDataUpdated = () => {
       console.log("UserApp received data update event");
-      // Mark the time of the last update
+      // Mark the time of the last update with no additional action
+      // This is only for tracking, removed any refresh triggering
       lastRefreshTimeRef.current = Date.now();
     };
     
     window.addEventListener('horeca_data_updated', handleDataUpdated);
     
     return () => {
-      clearTimeout(timeoutId);
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
     };
   }, []);
-  
-  // Handle tab changes
-  useEffect(() => {
-    console.log("Tab changed to:", activeTab);
-    // Refresh data when switching tabs
-    if (mounted.current) {
-      refreshCafeData();
-      console.log(`Refreshed data due to tab change to ${activeTab}`);
-    }
-  }, [activeTab]);
   
   if (!user || user.role === 'admin') {
     return <Navigate to="/login" />;

@@ -49,8 +49,10 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
       const cafeId = await addCafe(completeData);
       console.log("Cafe added with ID:", cafeId);
       
-      // Trigger a refresh of cafe data after adding
-      window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+      // Only trigger a single refresh event
+      window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+        detail: { action: 'cafeAdded', cafeId }
+      }));
       
       return cafeId;
     } catch (error: any) {
