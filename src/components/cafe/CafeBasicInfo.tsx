@@ -56,6 +56,16 @@ export const CafeBasicInfo = ({
           required
         />
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="status">
+          Cafe Status <span className="text-red-500">*</span>
+        </Label>
+        <CafeStatusSelect
+          selectedStatus={formState.status}
+          onSelectChange={onSelectChange}
+        />
+      </div>
     </div>
   );
 };

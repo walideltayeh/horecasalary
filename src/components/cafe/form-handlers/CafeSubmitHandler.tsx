@@ -39,6 +39,7 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
       { field: 'governorate', label: 'Governorate' },
       { field: 'city', label: 'City' },
       { field: 'photoUrl', label: 'Cafe photo' },
+      { field: 'status', label: 'Cafe status' },
       { field: 'numberOfHookahs', label: 'Number of hookahs' },
       { field: 'numberOfTables', label: 'Number of tables' }
     ];

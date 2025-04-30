@@ -7,7 +7,6 @@ import { CafeLocationInfo } from '../CafeLocationInfo';
 import { PhotoUpload } from '../PhotoUpload';
 import { GPSCapture } from '../GPSCapture';
 import { Label } from "@/components/ui/label";
-import CafeStatusSelect from '../CafeStatusSelect';
 
 interface CafeFormFieldsProps {
   formState: CafeFormState;
@@ -37,14 +36,8 @@ export const CafeFormFields: React.FC<CafeFormFieldsProps> = ({
       <CafeBasicInfo 
         formState={formState} 
         onInputChange={handleInputChange}
+        onSelectChange={handleSelectChange}
       />
-
-      <div className="space-y-2">
-        <CafeStatusSelect
-          selectedStatus={formState.status}
-          onSelectChange={handleSelectChange}
-        />
-      </div>
 
       <CafeCapacityInfo 
         formState={formState} 
