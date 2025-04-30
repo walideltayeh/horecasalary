@@ -67,9 +67,9 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     if (!kpiSettings) return 'Loading...';
     
     return [
-      `Large: ${visitDetails.large}/${kpiSettings.target_visits_large}`,
-      `Medium: ${visitDetails.medium}/${kpiSettings.target_visits_medium}`,
-      `Small: ${visitDetails.small}/${kpiSettings.target_visits_small}`
+      `Large: ${visitDetails.large}/${kpiSettings.targetVisitsLarge}`,
+      `Medium: ${visitDetails.medium}/${kpiSettings.targetVisitsMedium}`,
+      `Small: ${visitDetails.small}/${kpiSettings.targetVisitsSmall}`
     ].join(' • ');
   };
   
@@ -77,9 +77,9 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     if (!kpiSettings) return 'Loading...';
     
     return [
-      `Large: ${contractDetails.large}/${kpiSettings.target_contracts_large}`,
-      `Medium: ${contractDetails.medium}/${kpiSettings.target_contracts_medium}`,
-      `Small: ${contractDetails.small}/${kpiSettings.target_contracts_small}`
+      `Large: ${contractDetails.large}/${kpiSettings.targetContractsLarge}`,
+      `Medium: ${contractDetails.medium}/${kpiSettings.targetContractsMedium}`,
+      `Small: ${contractDetails.small}/${kpiSettings.targetContractsSmall}`
     ].join(' • ');
   };
 

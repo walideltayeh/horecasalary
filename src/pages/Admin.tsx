@@ -10,7 +10,7 @@ import SystemStats from '@/components/admin/SystemStats';
 import UserManagement from '@/components/admin/UserManagement';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AdminHeader from '@/components/admin/AdminHeader';
-import CafeStatsCard from '@/components/admin/CafeStatsCard';
+import { AdminCafeStats } from '@/components/admin/CafeStatsCard';
 import { useAdminRefresh } from '@/hooks/admin/useAdminRefresh';
 import { toast } from 'sonner';
 import { refreshCafeData } from '@/integrations/supabase/client';
@@ -181,7 +181,7 @@ const Admin: React.FC = () => {
   return (
     <div className="space-y-8">
       <AdminHeader onRefreshCafes={handleRefreshCafes} loadingCafes={loadingCafes} />
-      <CafeStatsCard cafes={cafes} loadingCafes={loadingCafes} />
+      <AdminCafeStats cafes={cafes} loadingCafes={loadingCafes} />
       
       <UserManagement
         users={users}
