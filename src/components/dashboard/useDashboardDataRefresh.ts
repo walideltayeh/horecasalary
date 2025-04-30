@@ -43,5 +43,5 @@ export const useDashboardDataRefresh = ({ refreshCafes }: DashboardDataRefreshPr
   // Add effect to refresh data on component mount, but only once
   useEffect(() => {
     refreshCafes();
-  }, []);
+  }, [refreshCafes]);
 };
