@@ -1,48 +1,24 @@
 
 import React from 'react';
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface CafeStatsCardProps {
-  cafes?: any[];
-  loadingCafes?: boolean;
-  title?: string;
-  value?: number;
+  title: string;
+  value: number;
+  subtext?: string;
 }
 
-const CafeStatsCard: React.FC<CafeStatsCardProps> = ({ 
-  cafes, 
-  loadingCafes,
-  title,
-  value
-}) => {
-  // Handle both use cases - either cafes data or direct title/value
-  if (title !== undefined && value !== undefined) {
-    return (
-      <Card className="bg-white">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-gray-800">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold">{value}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  // Original cafe database status card
+const CafeStatsCard: React.FC<CafeStatsCardProps> = ({ title, value, subtext }) => {
   return (
-    <Card className="bg-green-50 border-green-200">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-green-800">Cafe Database Status</CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-green-700">
-          {loadingCafes ? (
-            "Loading cafe data..."
-          ) : (
-            `Total cafes in system: ${cafes?.length || 0}`
-          )}
-        </p>
+        <div className="text-2xl font-bold">{value}</div>
+        {subtext && (
+          <p className="text-xs text-muted-foreground mt-1">{subtext}</p>
+        )}
       </CardContent>
     </Card>
   );
