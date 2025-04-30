@@ -15,6 +15,8 @@ interface UserKpiStatsProps {
       percentage: number;
       thresholdValue: number;
     };
+    visitKpi: number;
+    contractKpi: number;
   };
   visitCounts: {
     large: number;
@@ -50,7 +52,7 @@ const UserKpiStats: React.FC<UserKpiStatsProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Visit KPI */}
       <KpiProgressCard
-        title="Visit KPI Status"
+        title={`Visit KPI Status ($${salaryStats.visitKpi.toFixed(2)})`}
         icon={<Building className="mr-2 h-4 w-4" />}
         percentage={salaryStats.visitStatus.percentage}
         thresholdPercentage={kpiSettings.visitThresholdPercentage}
@@ -71,7 +73,7 @@ const UserKpiStats: React.FC<UserKpiStatsProps> = ({
 
       {/* Contract KPI */}
       <KpiProgressCard
-        title="Contract KPI Status"
+        title={`Contract KPI Status ($${salaryStats.contractKpi.toFixed(2)})`}
         icon={<CheckCircle className="mr-2 h-4 w-4" />}
         percentage={salaryStats.contractStatus.percentage}
         thresholdPercentage={kpiSettings.contractThresholdPercentage}
