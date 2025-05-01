@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 /**
  * Hook for managing real-time channel subscriptions to cafe-related tables
+ * Uses a more efficient approach with reduced event handling
  */
 export const useRealtimeChannels = (
   onDataChange: (force?: boolean) => Promise<void>
@@ -26,6 +27,42 @@ export const useRealtimeChannels = (
     }
 
     try {
+      // Function to process updates in batches with increased debounce time
+      const processUpdates = () => {
+        if (pendingUpdatesRef.current.size === 0) return;
+        
+        console.log(`Processing ${pendingUpdatesRef.current.size} pending updates`);
+        
+        // Reset pending updates
+        pendingUpdatesRef.current.clear();
+        
+        // Trigger a single refresh with increased throttling
+        const now = Date.now();
+        if (now - lastUpdateTimeRef.current > 5000) {  // Increased to 5s from 1s
+          lastUpdateTimeRef.current = now;
+          
+          // Dispatch event rather than performing direct refresh
+          window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+        }
+      };
+      
+      // Create a smarter update handler that collects changes and processes them in batches
+      const scheduleUpdate = (type: string, tableName: string) => {
+        // Add to pending updates
+        pendingUpdatesRef.current.add(`${type}:${tableName}`);
+        
+        // Clear previous timeout if exists
+        if (updateTimeoutRef.current) {
+          clearTimeout(updateTimeoutRef.current);
+        }
+        
+        // Set a new timeout to process all pending updates with increased debounce time
+        updateTimeoutRef.current = setTimeout(() => {
+          processUpdates();
+          updateTimeoutRef.current = null;
+        }, 1500); // Increased from 500ms to 1.5s debounce
+      };
+      
       // Create a single channel for all database changes
       const channel = supabase
         .channel('db-changes')
@@ -36,54 +73,25 @@ export const useRealtimeChannels = (
             table: 'cafes'
           },
           (payload) => {
-            console.log("Cafe change detected:", payload.eventType, payload);
-            
-            // For critical changes, force an immediate refresh
-            const isCriticalChange = payload.eventType === 'INSERT' || 
-                                    payload.eventType === 'DELETE';
-            
-            // Clear any pending timeout
-            if (updateTimeoutRef.current) {
-              clearTimeout(updateTimeoutRef.current);
-            }
-            
-            // Schedule a refresh with appropriate timing
-            updateTimeoutRef.current = setTimeout(() => {
-              console.log(`Processing ${payload.eventType} change for cafes, forcing refresh:`, isCriticalChange);
-              onDataChange(isCriticalChange);
-              
-              // Also dispatch global refresh event
-              window.dispatchEvent(new CustomEvent('global_data_refresh'));
-              
-              updateTimeoutRef.current = null;
-            }, isCriticalChange ? 300 : 1000); // Faster refresh for critical changes
+            console.log("Cafe change detected:", payload.eventType);
+            scheduleUpdate(payload.eventType, 'cafes');
           }
         )
         .subscribe((status) => {
           console.log(`Realtime channels subscribed with status: ${status}`);
-          if (status === 'SUBSCRIBED') {
-            toast.success("Realtime updates activated");
-          }
         });
         
       channelsRef.current.push(channel);
       
       try {
-        // Try to enable realtime via edge function
-        const { error } = await supabase.functions.invoke('enable-realtime', { 
-          body: { table_name: 'cafes' }
-        });
-        
-        if (error) {
-          console.error("Failed to enable realtime via edge function:", error);
-        } else {
-          console.log("Realtime subscription activated for cafes table");
-        }
+        await supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafes' }});
+        console.log("Realtime subscription activated for cafes table");
       } catch (err) {
         console.warn("Non-critical error enabling realtime:", err);
       }
     } catch (err) {
       console.error("Error setting up realtime subscriptions:", err);
+      // Removed toast to prevent extra notifications
     }
 
     // Return a cleanup function
@@ -101,7 +109,7 @@ export const useRealtimeChannels = (
       });
       channelsRef.current = [];
     };
-  }, [onDataChange]);
+  }, []);
 
   return { setupChannels };
 };

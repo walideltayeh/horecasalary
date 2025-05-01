@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useClientSideDelete } from './useClientSideDelete';
 
 /**
  * Handles deletion using the edge function approach
@@ -9,40 +8,37 @@ import { useClientSideDelete } from './useClientSideDelete';
 export const useEdgeFunctionDelete = () => {
   const deleteViaEdgeFunction = async (cafeId: string): Promise<boolean> => {
     try {
-      // Show toast for starting deletion process
+      // Show toast for starting edge function deletion
       toast.info("Starting deletion process...", {
         id: `delete-${cafeId}`,
         duration: 3000
       });
       
-      // Try direct database deletion instead of edge function
-      try {
-        // First try to delete from cafe_surveys
-        const { error: surveysError } = await supabase
-          .from('cafe_surveys')
-          .delete()
-          .eq('cafe_id', cafeId);
-          
-        if (surveysError) {
-          console.warn("DELETION: Error deleting cafe surveys:", surveysError);
+      // Call the edge function to delete cafe and related data
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'safe_delete_cafe_related_data',
+        { 
+          body: { cafeId },
+          // Add timeout to prevent UI hanging indefinitely
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
+      );
+      
+      if (functionError) {
+        console.log("DELETION: Edge function error:", functionError);
+        toast.error(`Deletion failed: ${functionError.message || "Edge function error"}`, {
+          id: `delete-${cafeId}`,
+          duration: 4000
+        });
+        return false;
+      }
+      
+      if (functionData?.success) {
+        console.log("DELETION: Edge function success:", functionData);
         
-        // Then delete from cafes table
-        const { error: cafesError } = await supabase
-          .from('cafes')
-          .delete()
-          .eq('id', cafeId);
-          
-        if (cafesError) {
-          console.error("DELETION: Error deleting cafe:", cafesError);
-          toast.error(`Deletion failed: ${cafesError.message}`, {
-            id: `delete-${cafeId}`,
-            duration: 4000
-          });
-          return false;
-        }
-        
-        // Deletion was successful
+        // Notify on success
         toast.success("Deletion completed successfully", {
           id: `delete-${cafeId}`,
           duration: 2000
@@ -51,16 +47,16 @@ export const useEdgeFunctionDelete = () => {
         // Broadcast deletion event
         broadcastDeletionEvent(cafeId);
         return true;
-      } catch (err: any) {
-        console.error("DELETION: Error during direct database deletion:", err);
-        toast.error(`Deletion failed: ${err.message || "Unexpected error"}`, {
+      } else {
+        console.error("DELETION: Edge function returned error:", functionData);
+        toast.error(`Deletion failed: ${functionData?.error || "Unknown error"}`, {
           id: `delete-${cafeId}`,
           duration: 4000
         });
         return false;
       }
     } catch (err: any) {
-      console.error("DELETION: Error during deletion process:", err);
+      console.error("DELETION: Error during edge function call:", err);
       toast.error(`Deletion failed: ${err.message || "Unexpected error"}`, {
         id: `delete-${cafeId}`,
         duration: 4000

@@ -16,10 +16,10 @@ export const useAdminPage = () => {
   const { handleRefreshCafes, enableRealtimeForTable } = useAdminRefresh();
   const [refreshAttemptCount, setRefreshAttemptCount] = useState(0);
 
-  // Force immediate data refresh when admin page is mounted or authentication changes
+  // Reduced aggressiveness in data refresh
   useEffect(() => {
     if (isAdmin && authenticated) {
-      console.log("Admin page mounted or auth changed, performing IMMEDIATE data refresh");
+      console.log("Admin page mounted or auth changed, performing INITIAL data refresh");
       
       // Enable realtime for critical tables immediately
       const tables = ['cafes', 'cafe_surveys', 'brand_sales', 'users'];
@@ -28,31 +28,34 @@ export const useAdminPage = () => {
         enableRealtimeForTable(table);
       });
       
-      // Force immediate data refresh with retries
+      // Force immediate data refresh
       const forceRefresh = async () => {
         try {
           console.log(`Forcing immediate data refresh (attempt ${refreshAttemptCount + 1})`);
           toast.info("Refreshing all data...");
           
-          // Force fetch cafes with high priority
-          await refreshCafeData();
-          await refreshCafes();
-          
-          // Force fetch users with high priority
+          // Force fetch users immediately with higher priority
           await fetchUsers(true);
           
-          // Dispatch global refresh event
-          window.dispatchEvent(new CustomEvent('global_data_refresh'));
+          // Force refresh cafes immediately
+          await refreshCafes();
+          await handleRefreshCafes();
           
-          if (users.length > 0 || cafes.length > 0) {
+          // Trigger global refresh event
+          window.dispatchEvent(new CustomEvent('horeca_data_refresh_requested'));
+          refreshCafeData();
+          
+          if (users.length > 0 && cafes.length > 0) {
             toast.success(`Data refreshed successfully: ${users.length} users, ${cafes.length} cafes`);
-          } else if (refreshAttemptCount < 3) {
-            // If no data, retry up to 3 times
-            setTimeout(() => {
-              setRefreshAttemptCount(prev => prev + 1);
-            }, 2000);
           } else {
-            toast.warning("Data may not be fully loaded. Try refreshing manually.");
+            // If we don't have data yet, try again in 2 seconds (up to 3 attempts)
+            if (refreshAttemptCount < 3) {
+              setTimeout(() => {
+                setRefreshAttemptCount(prev => prev + 1);
+              }, 2000);
+            } else {
+              toast.warning("Data may not be fully loaded. Try refreshing manually.");
+            }
           }
         } catch (error) {
           console.error("Error during initial data refresh:", error);
@@ -62,25 +65,25 @@ export const useAdminPage = () => {
       
       forceRefresh();
     }
-  }, [isAdmin, authenticated, refreshCafes, fetchUsers, refreshAttemptCount, users.length, cafes.length]);
+  }, [isAdmin, authenticated, fetchUsers, refreshCafes, handleRefreshCafes, enableRealtimeForTable, refreshAttemptCount, users.length, cafes.length]);
 
-  // Set up periodic refreshes for admin page
+  // Reduced frequency of periodic refreshes for cafes
   useEffect(() => {
     if (isAdmin && authenticated) {
-      console.log("Setting up Admin page refresh intervals");
+      console.log("Setting up Admin page refresh intervals with reduced frequency");
       
-      // Refresh cafes every 10 seconds
+      // Reduce frequency - from 5 seconds to 15 seconds
       const cafeRefreshInterval = setInterval(() => {
         console.log("Admin periodic cafe refresh");
         refreshCafes();
         refreshCafeData();
-      }, 10000);
+      }, 15000); // Reduced from 5s to 15s
       
-      // Refresh users every 10 seconds
+      // Reduce frequency - from 5 seconds to 15 seconds
       const userRefreshInterval = setInterval(() => {
         console.log("Admin periodic user refresh");
         fetchUsers(true);
-      }, 10000);
+      }, 15000); // Reduced from 5s to 15s
       
       return () => {
         console.log("Clearing Admin page refresh intervals");

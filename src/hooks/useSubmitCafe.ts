@@ -49,27 +49,10 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
       const cafeId = await addCafe(completeData);
       console.log("Cafe added with ID:", cafeId);
       
-      // Enhanced global events to ensure admins get updates
+      // Only trigger a single refresh event
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-        detail: { 
-          action: 'cafeCreated', 
-          cafeId,
-          forceRefresh: true
-        }
+        detail: { action: 'cafeAdded', cafeId }
       }));
-      
-      // Trigger data refresh through events instead of edge function
-      try {
-        // Dispatch event for same-tab communication
-        window.dispatchEvent(new CustomEvent('global_data_refresh', {
-          detail: { timestamp: Date.now() }
-        }));
-        
-        // Update localStorage for cross-tab communication
-        localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
-      } catch (err) {
-        console.warn("Non-critical error refreshing data:", err);
-      }
       
       return cafeId;
     } catch (error: any) {

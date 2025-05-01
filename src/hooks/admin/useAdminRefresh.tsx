@@ -3,9 +3,9 @@ import { useCallback } from 'react';
 import { supabase, refreshCafeData } from '@/integrations/supabase/client';
 
 export const useAdminRefresh = () => {
-  const handleRefreshCafes = useCallback(async (force?: boolean) => {
+  const handleRefreshCafes = useCallback(async () => {
     try {
-      console.log("Refreshing cafe data...", force ? "(forced)" : "");
+      console.log("Refreshing cafe data...");
       await refreshCafeData();
       console.log("Cafe data refreshed");
     } catch (error) {

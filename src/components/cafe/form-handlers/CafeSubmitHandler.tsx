@@ -86,18 +86,6 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
       if (result) {
         console.log("Cafe submitted successfully with ID:", result);
         toast.success("Cafe added successfully!");
-        
-        // Dispatch global refresh event to ensure all components update
-        window.dispatchEvent(new CustomEvent('global_data_refresh'));
-        
-        // Also dispatch specific cafe event with more details
-        window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-          detail: { 
-            action: 'cafeAdded', 
-            cafeId: result,
-            forceRefresh: true
-          }
-        }));
       } else {
         console.error("Submission returned null result");
         toast.error("Failed to save cafe. Please try again.");

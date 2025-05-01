@@ -67,9 +67,25 @@ export const enableRealtimeForTables = async () => {
     // Enable realtime for each table via edge function
     for (const table of tables) {
       try {
-        // We'll use a more direct approach without the edge function since it's failing
-        // Just set up the subscription without calling the enable-realtime function
-        console.log(`[Realtime] Setting up subscription for ${table} without edge function`);
+        // First try the rls_helper function
+        const { data, error } = await supabase.functions.invoke('rls_helper');
+        
+        if (error) {
+          console.error(`[Realtime] Error enabling realtime via edge function for ${table}:`, error);
+          
+          // Try direct call to enable-realtime function if rls_helper fails
+          const { data: directData, error: directError } = await supabase.functions.invoke('enable-realtime', {
+            body: { table_name: table }
+          });
+          
+          if (directError) {
+            console.error(`[Realtime] Direct call also failed for ${table}:`, directError);
+          } else {
+            console.log(`[Realtime] Successfully enabled realtime via direct call for ${table}`, directData);
+          }
+        } else {
+          console.log(`[Realtime] Successfully enabled realtime via edge function for ${table}:`, data);
+        }
       } catch (err) {
         console.error(`[Realtime] Failed to enable realtime for ${table}:`, err);
       }
@@ -152,45 +168,19 @@ export const registerRefreshCallback = (callback: () => void) => {
 };
 
 // Force a data refresh - event-based instead of direct function calls
-export const refreshCafeData = async () => {
+export const refreshCafeData = () => {
   console.log('[refreshCafeData] Triggering data refresh through events');
   
-  // We'll skip the edge function call since it's failing
+  // Dispatch event for same-tab communication
+  window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+  
+  // Update localStorage for cross-tab communication
+  localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
+  
+  // Additional global flag to ensure all components can detect the refresh
   try {
-    // Instead of calling the edge function, let's just dispatch the events
-    console.log("[refreshCafeData] Skipping edge function call and directly triggering refresh events");
-    
-    // Dispatch event for same-tab communication
-    window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-      detail: { forceRefresh: true }
-    }));
-    
-    // Update localStorage for cross-tab communication
-    localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
-    
-    // Call all registered callbacks
-    if (window.cafeDataRefreshCallbacks && window.cafeDataRefreshCallbacks.length > 0) {
-      console.log(`Calling ${window.cafeDataRefreshCallbacks.length} registered refresh callbacks`);
-      window.cafeDataRefreshCallbacks.forEach(cb => {
-        try {
-          cb();
-        } catch (err) {
-          console.error("Error in refresh callback:", err);
-        }
-      });
-    }
-    
-    // Additional global flag to ensure all components can detect the refresh
-    try {
-      window.cafeDataLastRefreshed = Date.now();
-    } catch (e) {
-      console.warn("Could not set global refresh flag");
-    }
-    
-    return { success: true };
-  } catch (err) {
-    console.error("[refreshCafeData] Error refreshing data:", err);
-    return { success: false, error: err };
+    window.cafeDataLastRefreshed = Date.now();
+  } catch (e) {
+    console.warn("Could not set global refresh flag");
   }
 };
-

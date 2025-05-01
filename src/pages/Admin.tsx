@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import PasswordProtection from '@/components/PasswordProtection';
 import { UserPerformance } from '@/components/admin/UserPerformance';
@@ -25,29 +25,13 @@ const Admin: React.FC = () => {
     handleAddUser,
     handleEditUser,
     handleDeleteUser,
-    fetchUsers,
-    refreshCafes
+    fetchUsers
   } = useAdminPage();
 
   // Reset refresh and force update when authenticated
   const handleAuthenticated = () => {
     setAuthenticated(true);
   };
-  
-  // Force refresh data when the admin page is mounted
-  useEffect(() => {
-    if (authenticated) {
-      console.log("Admin page mounted, forcing data refresh");
-      
-      // Force immediate data refresh
-      handleRefreshCafes();
-      fetchUsers(true);
-      refreshCafes();
-      
-      // Dispatch a global refresh event
-      window.dispatchEvent(new CustomEvent('global_data_refresh'));
-    }
-  }, [authenticated, handleRefreshCafes, fetchUsers, refreshCafes]);
 
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;

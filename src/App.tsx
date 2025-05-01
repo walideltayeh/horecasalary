@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -129,9 +130,10 @@ const App = () => {
   
   return (
     <QueryClientProvider client={queryClient}>
+      {/* Fix 2: Move TooltipProvider inside BrowserRouter */}
       <BrowserRouter>
-        <AuthProvider>
-          <TooltipWrapper>
+        <TooltipWrapper>
+          <AuthProvider>
             <DataProvider>
               <RouteTracker />
               <Toaster />
@@ -139,7 +141,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/user-app/*" element={<UserApp />} />
+                <Route path="/user-app" element={<UserApp />} />
                 
                 <Route path="/" element={<AppLayout />}>
                   <Route path="dashboard" element={<Dashboard />} />
@@ -151,8 +153,8 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </DataProvider>
-          </TooltipWrapper>
-        </AuthProvider>
+          </AuthProvider>
+        </TooltipWrapper>
       </BrowserRouter>
     </QueryClientProvider>
   );

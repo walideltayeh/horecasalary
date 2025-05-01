@@ -1,102 +1,71 @@
 
-import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import AppLayout from '@/components/AppLayout';
 import Dashboard from './Dashboard';
-import NotFound from './NotFound';
-import CafeManagement from './CafeManagement';
-import KPISettings from './KPISettings';
-import Admin from './Admin';
-import { refreshCafeData } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import UserHeader from '@/components/layout/UserHeader';
+import UserNavigation from '@/components/layout/UserNavigation';
+import CafeContent from '@/components/cafe/CafeContent';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 
-// Track if realtime has been initialized
-let realtimeInitialized = false;
-
-const UserApp = () => {
-  const { user, isAdmin } = useAuth();
-  const [realtimeEnabled, setRealtimeEnabled] = useState(false);
-
-  // Set up realtime subscriptions on mount
+const UserApp: React.FC = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [surveyCompleted, setSurveyCompleted] = useState(false);
+  const mounted = useRef(true);
+  const { handleLogout, isLoggingOut } = useLogoutHandler();
+  
+  // Clear notification timeouts on unmount
   useEffect(() => {
-    const setupRealtime = async () => {
-      if (realtimeInitialized) {
-        console.log("Realtime already initialized, skipping");
-        return;
-      }
-      
-      try {
-        console.log("Setting up realtime for critical tables");
-        
-        // Set up a channel for realtime updates
-        const channel = supabase.channel('db-changes')
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'cafes' },
-            (payload) => {
-              console.log("Cafe change detected:", payload);
-              // Let the app know data has changed
-              window.dispatchEvent(new CustomEvent('horeca_data_updated'));
-            }
-          )
-          .subscribe((status) => {
-            console.log(`Realtime subscription status: ${status}`);
-            if (status === 'SUBSCRIBED') {
-              setRealtimeEnabled(true);
-              console.log("Realtime successfully enabled");
-            }
-          });
-        
-        realtimeInitialized = true;
-        
-        // Refresh data on mount
-        await refreshCafeData();
-        
-        return () => {
-          supabase.removeChannel(channel);
-        };
-      } catch (err) {
-        console.error("Error setting up realtime:", err);
-      }
-    };
+    mounted.current = true;
     
-    setupRealtime();
-    
-    // Refresh data on focus
-    const handleFocus = async () => {
-      console.log("Window focused, refreshing data");
-      try {
-        await refreshCafeData();
-      } catch (err) {
-        console.error("Error refreshing on focus:", err);
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
+    // Force data refresh on mount to ensure accurate counts
+    const event = new CustomEvent('horeca_data_updated', {
+      detail: { action: 'cafeCreated', forceRefresh: true }
+    });
+    window.dispatchEvent(event);
     
     return () => {
-      window.removeEventListener('focus', handleFocus);
+      mounted.current = false;
     };
   }, []);
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  
+  if (!user || user.role === 'admin') {
+    return <Navigate to="/login" />;
   }
 
-  // Directly return routes instead of wrapping them in AppLayout
-  // AppLayout is now rendered within the routes
+  const handleSurveyComplete = () => {
+    setSurveyCompleted(true);
+  };
+
   return (
-    <Routes>
-      <Route path="/" element={<AppLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="cafe-management" element={<CafeManagement />} />
-        <Route path="kpi-settings" element={<KPISettings />} />
-        {isAdmin && <Route path="admin" element={<Admin />} />}
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+    <div className="flex flex-col h-screen bg-white">
+      <UserHeader user={user} />
+      
+      <main className="flex-1 overflow-y-auto p-4 pb-24">
+        {activeTab === 'dashboard' ? (
+          <ErrorBoundary fallback={<p>Error loading dashboard. Please try the Cafe tab instead.</p>}>
+            <Dashboard />
+          </ErrorBoundary>
+        ) : null}
+        
+        {activeTab === 'cafe' && (
+          <CafeContent 
+            user={user} 
+            surveyCompleted={surveyCompleted} 
+            onSurveyComplete={handleSurveyComplete} 
+          />
+        )}
+      </main>
+      
+      <UserNavigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        handleLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
+      />
+    </div>
   );
 };
 

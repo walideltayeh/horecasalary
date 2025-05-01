@@ -43,102 +43,54 @@ export const useCafeFetch = (
       lastFetchTimeRef.current = now;
       
       console.log("Fetching cafes from database... isAdmin:", isAdminRef.current, "userID:", user?.id);
+      const query = supabase
+        .from('cafes')
+        .select(`
+          *,
+          cafe_surveys (
+            id,
+            brand_sales (
+              brand,
+              packs_per_week
+            )
+          )
+        `)
+        .order('created_at', { ascending: false });
       
-      // For admin users, use the serviceRole client to bypass RLS policies
-      if (isAdminRef.current) {
-        console.log("ADMIN USER: Fetching ALL cafes without RLS restrictions");
+      // IMPORTANT: For admin users, we deliberately don't filter by user
+      // This ensures admins see ALL cafes
+      // Regular users will be filtered by RLS at the database level
         
-        // Use direct query with no filters for admin users
-        const { data, error } = await supabase
-          .from('cafes')
-          .select(`
-            *,
-            cafe_surveys (
-              id,
-              brand_sales (
-                brand,
-                packs_per_week
-              )
-            )
-          `)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          console.error("Error fetching cafes for admin:", error);
-          toast.error(`Failed to fetch cafes: ${error.message}`);
-          throw error;
-        }
+      const { data, error } = await query;
         
-        console.log("Admin cafes fetched:", data?.length || 0);
+      if (error) {
+        console.error("Error fetching cafes:", error);
+        toast.error(`Failed to fetch cafes: ${error.message}`);
+        throw error;
+      }
+      
+      console.log("Cafes fetched:", data?.length || 0);
+      
+      if (data) {
+        const mappedCafes = data.map(cafe => ({
+          id: cafe.id,
+          name: cafe.name,
+          ownerName: cafe.owner_name,
+          ownerNumber: cafe.owner_number,
+          numberOfHookahs: cafe.number_of_hookahs,
+          numberOfTables: cafe.number_of_tables,
+          status: cafe.status as 'Pending' | 'Visited' | 'Contracted',
+          photoUrl: cafe.photo_url,
+          governorate: cafe.governorate,
+          city: cafe.city,
+          createdAt: cafe.created_at,
+          createdBy: cafe.created_by,
+          latitude: cafe.latitude,
+          longitude: cafe.longitude
+        }));
         
-        if (data) {
-          const mappedCafes = data.map(cafe => ({
-            id: cafe.id,
-            name: cafe.name,
-            ownerName: cafe.owner_name,
-            ownerNumber: cafe.owner_number,
-            numberOfHookahs: cafe.number_of_hookahs,
-            numberOfTables: cafe.number_of_tables,
-            status: cafe.status as 'Pending' | 'Visited' | 'Contracted',
-            photoUrl: cafe.photo_url,
-            governorate: cafe.governorate,
-            city: cafe.city,
-            createdAt: cafe.created_at,
-            createdBy: cafe.created_by,
-            latitude: cafe.latitude,
-            longitude: cafe.longitude
-          }));
-          
-          console.log("Admin mapped cafes:", mappedCafes.length);
-          setCafes(mappedCafes);
-        }
-      } else {
-        // For regular users, use standard query
-        // The query will automatically be filtered by RLS
-        console.log("REGULAR USER: Fetching cafes with RLS restrictions");
-        
-        const { data, error } = await supabase
-          .from('cafes')
-          .select(`
-            *,
-            cafe_surveys (
-              id,
-              brand_sales (
-                brand,
-                packs_per_week
-              )
-            )
-          `)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          console.error("Error fetching cafes for regular user:", error);
-          toast.error(`Failed to fetch cafes: ${error.message}`);
-          throw error;
-        }
-        
-        console.log("Regular user cafes fetched:", data?.length || 0);
-        
-        if (data) {
-          const mappedCafes = data.map(cafe => ({
-            id: cafe.id,
-            name: cafe.name,
-            ownerName: cafe.owner_name,
-            ownerNumber: cafe.owner_number,
-            numberOfHookahs: cafe.number_of_hookahs,
-            numberOfTables: cafe.number_of_tables,
-            status: cafe.status as 'Pending' | 'Visited' | 'Contracted',
-            photoUrl: cafe.photo_url,
-            governorate: cafe.governorate,
-            city: cafe.city,
-            createdAt: cafe.created_at,
-            createdBy: cafe.created_by,
-            latitude: cafe.latitude,
-            longitude: cafe.longitude
-          }));
-          
-          setCafes(mappedCafes);
-        }
+        console.log("Mapped cafes:", mappedCafes.length, "isAdmin:", isAdminRef.current);
+        setCafes(mappedCafes);
       }
     } catch (err: any) {
       console.error('Error fetching cafes:', err);
