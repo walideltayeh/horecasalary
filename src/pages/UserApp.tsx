@@ -97,17 +97,19 @@ const UserApp = () => {
     return <Navigate to="/login" replace />;
   }
 
+  // Directly return routes instead of wrapping them in AppLayout
+  // AppLayout is now rendered within the routes
   return (
-    <AppLayout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/cafe-management" element={<CafeManagement />} />
-        <Route path="/kpi-settings" element={<KPISettings />} />
-        {isAdmin && <Route path="/admin" element={<Admin />} />}
+    <Routes>
+      <Route path="/" element={<AppLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="cafe-management" element={<CafeManagement />} />
+        <Route path="kpi-settings" element={<KPISettings />} />
+        {isAdmin && <Route path="admin" element={<Admin />} />}
         <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AppLayout>
+      </Route>
+    </Routes>
   );
 };
 
