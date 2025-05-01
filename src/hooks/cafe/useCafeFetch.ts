@@ -43,7 +43,9 @@ export const useCafeFetch = (
       lastFetchTimeRef.current = now;
       
       console.log("Fetching cafes from database... isAdmin:", isAdminRef.current, "userID:", user?.id);
-      const query = supabase
+      
+      // Build the query
+      let query = supabase
         .from('cafes')
         .select(`
           *,
@@ -57,10 +59,9 @@ export const useCafeFetch = (
         `)
         .order('created_at', { ascending: false });
       
-      // IMPORTANT: For admin users, we deliberately don't filter by user
-      // This ensures admins see ALL cafes
-      // Regular users will be filtered by RLS at the database level
-        
+      // For admin users, we don't need any filters, they should see all cafes
+      // For regular users, the RLS policies should automatically filter by user
+      
       const { data, error } = await query;
         
       if (error) {

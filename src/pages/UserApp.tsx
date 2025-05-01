@@ -8,6 +8,8 @@ import UserNavigation from '@/components/layout/UserNavigation';
 import CafeContent from '@/components/cafe/CafeContent';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const UserApp: React.FC = () => {
   const { user } = useAuth();
@@ -26,8 +28,31 @@ const UserApp: React.FC = () => {
     });
     window.dispatchEvent(event);
     
+    // Set up realtime subscription for cafe changes
+    const channel = supabase.channel('public:cafes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'cafes' 
+      }, (payload) => {
+        console.log('Realtime change detected:', payload);
+        
+        // Dispatch an event to notify all components about the data change
+        const event = new CustomEvent('horeca_data_updated', {
+          detail: { action: 'realtimeUpdate', payload }
+        });
+        window.dispatchEvent(event);
+        
+        // Show toast notification for data changes
+        toast.info('Cafe data updated in real-time');
+      })
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
+    
     return () => {
       mounted.current = false;
+      supabase.removeChannel(channel);
     };
   }, []);
   
