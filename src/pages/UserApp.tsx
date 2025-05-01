@@ -18,15 +18,21 @@ const UserApp: React.FC = () => {
   const mounted = useRef(true);
   const { handleLogout, isLoggingOut } = useLogoutHandler();
   
-  // Clear notification timeouts on unmount
+  // Set up realtime subscription for cafe changes and force data refresh on mount
   useEffect(() => {
     mounted.current = true;
     
     // Force data refresh on mount to ensure accurate counts
-    const event = new CustomEvent('horeca_data_updated', {
-      detail: { action: 'cafeCreated', forceRefresh: true }
-    });
-    window.dispatchEvent(event);
+    const triggerInitialRefresh = () => {
+      console.log("Triggering initial force refresh");
+      const event = new CustomEvent('horeca_data_updated', {
+        detail: { action: 'cafeCreated', forceRefresh: true }
+      });
+      window.dispatchEvent(event);
+    };
+    
+    // Trigger refresh after a short delay to ensure components are mounted
+    setTimeout(triggerInitialRefresh, 500);
     
     // Set up realtime subscription for cafe changes
     const channel = supabase.channel('public:cafes')
@@ -39,15 +45,30 @@ const UserApp: React.FC = () => {
         
         // Dispatch an event to notify all components about the data change
         const event = new CustomEvent('horeca_data_updated', {
-          detail: { action: 'realtimeUpdate', payload }
+          detail: { action: 'realtimeUpdate', payload, forceRefresh: true }
         });
         window.dispatchEvent(event);
         
         // Show toast notification for data changes
         toast.info('Cafe data updated in real-time');
+        
+        // Ensure data is also propagated to admin
+        window.dispatchEvent(new CustomEvent('global_data_refresh'));
       })
       .subscribe((status) => {
         console.log('Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          // Try to enable realtime via edge function
+          supabase.functions.invoke('enable-realtime', { 
+            body: { table_name: 'cafes' }
+          }).then(({ error }) => {
+            if (error) {
+              console.error("Failed to enable realtime via edge function:", error);
+            } else {
+              console.log("Realtime subscription activated for cafes table");
+            }
+          });
+        }
       });
     
     return () => {

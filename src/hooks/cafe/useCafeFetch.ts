@@ -59,8 +59,8 @@ export const useCafeFetch = (
         `)
         .order('created_at', { ascending: false });
       
-      // For admin users, we don't need any filters, they should see all cafes
-      // For regular users, the RLS policies should automatically filter by user
+      // For admin users, don't filter by user to see all cafes
+      // The query will automatically be filtered for regular users by RLS
       
       const { data, error } = await query;
         

@@ -25,7 +25,8 @@ const Admin: React.FC = () => {
     handleAddUser,
     handleEditUser,
     handleDeleteUser,
-    fetchUsers
+    fetchUsers,
+    refreshCafes
   } = useAdminPage();
 
   // Reset refresh and force update when authenticated
@@ -37,10 +38,16 @@ const Admin: React.FC = () => {
   useEffect(() => {
     if (authenticated) {
       console.log("Admin page mounted, forcing data refresh");
-      handleRefreshCafes();  // Removed the true argument here
+      
+      // Force immediate data refresh
+      handleRefreshCafes();
       fetchUsers(true);
+      refreshCafes();
+      
+      // Dispatch a global refresh event
+      window.dispatchEvent(new CustomEvent('global_data_refresh'));
     }
-  }, [authenticated, handleRefreshCafes, fetchUsers]);
+  }, [authenticated, handleRefreshCafes, fetchUsers, refreshCafes]);
 
   if (!isAdmin) {
     return <Navigate to="/dashboard" />;
