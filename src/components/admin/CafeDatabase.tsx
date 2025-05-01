@@ -24,19 +24,16 @@ export const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes }) => {
       setIsRefreshing(true);
       toast.info("Forcefully refreshing cafe data from server...");
       
-      // Enable realtime first for better sync
+      // Skip the edge function call and use direct refresh methods
       try {
-        await supabase.functions.invoke('enable-realtime', {
-          body: { table_name: 'cafes' }
-        });
-      } catch (e) {
-        console.warn("Non-critical error enabling realtime:", e);
+        console.log("Direct refresh initiated - fetching data without edge functions");
+        // Use multiple refresh methods for redundancy
+        await refreshCafeData(); // Direct DB refresh
+        await new Promise(resolve => setTimeout(resolve, 500)); // Longer delay for sync
+        await refreshCafes(); // Context refresh
+      } catch (error) {
+        console.error("Error in direct refresh:", error);
       }
-      
-      // Multiple refresh methods for redundancy
-      await refreshCafeData(); // Direct DB refresh
-      await new Promise(resolve => setTimeout(resolve, 500)); // Longer delay for sync
-      await refreshCafes(); // Context refresh
       
       // Dispatch global refresh events
       window.dispatchEvent(new CustomEvent('global_data_refresh'));

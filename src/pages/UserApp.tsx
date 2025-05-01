@@ -28,20 +28,7 @@ const UserApp = () => {
       }
       
       try {
-        // Enable realtime for key tables
         console.log("Setting up realtime for critical tables");
-        const tables = ['cafes', 'cafe_surveys', 'brand_sales', 'users', 'kpi_settings'];
-        
-        for (const table of tables) {
-          try {
-            await supabase.functions.invoke('enable-realtime', {
-              body: { table_name: table }
-            });
-            console.log(`Enabled realtime for ${table}`);
-          } catch (err) {
-            console.warn(`Non-critical error enabling realtime for ${table}:`, err);
-          }
-        }
         
         // Set up a channel for realtime updates
         const channel = supabase.channel('db-changes')

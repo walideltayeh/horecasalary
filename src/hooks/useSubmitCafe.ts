@@ -4,7 +4,6 @@ import { useCafes } from '@/contexts/CafeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { toast } from 'sonner';
-import { refreshCafeData } from '@/integrations/supabase/client';
 
 interface UseSubmitCafeProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -59,9 +58,15 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
         }
       }));
       
-      // Use refreshCafeData to trigger an edge function refresh
+      // Trigger data refresh through events instead of edge function
       try {
-        await refreshCafeData();
+        // Dispatch event for same-tab communication
+        window.dispatchEvent(new CustomEvent('global_data_refresh', {
+          detail: { timestamp: Date.now() }
+        }));
+        
+        // Update localStorage for cross-tab communication
+        localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
       } catch (err) {
         console.warn("Non-critical error refreshing data:", err);
       }
