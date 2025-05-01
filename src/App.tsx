@@ -130,10 +130,10 @@ const App = () => {
   
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Fix 2: Move TooltipProvider inside BrowserRouter */}
+      {/* Ensure AuthProvider wraps everything */}
       <BrowserRouter>
-        <TooltipWrapper>
-          <AuthProvider>
+        <AuthProvider>
+          <TooltipWrapper>
             <DataProvider>
               <RouteTracker />
               <Toaster />
@@ -141,7 +141,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/user-app" element={<UserApp />} />
+                <Route path="/user-app/*" element={<UserApp />} />
                 
                 <Route path="/" element={<AppLayout />}>
                   <Route path="dashboard" element={<Dashboard />} />
@@ -153,8 +153,8 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </DataProvider>
-          </AuthProvider>
-        </TooltipWrapper>
+          </TooltipWrapper>
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );
