@@ -37,7 +37,7 @@ const Admin: React.FC = () => {
   useEffect(() => {
     if (authenticated) {
       console.log("Admin page mounted, forcing data refresh");
-      handleRefreshCafes(true);
+      handleRefreshCafes();  // Removed the true argument here
       fetchUsers(true);
     }
   }, [authenticated, handleRefreshCafes, fetchUsers]);
