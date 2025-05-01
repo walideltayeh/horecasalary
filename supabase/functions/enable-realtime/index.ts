@@ -45,7 +45,14 @@ serve(async (req) => {
 
     // Try multiple approaches for maximum reliability
     try {
-      // Method 1: Use direct SQL execution as initial approach
+      // Method 1: Use direct SQL execution with the rpc function
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('enable_realtime_for_table', { 
+        table_name 
+      });
+      
+      console.log("RPC function result:", rpcResult, rpcError);
+      
+      // Method 2: Use direct SQL execution as fallback approach
       const directSql = `
         ALTER TABLE public."${table_name}" REPLICA IDENTITY FULL;
         ALTER PUBLICATION supabase_realtime ADD TABLE public."${table_name}";
@@ -57,54 +64,29 @@ serve(async (req) => {
       
       console.log("Direct SQL result:", sqlResult, sqlError);
       
-      if (!sqlError) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            method: "direct_sql",
-            table: table_name,
-            result: sqlResult
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
-      }
+      // Success if either method worked
+      const success = !rpcError || !sqlError;
       
-      // Method 2: Try the RPC function if available
-      console.log("Method 2: Using enable_realtime_for_table function");
-      const { data: functionResult, error: functionError } = await supabase.rpc('enable_realtime_for_table', { 
-        table_name 
-      });
-      
-      console.log("Function result:", functionResult, functionError);
-      
-      if (!functionError) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            method: "rpc_function",
-            table: table_name,
-            result: functionResult
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
-      }
-      
-      // Return success even if there were some errors - this function is best-effort
+      // Return success response
       return new Response(
         JSON.stringify({
-          success: true,
-          method: "attempted_multiple_methods",
+          success,
           table: table_name,
-          notes: "Attempted multiple methods to enable realtime"
+          rpc_result: rpcResult,
+          sql_result: sqlResult,
+          rpc_error: rpcError ? rpcError.message : null,
+          sql_error: sqlError ? sqlError.message : null,
+          message: "Used multiple methods to ensure realtime is enabled"
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: success ? 200 : 500 }
       );
     } catch (error) {
       console.error("Unexpected error:", error);
       return new Response(
         JSON.stringify({ 
           error: typeof error === 'object' ? error.message : 'Unknown error',
-          stack: typeof error === 'object' ? error.stack : undefined 
+          stack: typeof error === 'object' ? error.stack : undefined,
+          table: table_name
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );

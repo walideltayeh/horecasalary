@@ -4,6 +4,7 @@ import { useCafes } from '@/contexts/CafeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { toast } from 'sonner';
+import { refreshCafeData } from '@/integrations/supabase/client';
 
 interface UseSubmitCafeProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -49,10 +50,21 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
       const cafeId = await addCafe(completeData);
       console.log("Cafe added with ID:", cafeId);
       
-      // Only trigger a single refresh event
+      // Enhanced global events to ensure admins get updates
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-        detail: { action: 'cafeAdded', cafeId }
+        detail: { 
+          action: 'cafeCreated', 
+          cafeId,
+          forceRefresh: true
+        }
       }));
+      
+      // Use refreshCafeData to trigger an edge function refresh
+      try {
+        await refreshCafeData();
+      } catch (err) {
+        console.warn("Non-critical error refreshing data:", err);
+      }
       
       return cafeId;
     } catch (error: any) {
