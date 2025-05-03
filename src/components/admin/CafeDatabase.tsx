@@ -10,10 +10,10 @@ import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 
 interface CafeDatabaseProps {
-  cafes: Cafe[];
+  cafes?: Cafe[];
 }
 
-export const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes }) => {
+const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes = [] }) => {
   const { refreshCafes, loading } = useData();
 
   const handleForceRefresh = async () => {
@@ -53,3 +53,5 @@ export const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes }) => {
     </Card>
   );
 };
+
+export default CafeDatabase;
