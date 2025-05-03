@@ -1,11 +1,10 @@
 
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 /**
  * Hook for managing real-time channel subscriptions to cafe-related tables
- * Uses a more efficient approach with reduced event handling
+ * Uses a more efficient approach with improved throttling
  */
 export const useRealtimeChannels = (
   onDataChange: (force?: boolean) => Promise<void>
@@ -14,8 +13,15 @@ export const useRealtimeChannels = (
   const lastUpdateTimeRef = useRef<number>(0);
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setupCompleteRef = useRef<boolean>(false);
 
   const setupChannels = useCallback(async () => {
+    // Skip setup if already completed to prevent duplicate subscriptions
+    if (setupCompleteRef.current) {
+      console.log("Realtime channels already set up, skipping");
+      return () => {}; // Return empty cleanup function
+    }
+
     console.log("Setting up cafe realtime channels with optimized updates...");
     
     // Clean up existing channels first
@@ -38,7 +44,7 @@ export const useRealtimeChannels = (
         
         // Trigger a single refresh with increased throttling
         const now = Date.now();
-        if (now - lastUpdateTimeRef.current > 5000) {  // Increased to 5s from 1s
+        if (now - lastUpdateTimeRef.current > 10000) {  // Increased from 5s to 10s
           lastUpdateTimeRef.current = now;
           
           // Dispatch event rather than performing direct refresh
@@ -60,10 +66,10 @@ export const useRealtimeChannels = (
         updateTimeoutRef.current = setTimeout(() => {
           processUpdates();
           updateTimeoutRef.current = null;
-        }, 1500); // Increased from 500ms to 1.5s debounce
+        }, 2500); // Increased to 2.5s debounce for better performance
       };
       
-      // Create a single channel for all database changes
+      // Create a single channel for all database changes instead of multiple channels
       const channel = supabase
         .channel('db-changes')
         .on('postgres_changes', 
@@ -83,15 +89,20 @@ export const useRealtimeChannels = (
         
       channelsRef.current.push(channel);
       
+      // Set setup as complete to prevent duplicate subscriptions
+      setupCompleteRef.current = true;
+      
+      // Try to enable realtime once instead of multiple times
       try {
-        await supabase.functions.invoke('enable-realtime', { body: { table_name: 'cafes' }});
+        await supabase.functions.invoke('enable-realtime', { 
+          body: { table_name: 'cafes' }
+        });
         console.log("Realtime subscription activated for cafes table");
       } catch (err) {
         console.warn("Non-critical error enabling realtime:", err);
       }
     } catch (err) {
       console.error("Error setting up realtime subscriptions:", err);
-      // Removed toast to prevent extra notifications
     }
 
     // Return a cleanup function
@@ -108,6 +119,9 @@ export const useRealtimeChannels = (
         supabase.removeChannel(channel);
       });
       channelsRef.current = [];
+      
+      // Reset setup flag
+      setupCompleteRef.current = false;
     };
   }, []);
 

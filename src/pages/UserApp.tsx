@@ -14,17 +14,25 @@ const UserApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const mounted = useRef(true);
+  const refreshTriggeredRef = useRef(false);
   const { handleLogout, isLoggingOut } = useLogoutHandler();
   
-  // Clear notification timeouts on unmount
+  // Clear notification timeouts on unmount and only refresh once on mount
   useEffect(() => {
     mounted.current = true;
     
-    // Force data refresh on mount to ensure accurate counts
-    const event = new CustomEvent('horeca_data_updated', {
-      detail: { action: 'cafeCreated', forceRefresh: true }
-    });
-    window.dispatchEvent(event);
+    // Only trigger a refresh once when the component first mounts
+    if (!refreshTriggeredRef.current) {
+      refreshTriggeredRef.current = true;
+      
+      // Force data refresh on mount with a small delay to ensure context is ready
+      setTimeout(() => {
+        const event = new CustomEvent('horeca_data_updated', {
+          detail: { action: 'cafeCreated', forceRefresh: true }
+        });
+        window.dispatchEvent(event);
+      }, 300);
+    }
     
     return () => {
       mounted.current = false;

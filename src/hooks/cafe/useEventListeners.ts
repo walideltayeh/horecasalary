@@ -17,30 +17,35 @@ export const useEventListeners = (
     const handleDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
-      // Only respond to specific events, ignore generic refreshes
+      // Only respond to specific critical events, ignore generic refreshes
       const isCriticalUpdate = 
         detail.action === 'statusUpdate' || 
         detail.action === 'cafeCreated' || 
         detail.action === 'cafeEdited' ||
-        detail.action === 'cafeDeleted';
+        detail.action === 'cafeDeleted' || 
+        detail.forceRefresh === true;
       
-      if (isCriticalUpdate) {
-        // Throttle updates
-        const now = Date.now();
-        if (now - lastRefreshTime.current < 5000) { 
-          return;
+      if (!isCriticalUpdate) {
+        return; // Skip non-critical updates
+      }
+      
+      // Throttle updates with a much longer interval (10 seconds)
+      const now = Date.now();
+      if (now - lastRefreshTime.current < 10000) { 
+        console.log("Skipping refresh - too recent");
+        return;
+      }
+      
+      if (mounted.current && !refreshing && handleRefresh) {
+        // Clear any existing timeout
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current);
         }
         
-        if (mounted.current && !refreshing && handleRefresh) {
-          // Clear any existing timeout
-          if (refreshTimeoutRef.current) {
-            clearTimeout(refreshTimeoutRef.current);
-          }
-          
-          // Execute refresh for critical updates
-          lastRefreshTime.current = Date.now();
-          handleRefresh();
-        }
+        // Execute refresh for critical updates
+        lastRefreshTime.current = Date.now();
+        console.log("Critical update detected - refreshing data");
+        handleRefresh();
       }
     };
     
@@ -51,29 +56,31 @@ export const useEventListeners = (
       if (mounted.current) {
         setLocalCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
         
-        // Also trigger a refresh to ensure data consistency but with delay
+        // Only trigger refresh after deletion if absolutely necessary
+        // with a significant delay to reduce network load
         if (handleRefresh && !refreshing) {
           // Clear any existing timeout
           if (refreshTimeoutRef.current) {
             clearTimeout(refreshTimeoutRef.current);
           }
           
-          // Use timeout to debounce multiple events
+          // Use longer timeout to debounce multiple events
           refreshTimeoutRef.current = setTimeout(() => {
             lastRefreshTime.current = Date.now();
             handleRefresh();
-          }, 1000);
+          }, 2500);
         }
       }
     };
     
-    // Handle cafe stats updated event
+    // Handle cafe stats updated event with more aggressive throttling
     const handleStatsUpdated = () => {
       console.log("Stats updated event received");
       
-      // Throttle updates
+      // Throttle updates with a much longer interval
       const now = Date.now();
-      if (now - lastRefreshTime.current < 5000) {
+      if (now - lastRefreshTime.current < 15000) {
+        console.log("Skipping stats refresh - too recent");
         return;
       }
       
@@ -90,38 +97,13 @@ export const useEventListeners = (
       }
     };
     
-    // Modify direct refresh handler to throttle requests
-    const handleRefreshRequested = (event: CustomEvent) => {
-      const force = event.detail?.force === true;
-      
-      // Only respond to forced refresh requests
-      if (force) {
-        const now = Date.now();
-        if (now - lastRefreshTime.current < 5000) { 
-          return;
-        }
-        
-        if (mounted.current && handleRefresh) {
-          // Clear any existing timeout
-          if (refreshTimeoutRef.current) {
-            clearTimeout(refreshTimeoutRef.current);
-          }
-          
-          lastRefreshTime.current = Date.now();
-          handleRefresh();
-        }
-      }
-    };
-    
     window.addEventListener('horeca_data_updated', handleDataUpdated);
     window.addEventListener('cafe_deleted', handleCafeDeleted as EventListener);
-    window.addEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
     window.addEventListener('cafe_stats_updated', handleStatsUpdated as EventListener);
     
     return () => {
       window.removeEventListener('horeca_data_updated', handleDataUpdated);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
-      window.removeEventListener('horeca_data_refresh_requested', handleRefreshRequested as EventListener);
       window.removeEventListener('cafe_stats_updated', handleStatsUpdated as EventListener);
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);

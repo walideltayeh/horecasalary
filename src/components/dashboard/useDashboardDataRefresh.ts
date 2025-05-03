@@ -1,6 +1,5 @@
 
 import { useEffect, useRef } from 'react';
-import { useData } from '@/contexts/DataContext';
 
 export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => Promise<void> }) => {
   const lastRefreshTime = useRef(Date.now());
@@ -11,12 +10,14 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
     const refreshWithThrottle = async (force = false) => {
       // Prevent concurrent refreshes
       if (refreshInProgressRef.current) {
+        console.log("Dashboard refresh already in progress, skipping");
         return;
       }
       
-      // Add throttling - only refresh once every 10 seconds unless forced
+      // Add severe throttling - only refresh once every 30 seconds unless forced
       const now = Date.now();
-      if (!force && now - lastRefreshTime.current < 10000) {
+      if (!force && now - lastRefreshTime.current < 30000) {
+        console.log("Dashboard throttling refresh - too recent");
         return;
       }
       
@@ -32,46 +33,48 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
       }
     };
     
-    // Listen for important data update events
+    // Listen for important data update events with reduced frequency
     const handleCafeDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
-      // Only refresh for critical updates
+      // Only refresh for truly critical updates
       const isCriticalUpdate = 
-        detail.action === 'statusUpdate' ||
-        detail.action === 'cafeCreated' ||
-        detail.action === 'cafeDeleted';
+        detail.forceRefresh === true || 
+        (detail.action === 'statusUpdate' && detail.critical === true);
       
-      if (isCriticalUpdate || detail.forceRefresh) {
-        // Debounce the refresh - clear any existing timer
+      if (isCriticalUpdate) {
+        // Debounce the refresh with a longer delay
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
         
-        // Set a new timer to refresh after a delay
+        // Set a new timer to refresh after a longer delay
         timerRef.current = setTimeout(() => {
           refreshWithThrottle(true);
-        }, 100); // Small delay to collate multiple events
+        }, 300); 
       }
     };
     
-    // Listen for cafe stats updated events specifically
+    // Listen for cafe stats updated events with much reduced frequency
     const handleStatsUpdated = () => {
-      // Debounce the refresh - clear any existing timer
+      // Only refresh if last refresh was a long time ago
+      const now = Date.now();
+      if (now - lastRefreshTime.current < 30000) {
+        console.log("Dashboard stats refresh throttled - too recent");
+        return;
+      }
+      
+      // Debounce the refresh
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
       
       // Set a new timer to refresh after a delay
       timerRef.current = setTimeout(() => {
-        refreshWithThrottle(true);
-      }, 100);
+        refreshWithThrottle(false);
+      }, 500);
     };
     
-    // Initial refresh on mount
-    refreshWithThrottle();
-    
-    // Set up event listeners
     window.addEventListener('horeca_data_updated', handleCafeDataUpdated);
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     

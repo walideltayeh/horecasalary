@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,39 +23,38 @@ const Dashboard: React.FC = () => {
   
   const { user, users, isAdmin } = useAuth();
   const [selectedTab, setSelectedTab] = useState<string>(user?.id || 'summary');
+  const initialRefreshDoneRef = useRef(false);
   
-  // Use the custom hook for data refresh
+  // Use the custom hook for data refresh with reduced frequency
   useDashboardDataRefresh({ refreshCafes });
   
-  // Add extra forced refreshes on mount for consistent data
+  // Perform just one refresh on mount instead of multiple
   useEffect(() => {
+    if (initialRefreshDoneRef.current) {
+      return; // Skip if already refreshed
+    }
+
     const initialRefresh = async () => {
-      console.log("Dashboard - Performing initial refresh");
+      console.log("Dashboard - Performing single initial refresh");
+      initialRefreshDoneRef.current = true;
       await refreshCafes();
+      
+      // Dispatch stats event to update all UI components
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
     };
     
     initialRefresh();
     
-    // Secondary refresh after a short delay
-    const timer1 = setTimeout(async () => {
-      console.log("Dashboard - Performing secondary refresh");
-      await refreshCafes();
-      
-      // Force stats updated event
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
-    }, 500);
-    
-    // Tertiary refresh after a longer delay
-    const timer2 = setTimeout(async () => {
-      console.log("Dashboard - Performing tertiary refresh");
-      await refreshCafes();
-      
-      // Force stats updated event
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
-    }, 1500);
-    
-    // Listen for stats update events
+    // Listen for stats update events with reduced frequency
+    const lastRefreshTimeRef = useRef(Date.now());
     const handleStatsUpdated = () => {
+      // Throttle stat updates substantially
+      const now = Date.now();
+      if (now - lastRefreshTimeRef.current < 20000) { // 20 seconds throttle
+        return;
+      }
+      
+      lastRefreshTimeRef.current = now;
       console.log("Dashboard - Stats updated event received");
       refreshCafes();
     };
@@ -64,8 +62,6 @@ const Dashboard: React.FC = () => {
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     
     return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
       window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
     };
   }, [refreshCafes]);

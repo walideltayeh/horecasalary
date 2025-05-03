@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 /**
  * Hook that provides functionality to fetch cafe data from the database
+ * with optimized networking and caching
  */
 export const useCafeFetch = (
   user: any | null,
@@ -15,6 +16,8 @@ export const useCafeFetch = (
   const fetchingRef = useRef<boolean>(false);
   const lastFetchTimeRef = useRef<number>(0);
   const isAdminRef = useRef<boolean>(false);
+  const dataFreshUntilRef = useRef<number>(0);
+  const fetchAttemptCount = useRef<number>(0);
 
   // Update admin status when user changes
   if (user) {
@@ -24,10 +27,18 @@ export const useCafeFetch = (
   }
 
   const fetchCafes = useCallback(async (force = false) => {
-    // Debounce frequent fetch requests (within 1 second)
+    // Cache data for 15 seconds unless force=true
     const now = Date.now();
-    if (!force && now - lastFetchTimeRef.current < 1000) {
-      console.log("Fetch request debounced");
+    const CACHE_TIME = 15000; // 15 seconds
+    
+    if (!force && now < dataFreshUntilRef.current) {
+      console.log("Using cached cafe data - refresh not needed");
+      return;
+    }
+    
+    // Debounce frequent fetch requests (within 5 seconds)
+    if (!force && now - lastFetchTimeRef.current < 5000) {
+      console.log("Fetch request debounced - too recent");
       return;
     }
     
@@ -41,6 +52,7 @@ export const useCafeFetch = (
       fetchingRef.current = true;
       setLoading(true);
       lastFetchTimeRef.current = now;
+      fetchAttemptCount.current++;
       
       console.log("Fetching cafes from database... isAdmin:", isAdminRef.current, "userID:", user?.id);
       const query = supabase
@@ -56,10 +68,6 @@ export const useCafeFetch = (
           )
         `)
         .order('created_at', { ascending: false });
-      
-      // IMPORTANT: For admin users, we deliberately don't filter by user
-      // This ensures admins see ALL cafes
-      // Regular users will be filtered by RLS at the database level
         
       const { data, error } = await query;
         
@@ -91,10 +99,17 @@ export const useCafeFetch = (
         
         console.log("Mapped cafes:", mappedCafes.length, "isAdmin:", isAdminRef.current);
         setCafes(mappedCafes);
+        
+        // Set the time until which data is considered fresh
+        dataFreshUntilRef.current = now + CACHE_TIME;
       }
     } catch (err: any) {
       console.error('Error fetching cafes:', err);
-      toast.error(err.message || 'Failed to fetch cafes');
+      
+      // Only show toast errors on first few attempts to avoid spamming
+      if (fetchAttemptCount.current <= 3) {
+        toast.error(err.message || 'Failed to fetch cafes');
+      }
     } finally {
       setLoading(false);
       fetchingRef.current = false;
