@@ -1,9 +1,10 @@
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useEffect } from 'react';
 import { User } from '@/types';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { useUserManagement } from '@/hooks/auth/useUserManagement';
+import { toast } from '@/components/ui/use-toast';
 
 type AuthContextType = {
   user: User | null;
@@ -24,13 +25,31 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, users, setUsers, isLoading, isLoadingUsers, error, session, fetchUsers } = useAuthState();
+  const { user, users, setUsers, isLoading, isLoadingUsers, error, session, fetchUsers, isAdmin } = useAuthState();
   const { login, logout } = useAuthActions();
   const { addUser, deleteUser, updateUser } = useUserManagement();
 
-  const isAdmin = useMemo(() => {
-    return !!user && user.role === 'admin';
-  }, [user]);
+  // Debug authentication status on mount and changes
+  useEffect(() => {
+    console.log("AuthContext state:", { 
+      userId: user?.id, 
+      userRole: user?.role,
+      isAdmin, 
+      usersLoaded: users.length,
+      isLoading
+    });
+  }, [user, isAdmin, users, isLoading]);
+
+  // Force an initial fetch of users if admin
+  useEffect(() => {
+    if (isAdmin && !isLoading && users.length === 0) {
+      console.log("AuthProvider: Admin user detected, forcing initial users fetch");
+      fetchUsers(true).catch(err => {
+        console.error("Error in initial users fetch:", err);
+        toast.error("Failed to load users data");
+      });
+    }
+  }, [isAdmin, isLoading, users.length, fetchUsers]);
 
   const value = useMemo(
     () => ({

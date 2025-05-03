@@ -44,8 +44,16 @@ serve(async (req) => {
       case 'listUsers':
         console.log("Listing users");
         try {
-          result = await authClient.listUsers({ perPage: 100 });
+          // Use a higher per-page count and retry if needed
+          result = await authClient.listUsers({ perPage: 1000 });
           console.log("Users found:", result?.data?.users?.length || 0);
+          
+          if (!result?.data?.users || result.data.users.length === 0) {
+            // Try one more time with fallback parameters
+            console.log("No users found on first attempt, trying again");
+            result = await authClient.listUsers();
+            console.log("Second attempt users found:", result?.data?.users?.length || 0);
+          }
           
           // Validate the structure of each user
           if (result?.data?.users && result.data.users.length > 0) {

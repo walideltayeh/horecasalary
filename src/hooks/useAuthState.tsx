@@ -1,6 +1,7 @@
 
 import { useAuthSession } from './auth/useAuthSession';
 import { useUsers } from './auth/useUsers';
+import { useEffect } from 'react';
 
 /**
  * Main authentication state hook that combines session and users data
@@ -11,10 +12,24 @@ export function useAuthState() {
   
   // Enhanced admin detection - explicitly check for admin role
   const isAdmin = !!user && user.role === 'admin';
-  console.log("useAuthState - User:", user?.id, "isAdmin:", isAdmin);
   
-  // Pass isAdmin and loading status to useUsers with enhanced debugging
-  const { users, setUsers, isLoadingUsers, error, fetchUsers } = useUsers(isAdmin, !isLoading);
+  // Pass isAdmin and auth status to useUsers with enhanced debugging
+  const { users, setUsers, isLoadingUsers, error, fetchUsers } = useUsers(
+    isAdmin, 
+    !isLoading && !!user // Only consider authenticated when we have a user and are not loading
+  );
+
+  // Debug logging for authentication state
+  useEffect(() => {
+    console.log("Auth state:", {
+      userId: user?.id,
+      userEmail: user?.email,
+      userRole: user?.role,
+      isAdmin,
+      isLoading,
+      sessionExists: !!session
+    });
+  }, [user, isAdmin, isLoading, session]);
 
   // Forward the fetchUsers function call with its parameter
   const fetchUsersWithForce = (force: boolean = false) => {
@@ -31,7 +46,6 @@ export function useAuthState() {
     error,
     session, 
     fetchUsers: fetchUsersWithForce,
-    // Explicitly include isAdmin in the return value
     isAdmin 
   };
 }
