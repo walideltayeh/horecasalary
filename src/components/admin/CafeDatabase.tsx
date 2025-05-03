@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import CafeList from '@/components/CafeList';
 import { Cafe } from '@/types';
@@ -15,6 +15,26 @@ interface CafeDatabaseProps {
 
 const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes = [] }) => {
   const { refreshCafes, loading } = useData();
+
+  // Force initial data refresh on mount
+  useEffect(() => {
+    console.log("CafeDatabase mounted, refreshing cafe data");
+    refreshCafes();
+    
+    // Listen for cafe added events
+    const handleCafeAdded = () => {
+      console.log("CafeDatabase detected cafe added event");
+      refreshCafes();
+    };
+    
+    window.addEventListener('cafe_added', handleCafeAdded);
+    window.addEventListener('horeca_data_updated', handleCafeAdded);
+    
+    return () => {
+      window.removeEventListener('cafe_added', handleCafeAdded);
+      window.removeEventListener('horeca_data_updated', handleCafeAdded);
+    };
+  }, [refreshCafes]);
 
   const handleForceRefresh = async () => {
     try {

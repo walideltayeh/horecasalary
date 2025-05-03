@@ -50,14 +50,23 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted, onSuccess }: UseSu
       const cafeId = await addCafe(completeData);
       console.log("Cafe added with ID:", cafeId);
       
-      // Only trigger a single refresh event
-      window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-        detail: { action: 'cafeAdded', cafeId }
-      }));
-      
-      // Call the onSuccess callback if provided
-      if (onSuccess && cafeId) {
-        onSuccess();
+      if (cafeId) {
+        // Trigger multiple events to ensure proper refresh across all components
+        window.dispatchEvent(new CustomEvent('cafe_added', {
+          detail: { action: 'cafeAdded', cafeId }
+        }));
+        
+        window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+          detail: { action: 'cafeAdded', cafeId, forceRefresh: true }
+        }));
+        
+        // Also explicitly trigger stats update
+        window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
+        
+        // Call the onSuccess callback if provided
+        if (onSuccess && cafeId) {
+          onSuccess();
+        }
       }
       
       return cafeId;

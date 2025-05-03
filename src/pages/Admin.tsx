@@ -38,6 +38,30 @@ const Admin: React.FC = () => {
     }
   }, [user, isAdmin, fetchUsers]);
 
+  // Force cafe refresh on mount and whenever the active tab changes to 'cafes'
+  useEffect(() => {
+    if (user && isAdmin) {
+      console.log("Admin component - forcing cafe data refresh");
+      refreshCafes();
+    }
+  }, [user, isAdmin, refreshCafes]);
+
+  // Listen for cafe addition/update events
+  useEffect(() => {
+    const handleCafeDataUpdated = () => {
+      console.log("Admin detected cafe data update event");
+      refreshCafes();
+    };
+    
+    window.addEventListener('horeca_data_updated', handleCafeDataUpdated);
+    window.addEventListener('cafe_added', handleCafeDataUpdated);
+    
+    return () => {
+      window.removeEventListener('horeca_data_updated', handleCafeDataUpdated);
+      window.removeEventListener('cafe_added', handleCafeDataUpdated);
+    };
+  }, [refreshCafes]);
+
   // Display debug info about authentication state
   useEffect(() => {
     console.log("Admin authentication state:", { 
