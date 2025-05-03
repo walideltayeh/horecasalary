@@ -29,6 +29,12 @@ export const useEdgeFunctionDelete = () => {
       // Show initial toast
       notifyDeletionStarted(cafeId);
       
+      // Get current user ID
+      const userId = user?.id;
+      if (!userId) {
+        console.warn("DELETION: No user ID available for logging");
+      }
+      
       // Fetch the cafe data before deletion
       const cafeData = await fetchCafeData(cafeId);
       if (!cafeData) {
@@ -36,13 +42,13 @@ export const useEdgeFunctionDelete = () => {
       }
       
       // Prepare parameters for deletion
-      const params = prepareDeletionParams(cafeId, user?.id || 'unknown', cafeData);
+      const params = prepareDeletionParams(cafeId, userId || 'unknown', cafeData);
       
       // Call the edge function to delete cafe and related data
       const result = await invokeEdgeFunction(params);
       
       // Handle the result
-      return handleDeletionResult(result, cafeId, user?.id, cafeData);
+      return handleDeletionResult(result, cafeId, userId, cafeData);
     } catch (err: any) {
       // Handle any unexpected errors
       handleDeletionError(err, cafeId);

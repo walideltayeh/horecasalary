@@ -38,8 +38,10 @@ const UserDeletionLogs: React.FC = () => {
     }
     
     // Listen for deletion events to refresh logs
-    const handleCafeDeleted = () => {
+    const handleCafeDeleted = (event: Event) => {
       console.log("Cafe deleted event detected, refreshing deletion logs");
+      const customEvent = event as CustomEvent;
+      console.log("Deletion event details:", customEvent.detail);
       fetchLogs();
     };
     
@@ -59,12 +61,16 @@ const UserDeletionLogs: React.FC = () => {
   };
   
   const renderEntityInfoPreview = (entityData: Record<string, any>, entityType: string) => {
+    if (!entityData) {
+      return <div className="text-sm italic">No entity data available</div>;
+    }
+    
     if (entityType === 'cafe') {
       return (
         <div className="text-sm">
           <p><strong>Name:</strong> {entityData.name || 'N/A'}</p>
-          <p><strong>Owner:</strong> {entityData.ownerName || 'N/A'}</p>
-          <p><strong>Location:</strong> {entityData.city}, {entityData.governorate}</p>
+          <p><strong>Owner:</strong> {entityData.ownerName || entityData.owner_name || 'N/A'}</p>
+          <p><strong>Location:</strong> {entityData.city || 'N/A'}, {entityData.governorate || 'N/A'}</p>
         </div>
       );
     }
