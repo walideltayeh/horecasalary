@@ -12,20 +12,15 @@ import CafeDatabase from '@/components/admin/CafeDatabase';
 import DeletionLogs from '@/components/admin/DeletionLogs';
 
 const Admin: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, addUser, deleteUser, updateUser, users, fetchUsers } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const {
-    users,
-    isLoadingUsers, // Corrected from usersLoading
-    error: usersError, // Corrected from usersError
-    addUser,
-    updateUser,
-    deleteUser,
-    refreshUsers,
+    isLoadingUsers,
+    cafes,
+    loadingCafes,
+    refreshCafes,
     isAddingUser,
-    isDeletingUser,
-    cafes, // Add cafes to destructuring
-    loadingCafes // Add loadingCafes to destructuring
+    isDeletingUser
   } = useAdminPage();
 
   if (!user || !isAdmin) {
@@ -35,7 +30,7 @@ const Admin: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <AdminHeader 
-        onRefreshCafes={refreshUsers} // Pass appropriate props based on AdminHeader component
+        onRefreshCafes={refreshCafes} 
         loadingCafes={loadingCafes} 
       />
 
@@ -66,11 +61,11 @@ const Admin: React.FC = () => {
             <UserManagement
               users={users}
               isLoadingUsers={isLoadingUsers}
-              error={usersError}
+              error={null}
               onAddUser={addUser}
               onEditUser={updateUser}
               onDeleteUser={deleteUser}
-              onRefreshUsers={refreshUsers}
+              onRefreshUsers={fetchUsers}
               isAddingUser={isAddingUser}
               isDeletingUser={isDeletingUser}
             />
