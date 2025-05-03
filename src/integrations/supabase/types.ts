@@ -124,6 +124,33 @@ export type Database = {
         }
         Relationships: []
       }
+      deletion_logs: {
+        Row: {
+          deleted_at: string | null
+          deleted_by: string
+          entity_data: Json
+          entity_id: string
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          deleted_at?: string | null
+          deleted_by: string
+          entity_data: Json
+          entity_id: string
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          deleted_at?: string | null
+          deleted_by?: string
+          entity_data?: Json
+          entity_id?: string
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
       kpi_settings: {
         Row: {
           basic_salary_percentage: number

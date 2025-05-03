@@ -52,18 +52,29 @@ export const useDeleteLogger = () => {
    */
   const getDeletionLogs = async (entityType?: string, entityId?: string): Promise<DeletionLog[]> => {
     try {
-      // Query the deletion_logs table directly with filters if provided
-      let query = supabase.from('deletion_logs').select('*');
+      let result;
       
-      if (entityType) {
-        query = query.eq('entity_type', entityType);
+      // Use RPC call to avoid type issues with direct table access
+      if (entityType && entityId) {
+        result = await supabase.rpc('get_deletion_logs', {
+          p_entity_type: entityType,
+          p_entity_id: entityId
+        });
+      } else if (entityType) {
+        result = await supabase.rpc('get_deletion_logs', {
+          p_entity_type: entityType,
+          p_entity_id: null
+        });
+      } else if (entityId) {
+        result = await supabase.rpc('get_deletion_logs', {
+          p_entity_type: null,
+          p_entity_id: entityId
+        });
+      } else {
+        result = await supabase.rpc('get_deletion_logs');
       }
       
-      if (entityId) {
-        query = query.eq('entity_id', entityId);
-      }
-      
-      const { data, error } = await query.order('deleted_at', { ascending: false });
+      const { data, error } = result;
       
       if (error) {
         console.error("Failed to fetch deletion logs:", error);
@@ -89,23 +100,18 @@ export const useDeleteLogger = () => {
    */
   const getDeletedCafe = async (cafeId: string): Promise<Cafe | null> => {
     try {
-      // Find the most recent deletion log for this cafe
-      const { data, error } = await supabase
-        .from('deletion_logs')
-        .select('*')
-        .eq('entity_type', 'cafe')
-        .eq('entity_id', cafeId)
-        .order('deleted_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Use RPC call to get the deleted cafe data
+      const { data, error } = await supabase.rpc('get_deleted_cafe', {
+        p_cafe_id: cafeId
+      });
       
       if (error || !data) {
         return null;
       }
       
-      // The cafe data is stored in the entity_data field
+      // The cafe data is stored in the returned data
       // We need to cast it properly to match the Cafe type
-      const cafeData = data.entity_data as any;
+      const cafeData = data as any;
       
       return {
         id: cafeData.id || '',
