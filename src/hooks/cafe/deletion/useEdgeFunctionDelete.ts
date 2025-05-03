@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { Cafe } from '@/types';
 
 /**
  * Handles deletion using the edge function approach
@@ -17,11 +18,40 @@ export const useEdgeFunctionDelete = () => {
         duration: 3000
       });
       
+      // Fetch the cafe data to use as entityData before deletion
+      const { data: cafeData, error: fetchError } = await supabase
+        .from('cafes')
+        .select('*')
+        .eq('id', cafeId)
+        .single();
+      
+      if (fetchError || !cafeData) {
+        console.error("DELETION: Failed to fetch cafe data:", fetchError);
+        toast.error(`Failed to fetch cafe data: ${fetchError?.message || "Unknown error"}`, {
+          id: `delete-${cafeId}`,
+          duration: 3000
+        });
+        return false;
+      }
+      
+      console.log("DELETION: Fetched cafe data successfully:", cafeData);
+      
+      // Prepare parameters for the edge function
+      const params = {
+        cafeId,
+        entityType: 'cafe',
+        entityId: cafeId,
+        deletedBy: user?.id || 'unknown',
+        entityData: cafeData
+      };
+      
+      console.log("DELETION: Calling edge function with params:", params);
+      
       // Call the edge function to delete cafe and related data
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
         'safe_delete_cafe_related_data',
         { 
-          body: { cafeId },
+          body: params,
           // Add timeout to prevent UI hanging indefinitely
           headers: {
             'Content-Type': 'application/json'
@@ -53,7 +83,7 @@ export const useEdgeFunctionDelete = () => {
         });
         
         // Broadcast deletion event with improved information
-        broadcastDeletionEvent(cafeId, user?.id);
+        broadcastDeletionEvent(cafeId, user?.id, cafeData);
         return true;
       } else {
         console.error("DELETION: Edge function returned error:", functionData);
@@ -79,13 +109,14 @@ export const useEdgeFunctionDelete = () => {
 /**
  * Helper to broadcast deletion events
  */
-export const broadcastDeletionEvent = (cafeId: string, userId?: string): void => {
+export const broadcastDeletionEvent = (cafeId: string, userId?: string, cafeData?: any): void => {
   try {
     window.dispatchEvent(new CustomEvent('cafe_deleted', {
       detail: { 
         cafeId,
         userId,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        cafeData
       }
     }));
     
@@ -95,8 +126,20 @@ export const broadcastDeletionEvent = (cafeId: string, userId?: string): void =>
     if (userId) {
       localStorage.setItem('last_deletion_by', userId);
     }
+    // Also store simplified cafe data for reference
+    if (cafeData) {
+      try {
+        localStorage.setItem('last_deleted_cafe_data', JSON.stringify({
+          name: cafeData.name,
+          owner: cafeData.ownerName,
+          location: `${cafeData.city}, ${cafeData.governorate}`
+        }));
+      } catch (e) {
+        console.warn("DELETION: Could not store cafe data in localStorage:", e);
+      }
+    }
     
-    console.log("Deletion event broadcast successfully", { cafeId, userId });
+    console.log("Deletion event broadcast successfully", { cafeId, userId, cafeData });
   } catch (e) {
     console.warn("DELETION: Could not dispatch events:", e);
   }

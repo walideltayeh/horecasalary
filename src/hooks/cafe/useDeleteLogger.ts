@@ -20,7 +20,7 @@ export const useDeleteLogger = () => {
       console.log(`Logging deletion of ${entityType} with ID: ${entityId} by ${deletedBy}`);
       
       // Insert directly to the deletion_logs table using SQL function
-      const { error } = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+      const { data, error } = await supabase.functions.invoke('safe_delete_cafe_related_data', {
         body: { 
           logOnly: true,
           entityType,
@@ -39,7 +39,7 @@ export const useDeleteLogger = () => {
         return false;
       }
       
-      console.log("Successfully logged deletion event");
+      console.log("Successfully logged deletion event:", data);
       return true;
     } catch (err: any) {
       console.error("Error logging deletion:", err);
@@ -102,6 +102,7 @@ export const useDeleteLogger = () => {
       });
       
       if (error || !data) {
+        console.error("Error getting deleted cafe:", error);
         return null;
       }
       

@@ -20,12 +20,32 @@ serve(async (req) => {
   )
   
   try {
-    // Extract request data
-    const { logOnly, entityType, entityId, deletedBy, entityData, action, cafeId, userId } = await req.json()
+    // Extract request data with proper validation
+    const requestData = await req.json();
+    console.log("EDGE: Request data received:", requestData);
+    
+    const { 
+      logOnly, 
+      entityType, 
+      entityId, 
+      deletedBy, 
+      entityData, 
+      action, 
+      cafeId, 
+      userId 
+    } = requestData;
     
     // HANDLE LOG DELETION
     if (logOnly === true) {
       console.log("EDGE: Logging deletion only");
+      
+      if (!entityType || !entityId || !deletedBy) {
+        console.error("EDGE: Missing required parameters for deletion logging");
+        return new Response(
+          JSON.stringify({ error: "Missing required parameters for deletion logging" }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
       
       const { data, error } = await supabase
         .from('deletion_logs')
@@ -33,7 +53,7 @@ serve(async (req) => {
           entity_type: entityType,
           entity_id: entityId,
           deleted_by: deletedBy,
-          entity_data: entityData
+          entity_data: entityData || {}
         });
         
       if (error) {
@@ -115,87 +135,122 @@ serve(async (req) => {
       );
     }
     
-    // HANDLE FULL DELETION (This is the existing functionality)
-    // Logic for actually deleting cafe and related data
+    // HANDLE FULL DELETION
+    // If we reach here, this is a full deletion request
     console.log("EDGE: Attempting to delete cafe and related data");
-
-    // Check if required parameters are provided
-    if (!entityType || !entityId || !deletedBy) {
-      console.error("EDGE: Missing required parameters for deletion");
+    
+    // First validate that we have all required parameters
+    // If cafeId is provided but not entityType/entityId, use cafeId as entityId
+    const finalEntityId = entityId || cafeId;
+    const finalEntityType = entityType || 'cafe';
+    
+    if (!finalEntityId) {
+      console.error("EDGE: Missing required cafeId/entityId for deletion");
       return new Response(
-        JSON.stringify({ error: "Missing required parameters for deletion" }),
+        JSON.stringify({ error: "Missing required cafeId for deletion" }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
+    
+    if (!deletedBy) {
+      console.error("EDGE: Missing deletedBy for deletion tracking");
+      return new Response(
+        JSON.stringify({ error: "Missing required deletedBy for deletion tracking" }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    // If entityData is not provided, try to fetch cafe data
+    let finalEntityData = entityData;
+    
+    if (!finalEntityData) {
+      console.log(`EDGE: No entity data provided, fetching cafe data for ${finalEntityId}`);
+      const { data: fetchedCafe, error: fetchError } = await supabase
+        .from('cafes')
+        .select('*')
+        .eq('id', finalEntityId)
+        .single();
+        
+      if (fetchError || !fetchedCafe) {
+        console.error("EDGE: Error fetching cafe data:", fetchError);
+        // Continue with deletion but won't have data for logging
+        finalEntityData = { id: finalEntityId, note: "Cafe data not available" };
+      } else {
+        finalEntityData = fetchedCafe;
+      }
+    }
 
     try {
-      // 1. Delete related records in brand_sales
-      const { error: brandSalesError } = await supabase
-        .from('brand_sales')
-        .delete()
-        .eq('survey_id', entityId);
-
-      if (brandSalesError) {
-        console.error("EDGE: Error deleting brand_sales:", brandSalesError);
-        return new Response(
-          JSON.stringify({ error: `Failed to delete brand_sales: ${brandSalesError.message}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
-      }
-
-      // 2. Delete related records in cafe_surveys
-      const { error: cafeSurveysError } = await supabase
-        .from('cafe_surveys')
-        .delete()
-        .eq('cafe_id', entityId);
-
-      if (cafeSurveysError) {
-        console.error("EDGE: Error deleting cafe_surveys:", cafeSurveysError);
-        return new Response(
-          JSON.stringify({ error: `Failed to delete cafe_surveys: ${cafeSurveysError.message}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
-      }
-
-      // 3. Log the deletion event
+      // Log the deletion FIRST to ensure we have a record even if deletion fails
+      console.log("EDGE: Logging deletion before deleting data");
       const { error: logError } = await supabase
         .from('deletion_logs')
         .insert({
-          entity_type: entityType,
-          entity_id: entityId,
+          entity_type: finalEntityType,
+          entity_id: finalEntityId,
           deleted_by: deletedBy,
-          entity_data: entityData
+          entity_data: finalEntityData || {}
         });
 
+      const logSuccess = !logError;
+      console.log("EDGE: Deletion log created:", logSuccess);
+      
       if (logError) {
         console.error("EDGE: Failed to log deletion:", logError);
-        return new Response(
-          JSON.stringify({ error: `Failed to log deletion: ${logError.message}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
+        // Continue with deletion even if logging fails
       }
 
-      // 4. Finally, delete the cafe
+      // 1. Delete related records in brand_sales
+      console.log("EDGE: Deleting brand_sales records");
+      const { error: brandSalesError } = await supabase
+        .from('brand_sales')
+        .delete()
+        .eq('survey_id', finalEntityId);
+
+      if (brandSalesError) {
+        console.error("EDGE: Error deleting brand_sales:", brandSalesError);
+      }
+
+      // 2. Delete related records in cafe_surveys
+      console.log("EDGE: Deleting cafe_surveys records");
+      const { error: cafeSurveysError } = await supabase
+        .from('cafe_surveys')
+        .delete()
+        .eq('cafe_id', finalEntityId);
+
+      if (cafeSurveysError) {
+        console.error("EDGE: Error deleting cafe_surveys:", cafeSurveysError);
+      }
+
+      // 3. Finally, delete the cafe
+      console.log("EDGE: Deleting cafe");
       const { error: cafeError } = await supabase
         .from('cafes')
         .delete()
-        .eq('id', entityId);
+        .eq('id', finalEntityId);
 
       if (cafeError) {
         console.error("EDGE: Error deleting cafe:", cafeError);
         return new Response(
-          JSON.stringify({ error: `Failed to delete cafe: ${cafeError.message}` }),
+          JSON.stringify({ 
+            error: `Failed to delete cafe: ${cafeError.message}`,
+            logged: logSuccess
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
 
       // If all operations were successful
       return new Response(
-        JSON.stringify({ success: true, message: "Cafe and related data deleted successfully" }),
+        JSON.stringify({ 
+          success: true, 
+          message: "Cafe and related data deleted successfully",
+          logged: logSuccess
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("EDGE: Unexpected error during deletion:", error);
       return new Response(
         JSON.stringify({ error: `Unexpected error during deletion: ${error.message}` }),
@@ -203,13 +258,13 @@ serve(async (req) => {
       );
     }
     
-    // Default response if no specific action matched
+    // Default response if no specific action matched (though we shouldn't reach here)
     return new Response(
       JSON.stringify({ error: "Invalid action specified" }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     );
     
-  } catch (error) {
+  } catch (error: any) {
     console.error("EDGE: Unexpected error:", error);
     return new Response(
       JSON.stringify({ error: error.message || 'Unknown error' }),
