@@ -48,40 +48,25 @@ export const useDeleteLogger = () => {
   };
   
   /**
-   * Retrieves the deletion logs for a specific entity
+   * Retrieves the deletion logs for a specific entity or user
    */
-  const getDeletionLogs = async (entityType?: string, entityId?: string): Promise<DeletionLog[]> => {
+  const getDeletionLogs = async (
+    entityType?: string, 
+    entityId?: string, 
+    userId?: string
+  ): Promise<DeletionLog[]> => {
     try {
       let result;
       
-      // Use RPC call to avoid type issues with direct table access
-      if (entityType && entityId) {
-        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
-          body: { 
-            action: 'getLogs',
-            entityType,
-            entityId
-          }
-        });
-      } else if (entityType) {
-        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
-          body: { 
-            action: 'getLogs',
-            entityType
-          }
-        });
-      } else if (entityId) {
-        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
-          body: { 
-            action: 'getLogs',
-            entityId
-          }
-        });
-      } else {
-        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
-          body: { action: 'getLogs' }
-        });
-      }
+      // Use edge function to get logs with optional filtering
+      result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+        body: { 
+          action: 'getLogs',
+          entityType,
+          entityId,
+          userId
+        }
+      });
       
       if (result.error) {
         console.error("Failed to fetch deletion logs:", result.error);

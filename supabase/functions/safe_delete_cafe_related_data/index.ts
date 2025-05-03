@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7"
 
@@ -20,7 +21,7 @@ serve(async (req) => {
   
   try {
     // Extract request data
-    const { logOnly, entityType, entityId, deletedBy, entityData, action, cafeId } = await req.json()
+    const { logOnly, entityType, entityId, deletedBy, entityData, action, cafeId, userId } = await req.json()
     
     // HANDLE LOG DELETION
     if (logOnly === true) {
@@ -62,6 +63,11 @@ serve(async (req) => {
       
       if (entityId) {
         query = query.eq('entity_id', entityId);
+      }
+      
+      // Add filtering by userId (deleted_by field)
+      if (userId) {
+        query = query.eq('deleted_by', userId);
       }
       
       const { data, error } = await query.order('deleted_at', { ascending: false });

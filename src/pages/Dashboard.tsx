@@ -11,6 +11,7 @@ import { AdminDashboardSummary } from '@/components/dashboard/AdminDashboardSumm
 import AdminUserTabs from '@/components/dashboard/AdminUserTabs';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { useDashboardDataRefresh } from '@/components/dashboard/useDashboardDataRefresh';
+import UserDeletionLogs from '@/components/dashboard/UserDeletionLogs';
 
 const Dashboard: React.FC = () => {
   const { 
@@ -110,31 +111,44 @@ const Dashboard: React.FC = () => {
     );
   }
   
-  // Regular user dashboard view
+  // Regular user dashboard view with added deletion logs tab
   return (
     <div className="space-y-8">
       <DashboardHeader isAdmin={isAdmin} />
 
-      {/* Salary Summary */}
-      <UserSalaryCards 
-        salaryStats={salaryStats} 
-        kpiSettings={kpiSettings} 
-      />
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="deletions">Deletion History</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview" className="space-y-6">
+          {/* Salary Summary */}
+          <UserSalaryCards 
+            salaryStats={salaryStats} 
+            kpiSettings={kpiSettings} 
+          />
 
-      {/* KPI Performance */}
-      <UserKpiStats
-        salaryStats={salaryStats}
-        visitCounts={visitCounts}
-        contractCounts={contractCounts}
-        kpiSettings={kpiSettings}
-      />
+          {/* KPI Performance */}
+          <UserKpiStats
+            salaryStats={salaryStats}
+            visitCounts={visitCounts}
+            contractCounts={contractCounts}
+            kpiSettings={kpiSettings}
+          />
 
-      {/* Bonus Summary */}
-      <UserBonusSummary 
-        contractCounts={contractCounts}
-        kpiSettings={kpiSettings}
-        bonusAmount={salaryStats.bonusAmount}
-      />
+          {/* Bonus Summary */}
+          <UserBonusSummary 
+            contractCounts={contractCounts}
+            kpiSettings={kpiSettings}
+            bonusAmount={salaryStats.bonusAmount}
+          />
+        </TabsContent>
+        
+        <TabsContent value="deletions">
+          <UserDeletionLogs />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
