@@ -56,10 +56,10 @@ export const useDeleteLogger = () => {
     userId?: string
   ): Promise<DeletionLog[]> => {
     try {
-      let result;
+      console.log("Fetching deletion logs with filters:", { entityType, entityId, userId });
       
       // Use edge function to get logs with optional filtering
-      result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+      const result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
         body: { 
           action: 'getLogs',
           entityType,
@@ -73,6 +73,7 @@ export const useDeleteLogger = () => {
         return [];
       }
       
+      console.log(`Retrieved ${result.data?.length || 0} deletion logs`);
       return (result.data as any[]).map(log => ({
         id: log.id,
         entity_type: log.entity_type,

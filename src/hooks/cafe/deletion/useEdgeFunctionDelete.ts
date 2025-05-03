@@ -1,11 +1,14 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Handles deletion using the edge function approach
  */
 export const useEdgeFunctionDelete = () => {
+  const { user } = useAuth();
+  
   const deleteViaEdgeFunction = async (cafeId: string): Promise<boolean> => {
     try {
       // Show toast for starting edge function deletion
@@ -49,8 +52,8 @@ export const useEdgeFunctionDelete = () => {
           duration: 2000
         });
         
-        // Broadcast deletion event
-        broadcastDeletionEvent(cafeId);
+        // Broadcast deletion event with improved information
+        broadcastDeletionEvent(cafeId, user?.id);
         return true;
       } else {
         console.error("DELETION: Edge function returned error:", functionData);
@@ -76,13 +79,24 @@ export const useEdgeFunctionDelete = () => {
 /**
  * Helper to broadcast deletion events
  */
-export const broadcastDeletionEvent = (cafeId: string): void => {
+export const broadcastDeletionEvent = (cafeId: string, userId?: string): void => {
   try {
     window.dispatchEvent(new CustomEvent('cafe_deleted', {
-      detail: { cafeId }
+      detail: { 
+        cafeId,
+        userId,
+        timestamp: Date.now()
+      }
     }));
+    
+    // Store information about the deletion in localStorage
     localStorage.setItem('last_deleted_cafe', cafeId);
     localStorage.setItem('last_deletion_time', String(Date.now()));
+    if (userId) {
+      localStorage.setItem('last_deletion_by', userId);
+    }
+    
+    console.log("Deletion event broadcast successfully", { cafeId, userId });
   } catch (e) {
     console.warn("DELETION: Could not dispatch events:", e);
   }

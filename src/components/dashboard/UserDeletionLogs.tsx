@@ -21,11 +21,10 @@ const UserDeletionLogs: React.FC = () => {
     
     setLoading(true);
     try {
-      // Get logs where the current user is the one who deleted the item
-      const logsData = await getDeletionLogs();
-      // Filter logs for the current user
-      const userLogs = logsData.filter(log => log.deleted_by === user.id);
-      setLogs(userLogs);
+      // Pass the user's ID to get only their logs
+      const logsData = await getDeletionLogs(undefined, undefined, user.id);
+      console.log("Fetched deletion logs for user:", user.id, logsData);
+      setLogs(logsData);
     } catch (error) {
       console.error("Error fetching user deletion logs:", error);
     } finally {
@@ -37,6 +36,18 @@ const UserDeletionLogs: React.FC = () => {
     if (user?.id) {
       fetchLogs();
     }
+    
+    // Listen for deletion events to refresh logs
+    const handleCafeDeleted = () => {
+      console.log("Cafe deleted event detected, refreshing deletion logs");
+      fetchLogs();
+    };
+    
+    window.addEventListener('cafe_deleted', handleCafeDeleted);
+    
+    return () => {
+      window.removeEventListener('cafe_deleted', handleCafeDeleted);
+    };
   }, [user?.id]);
   
   const formatDate = (dateString: string) => {

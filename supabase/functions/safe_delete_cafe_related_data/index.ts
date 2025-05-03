@@ -52,7 +52,7 @@ serve(async (req) => {
     
     // HANDLE GET LOGS ACTION
     if (action === 'getLogs') {
-      console.log("EDGE: Getting deletion logs");
+      console.log("EDGE: Getting deletion logs", { entityType, entityId, userId });
       let query = supabase
         .from('deletion_logs')
         .select('*');
@@ -67,6 +67,7 @@ serve(async (req) => {
       
       // Add filtering by userId (deleted_by field)
       if (userId) {
+        console.log("EDGE: Filtering logs by user ID:", userId);
         query = query.eq('deleted_by', userId);
       }
       
@@ -80,6 +81,7 @@ serve(async (req) => {
         );
       }
       
+      console.log(`EDGE: Returning ${data?.length || 0} deletion logs`);
       return new Response(
         JSON.stringify(data),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
