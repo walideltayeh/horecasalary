@@ -72,11 +72,17 @@ const ExportToExcel: React.FC<ExportToExcelProps> = ({ cafes }) => {
           brandData[`${brand} (packs/week)`] = brandSurvey ? brandSurvey.packsPerWeek.toString() : "0";
         });
         
-        // Return cafe data with survey information
+        // Format GPS coordinates nicely or show N/A
+        const gpsCoordinates = cafe.latitude && cafe.longitude
+          ? `${cafe.latitude.toFixed(6)}, ${cafe.longitude.toFixed(6)}`
+          : "N/A";
+        
+        // Return cafe data with survey information and GPS coordinates
         return {
           "Name": cafe.name,
           "Size": getCafeSize(cafe.numberOfHookahs),
           "Location": `${cafe.governorate}, ${cafe.city}`,
+          "GPS Coordinates": gpsCoordinates,
           "Status": cafe.status,
           "Owner": cafe.ownerName,
           "Owner Number": cafe.ownerNumber,
@@ -94,7 +100,7 @@ const ExportToExcel: React.FC<ExportToExcelProps> = ({ cafes }) => {
       window.XLSX.utils.book_append_sheet(workbook, worksheet, "Cafes");
       window.XLSX.writeFile(workbook, "HoReCa_Cafes_Export.xlsx");
       
-      toast.success("Cafes data exported successfully with survey information");
+      toast.success("Cafes data exported successfully with survey information and GPS coordinates");
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Failed to export data");
