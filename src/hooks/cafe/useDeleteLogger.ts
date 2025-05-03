@@ -19,12 +19,15 @@ export const useDeleteLogger = () => {
     try {
       console.log(`Logging deletion of ${entityType} with ID: ${entityId} by ${deletedBy}`);
       
-      // Use RPC to call the server-side function for logging deletions
-      const { error } = await supabase.rpc('log_deletion', {
-        p_entity_type: entityType,
-        p_entity_id: entityId,
-        p_deleted_by: deletedBy,
-        p_entity_data: entityData
+      // Insert directly to the deletion_logs table using SQL function
+      const { error } = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+        body: { 
+          logOnly: true,
+          entityType,
+          entityId,
+          deletedBy,
+          entityData 
+        }
       });
       
       if (error) {
@@ -49,11 +52,18 @@ export const useDeleteLogger = () => {
    */
   const getDeletionLogs = async (entityType?: string, entityId?: string): Promise<DeletionLog[]> => {
     try {
-      // Use RPC to call the server-side function for getting deletion logs
-      const { data, error } = await supabase.rpc('get_deletion_logs', {
-        p_entity_type: entityType || null,
-        p_entity_id: entityId || null
-      });
+      // Query the deletion_logs table directly with filters if provided
+      let query = supabase.from('deletion_logs').select('*');
+      
+      if (entityType) {
+        query = query.eq('entity_type', entityType);
+      }
+      
+      if (entityId) {
+        query = query.eq('entity_id', entityId);
+      }
+      
+      const { data, error } = await query.order('deleted_at', { ascending: false });
       
       if (error) {
         console.error("Failed to fetch deletion logs:", error);
@@ -67,7 +77,7 @@ export const useDeleteLogger = () => {
         deleted_by: log.deleted_by,
         deleted_at: log.deleted_at,
         entity_data: log.entity_data
-      })) as DeletionLog[];
+      }));
     } catch (err) {
       console.error("Error fetching deletion logs:", err);
       return [];
@@ -79,16 +89,40 @@ export const useDeleteLogger = () => {
    */
   const getDeletedCafe = async (cafeId: string): Promise<Cafe | null> => {
     try {
-      // Use RPC to call the server-side function for getting a deleted cafe
-      const { data, error } = await supabase.rpc('get_deleted_cafe', {
-        p_cafe_id: cafeId
-      });
+      // Find the most recent deletion log for this cafe
+      const { data, error } = await supabase
+        .from('deletion_logs')
+        .select('*')
+        .eq('entity_type', 'cafe')
+        .eq('entity_id', cafeId)
+        .order('deleted_at', { ascending: false })
+        .limit(1)
+        .single();
       
       if (error || !data) {
         return null;
       }
       
-      return data as Cafe;
+      // The cafe data is stored in the entity_data field
+      // We need to cast it properly to match the Cafe type
+      const cafeData = data.entity_data as any;
+      
+      return {
+        id: cafeData.id || '',
+        name: cafeData.name || '',
+        ownerName: cafeData.owner_name || '',
+        ownerNumber: cafeData.owner_number || '',
+        numberOfHookahs: cafeData.number_of_hookahs || 0,
+        numberOfTables: cafeData.number_of_tables || 0,
+        status: cafeData.status || 'Pending',
+        photoUrl: cafeData.photo_url,
+        latitude: cafeData.latitude,
+        longitude: cafeData.longitude,
+        governorate: cafeData.governorate || '',
+        city: cafeData.city || '',
+        createdAt: cafeData.created_at || '',
+        createdBy: cafeData.created_by || ''
+      };
     } catch (err) {
       console.error("Error getting deleted cafe:", err);
       return null;

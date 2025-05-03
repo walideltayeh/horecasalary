@@ -12,7 +12,7 @@ import CafeDatabase from '@/components/admin/CafeDatabase';
 import DeletionLogs from '@/components/admin/DeletionLogs';
 
 const Admin: React.FC = () => {
-  const { user, isAdmin, addUser, deleteUser, updateUser, users, fetchUsers } = useAuth();
+  const { user, isAdmin, addUser: authAddUser, deleteUser, updateUser, users, fetchUsers } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const {
     isLoadingUsers,
@@ -22,6 +22,11 @@ const Admin: React.FC = () => {
     isAddingUser,
     isDeletingUser
   } = useAdminPage();
+
+  // Create a wrapper function to convert Promise<boolean> to Promise<void>
+  const addUser = async (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => {
+    await authAddUser(userData);
+  };
 
   if (!user || !isAdmin) {
     return <Navigate to="/login" replace />;
