@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,14 +16,16 @@ const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const {
     users,
-    usersLoading,
-    usersError,
+    isLoadingUsers, // Corrected from usersLoading
+    error: usersError, // Corrected from usersError
     addUser,
     updateUser,
     deleteUser,
     refreshUsers,
     isAddingUser,
     isDeletingUser,
+    cafes, // Add cafes to destructuring
+    loadingCafes // Add loadingCafes to destructuring
   } = useAdminPage();
 
   if (!user || !isAdmin) {
@@ -31,7 +34,10 @@ const Admin: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <AdminHeader user={user} />
+      <AdminHeader 
+        onRefreshCafes={refreshUsers} // Pass appropriate props based on AdminHeader component
+        loadingCafes={loadingCafes} 
+      />
 
       <div className="container mx-auto py-8">
         <Tabs 
@@ -49,17 +55,17 @@ const Admin: React.FC = () => {
           </TabsList>
           
           <TabsContent value="dashboard">
-            <StatsOverview />
+            <StatsOverview cafes={cafes} />
           </TabsContent>
           
           <TabsContent value="kpi">
-            <SystemStats />
+            <SystemStats cafes={cafes} />
           </TabsContent>
           
           <TabsContent value="users">
             <UserManagement
               users={users}
-              isLoadingUsers={usersLoading}
+              isLoadingUsers={isLoadingUsers}
               error={usersError}
               onAddUser={addUser}
               onEditUser={updateUser}
@@ -71,7 +77,7 @@ const Admin: React.FC = () => {
           </TabsContent>
           
           <TabsContent value="cafes">
-            <CafeDatabase />
+            <CafeDatabase cafes={cafes} />
           </TabsContent>
           
           <TabsContent value="logs">
