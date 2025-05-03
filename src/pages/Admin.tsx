@@ -1,72 +1,85 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import PasswordProtection from '@/components/PasswordProtection';
-import { UserPerformance } from '@/components/admin/UserPerformance';
-import { CafeDatabase } from '@/components/admin/CafeDatabase';
-import UserManagement from '@/components/admin/UserManagement';
-import AdminHeader from '@/components/admin/AdminHeader';
-import { AdminCafeStats } from '@/components/admin/CafeStatsCard';
-import AdminSystemInfo from '@/components/admin/AdminSystemInfo';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAdminPage } from '@/hooks/admin/useAdminPage';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AdminHeader from '@/components/admin/AdminHeader';
+import StatsOverview from '@/components/admin/StatsOverview';
+import UserManagement from '@/components/admin/UserManagement';
+import SystemStats from '@/components/admin/SystemStats';
+import CafeDatabase from '@/components/admin/CafeDatabase';
+import DeletionLogs from '@/components/admin/DeletionLogs';
 
 const Admin: React.FC = () => {
+  const { user, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
   const {
-    isAdmin,
     users,
-    isLoadingUsers,
-    cafes,
-    loadingCafes,
-    authenticated,
-    setAuthenticated,
-    isDeletingUser,
+    usersLoading,
+    usersError,
+    addUser,
+    updateUser,
+    deleteUser,
+    refreshUsers,
     isAddingUser,
-    handleRefreshCafes,
-    handleAddUser,
-    handleEditUser,
-    handleDeleteUser,
-    fetchUsers
+    isDeletingUser,
   } = useAdminPage();
 
-  // Reset refresh and force update when authenticated
-  const handleAuthenticated = () => {
-    setAuthenticated(true);
-  };
-
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" />;
+  if (!user || !isAdmin) {
+    return <Navigate to="/login" replace />;
   }
-  
-  if (!authenticated) {
-    return <PasswordProtection 
-      onAuthenticate={handleAuthenticated} 
-      title="Admin Panel" 
-    />;
-  }
-
-  console.log("Admin render with users:", users);
-  console.log("Admin render with cafes:", cafes);
 
   return (
-    <div className="space-y-8">
-      <AdminHeader onRefreshCafes={handleRefreshCafes} loadingCafes={loadingCafes} />
-      <AdminCafeStats cafes={cafes} loadingCafes={loadingCafes} />
-      
-      <UserManagement
-        users={users}
-        isLoadingUsers={isLoadingUsers}
-        error={null}
-        onAddUser={handleAddUser}
-        onEditUser={handleEditUser}
-        onDeleteUser={handleDeleteUser}
-        onRefreshUsers={() => fetchUsers(true)}
-        isAddingUser={isAddingUser}
-        isDeletingUser={isDeletingUser}
-      />
-      
-      <UserPerformance users={users} cafes={cafes} />
-      <CafeDatabase cafes={cafes} />
-      <AdminSystemInfo cafes={cafes} />
+    <div className="min-h-screen bg-white">
+      <AdminHeader user={user} />
+
+      <div className="container mx-auto py-8">
+        <Tabs 
+          defaultValue="dashboard" 
+          value={activeTab}
+          onValueChange={setActiveTab} 
+          className="space-y-4"
+        >
+          <TabsList className="grid md:grid-cols-5 grid-cols-3 md:max-w-lg mb-4">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="kpi">KPI</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="cafes">Cafes</TabsTrigger>
+            <TabsTrigger value="logs">Logs</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="dashboard">
+            <StatsOverview />
+          </TabsContent>
+          
+          <TabsContent value="kpi">
+            <SystemStats />
+          </TabsContent>
+          
+          <TabsContent value="users">
+            <UserManagement
+              users={users}
+              isLoadingUsers={usersLoading}
+              error={usersError}
+              onAddUser={addUser}
+              onEditUser={updateUser}
+              onDeleteUser={deleteUser}
+              onRefreshUsers={refreshUsers}
+              isAddingUser={isAddingUser}
+              isDeletingUser={isDeletingUser}
+            />
+          </TabsContent>
+          
+          <TabsContent value="cafes">
+            <CafeDatabase />
+          </TabsContent>
+          
+          <TabsContent value="logs">
+            <DeletionLogs />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

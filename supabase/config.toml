@@ -25,3 +25,4 @@ enabled = true
 [edge-functions]
 [functions.safe_delete_cafe_related_data]
 verify_jwt = true
+

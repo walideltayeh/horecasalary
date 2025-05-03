@@ -38,8 +38,13 @@ export const useEdgeFunctionDelete = () => {
       if (functionData?.success) {
         console.log("DELETION: Edge function success:", functionData);
         
+        // Check if logging was successful
+        const logMessage = functionData.logged === false 
+          ? "Deletion completed, but logging failed."
+          : "Deletion completed successfully with audit log.";
+        
         // Notify on success
-        toast.success("Deletion completed successfully", {
+        toast.success(logMessage, {
           id: `delete-${cafeId}`,
           duration: 2000
         });

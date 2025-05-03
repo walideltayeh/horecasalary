@@ -74,10 +74,10 @@ serve(async (req) => {
       );
     }
     
-    // Get cafe to check ownership
+    // Get cafe to check ownership and store for logging
     const { data: cafe, error: cafeError } = await supabaseClient
       .from('cafes')
-      .select('created_by')
+      .select('*')
       .eq('id', cafeId)
       .single();
     
@@ -123,6 +123,24 @@ serve(async (req) => {
           status: 403
         }
       );
+    }
+    
+    // Log the deletion before performing the actual deletion
+    const { data: logData, error: logError } = await supabaseClient
+      .from('deletion_logs')
+      .insert({
+        entity_type: 'cafe',
+        entity_id: cafeId,
+        deleted_by: session.user.id,
+        entity_data: cafe
+      });
+      
+    if (logError) {
+      console.error("Error logging deletion:", logError);
+      // Continue with deletion even if logging fails
+      console.warn("Continuing with deletion despite logging error");
+    } else {
+      console.log("Successfully logged deletion event before deleting cafe");
     }
     
     // Get all surveys related to this cafe
@@ -207,6 +225,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: `Cafe ${cafeId} and all related data deleted successfully`,
+        logged: logError ? false : true,
         timestamp: new Date().toISOString()
       }),
       { 
