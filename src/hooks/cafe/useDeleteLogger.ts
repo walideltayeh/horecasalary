@@ -56,32 +56,39 @@ export const useDeleteLogger = () => {
       
       // Use RPC call to avoid type issues with direct table access
       if (entityType && entityId) {
-        result = await supabase.rpc('get_deletion_logs', {
-          p_entity_type: entityType,
-          p_entity_id: entityId
+        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+          body: { 
+            action: 'getLogs',
+            entityType,
+            entityId
+          }
         });
       } else if (entityType) {
-        result = await supabase.rpc('get_deletion_logs', {
-          p_entity_type: entityType,
-          p_entity_id: null
+        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+          body: { 
+            action: 'getLogs',
+            entityType
+          }
         });
       } else if (entityId) {
-        result = await supabase.rpc('get_deletion_logs', {
-          p_entity_type: null,
-          p_entity_id: entityId
+        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+          body: { 
+            action: 'getLogs',
+            entityId
+          }
         });
       } else {
-        result = await supabase.rpc('get_deletion_logs');
+        result = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+          body: { action: 'getLogs' }
+        });
       }
       
-      const { data, error } = result;
-      
-      if (error) {
-        console.error("Failed to fetch deletion logs:", error);
+      if (result.error) {
+        console.error("Failed to fetch deletion logs:", result.error);
         return [];
       }
       
-      return (data as any[]).map(log => ({
+      return (result.data as any[]).map(log => ({
         id: log.id,
         entity_type: log.entity_type,
         entity_id: log.entity_id,
@@ -100,9 +107,12 @@ export const useDeleteLogger = () => {
    */
   const getDeletedCafe = async (cafeId: string): Promise<Cafe | null> => {
     try {
-      // Use RPC call to get the deleted cafe data
-      const { data, error } = await supabase.rpc('get_deleted_cafe', {
-        p_cafe_id: cafeId
+      // Use edge function to get the deleted cafe data
+      const { data, error } = await supabase.functions.invoke('safe_delete_cafe_related_data', {
+        body: { 
+          action: 'getDeletedCafe',
+          cafeId 
+        }
       });
       
       if (error || !data) {
