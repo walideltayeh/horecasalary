@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,20 +24,20 @@ const Dashboard: React.FC = () => {
   
   const { user, users, isAdmin } = useAuth();
   const [selectedTab, setSelectedTab] = useState<string>(user?.id || 'summary');
-  const initialRefreshDoneRef = useRef(false);
+  const [initialRefreshDone, setInitialRefreshDone] = useState(false);
   
   // Use the custom hook for data refresh with reduced frequency
   useDashboardDataRefresh({ refreshCafes });
   
   // Perform just one refresh on mount instead of multiple
   useEffect(() => {
-    if (initialRefreshDoneRef.current) {
+    if (initialRefreshDone) {
       return; // Skip if already refreshed
     }
 
     const initialRefresh = async () => {
       console.log("Dashboard - Performing single initial refresh");
-      initialRefreshDoneRef.current = true;
+      setInitialRefreshDone(true);
       await refreshCafes();
       
       // Dispatch stats event to update all UI components
@@ -46,25 +47,36 @@ const Dashboard: React.FC = () => {
     initialRefresh();
     
     // Listen for stats update events with reduced frequency
-    const lastRefreshTimeRef = useRef(Date.now());
+    const lastRefreshTime = Date.now();
+    let throttleTimer: NodeJS.Timeout | null = null;
+    
     const handleStatsUpdated = () => {
       // Throttle stat updates substantially
       const now = Date.now();
-      if (now - lastRefreshTimeRef.current < 20000) { // 20 seconds throttle
+      if (now - lastRefreshTime < 20000) { // 20 seconds throttle
         return;
       }
       
-      lastRefreshTimeRef.current = now;
-      console.log("Dashboard - Stats updated event received");
-      refreshCafes();
+      // Debounce updates
+      if (throttleTimer) {
+        clearTimeout(throttleTimer);
+      }
+      
+      throttleTimer = setTimeout(() => {
+        console.log("Dashboard - Stats updated event received");
+        refreshCafes();
+      }, 500);
     };
     
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     
     return () => {
       window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
+      if (throttleTimer) {
+        clearTimeout(throttleTimer);
+      }
     };
-  }, [refreshCafes]);
+  }, [refreshCafes, initialRefreshDone]);
   
   // Calculate stats with immediate rendering
   const visitCounts = getVisitCounts();
