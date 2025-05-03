@@ -3,6 +3,7 @@ import { useEffect, useCallback, useRef } from 'react';
 
 /**
  * Hook for setting up event listeners for data refresh events
+ * With drastically reduced refresh frequency
  */
 export const useDataRefreshEvents = (
   onRefresh: (force?: boolean) => Promise<void>
@@ -12,7 +13,7 @@ export const useDataRefreshEvents = (
   const pendingRefreshRef = useRef<boolean>(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Clean, debounced refresh function
+  // Clean, highly debounced refresh function
   const debouncedRefresh = useCallback(async (force?: boolean) => {
     // Clear any existing timeout
     if (debounceTimeoutRef.current) {
@@ -29,8 +30,8 @@ export const useDataRefreshEvents = (
         return;
       }
       
-      // Skip if not forced and we refreshed recently
-      if (!force && now - lastRefreshTimeRef.current < 5000) {
+      // Skip if not forced and we refreshed recently - increased to 30 seconds
+      if (!force && now - lastRefreshTimeRef.current < 30000) {
         return;
       }
       
@@ -45,27 +46,42 @@ export const useDataRefreshEvents = (
           pendingRefreshRef.current = false;
           setTimeout(() => {
             debouncedRefresh(false);
-          }, 1000);
+          }, 5000); // Increased from 1s to 5s
         }
       } catch (error) {
         console.error("Error in debouncedRefresh:", error);
       } finally {
         refreshInProgressRef.current = false;
       }
-    }, 500);
+    }, 2000); // Increased from 500ms to 2000ms
   }, [onRefresh]);
   
   // Set up event listeners for data updates
   const setupEventListeners = useCallback(() => {
-    // Listen for manual refresh requests
+    // Listen for manual refresh requests with stronger throttling
     const handleRefreshRequested = (event: CustomEvent) => {
+      const now = Date.now();
       const force = event.detail?.force === true;
+      
+      // Add throttling for non-forced refreshes
+      if (!force && now - lastRefreshTimeRef.current < 10000) { // 10-second throttle
+        console.log("Throttling refresh request - too soon since last refresh");
+        return;
+      }
+      
       debouncedRefresh(force);
     };
     
-    // Listen for data update events
+    // Listen for data update events with stronger throttling
     const handleDataUpdated = (event: CustomEvent) => {
+      const now = Date.now();
       const detail = event.detail || {};
+      
+      // Skip refresh if last one was too recent (unless critical update)
+      if (now - lastRefreshTimeRef.current < 10000) { // 10-second throttle
+        console.log("Throttling data update - too soon since last refresh");
+        return;
+      }
       
       // Determine if this is a critical update that should force a refresh
       const isCriticalUpdate = 

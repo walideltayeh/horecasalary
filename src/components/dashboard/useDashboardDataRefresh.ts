@@ -14,9 +14,9 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
         return;
       }
       
-      // Add severe throttling - only refresh once every 30 seconds unless forced
+      // Add extreme throttling - only refresh once every 2 minutes unless forced
       const now = Date.now();
-      if (!force && now - lastRefreshTime.current < 30000) {
+      if (!force && now - lastRefreshTime.current < 120000) { // Increased from 30s to 120s
         console.log("Dashboard throttling refresh - too recent");
         return;
       }
@@ -33,7 +33,7 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
       }
     };
     
-    // Listen for important data update events with reduced frequency
+    // Listen for important data update events with severely reduced frequency
     const handleCafeDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
@@ -43,7 +43,7 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
         (detail.action === 'statusUpdate' && detail.critical === true);
       
       if (isCriticalUpdate) {
-        // Debounce the refresh with a longer delay
+        // Debounce the refresh with a much longer delay
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
@@ -51,15 +51,15 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
         // Set a new timer to refresh after a longer delay
         timerRef.current = setTimeout(() => {
           refreshWithThrottle(true);
-        }, 300); 
+        }, 1000); // Increased to add more delay
       }
     };
     
-    // Listen for cafe stats updated events with much reduced frequency
+    // Listen for cafe stats updated events with extremely reduced frequency
     const handleStatsUpdated = () => {
       // Only refresh if last refresh was a long time ago
       const now = Date.now();
-      if (now - lastRefreshTime.current < 30000) {
+      if (now - lastRefreshTime.current < 120000) { // Increased from 30s to 120s
         console.log("Dashboard stats refresh throttled - too recent");
         return;
       }
@@ -69,10 +69,10 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
         clearTimeout(timerRef.current);
       }
       
-      // Set a new timer to refresh after a delay
+      // Set a new timer to refresh after a longer delay
       timerRef.current = setTimeout(() => {
         refreshWithThrottle(false);
-      }, 500);
+      }, 1000); // Increased delay
     };
     
     window.addEventListener('horeca_data_updated', handleCafeDataUpdated);

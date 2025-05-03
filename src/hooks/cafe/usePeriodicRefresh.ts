@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 /**
  * Hook for setting up periodic refresh of cafe data
- * With much less aggressive refresh intervals
+ * With drastically reduced refresh intervals
  */
 export const usePeriodicRefresh = (
   onRefresh: (force?: boolean) => Promise<void>,
@@ -12,7 +12,7 @@ export const usePeriodicRefresh = (
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastAutoRefreshRef = useRef<number>(0);
   
-  // Set up a periodic refresh based on user role with much less frequent updates
+  // Set up a periodic refresh based on user role with drastically less frequent updates
   useEffect(() => {
     const setupRefreshInterval = () => {
       // Clear existing interval if any
@@ -21,8 +21,8 @@ export const usePeriodicRefresh = (
         intervalRef.current = null;
       }
       
-      // Set refresh interval based on user role - much less frequent now
-      const refreshInterval = isAdminRef.current ? 120000 : 180000; // 2 minutes for admin, 3 minutes for regular users
+      // Set refresh interval based on user role - drastically less frequent now
+      const refreshInterval = isAdminRef.current ? 300000 : 420000; // 5 minutes for admin, 7 minutes for regular users
       
       // Create new interval
       intervalRef.current = setInterval(() => {

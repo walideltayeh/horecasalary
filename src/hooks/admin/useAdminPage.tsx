@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { refreshCafeData } from '@/integrations/supabase/client';
@@ -15,11 +15,16 @@ export const useAdminPage = () => {
   const [selectedTab, setSelectedTab] = useState("all");
   const { handleRefreshCafes, enableRealtimeForTable } = useAdminRefresh();
   const [refreshAttemptCount, setRefreshAttemptCount] = useState(0);
+  const lastRefreshTimeRef = useRef<number>(0);
+  const isRefreshingRef = useRef<boolean>(false);
 
-  // Reduced aggressiveness in data refresh
+  // Greatly reduced aggressiveness in data refresh - only runs once on mount
   useEffect(() => {
-    if (isAdmin && authenticated) {
+    if (isAdmin && authenticated && !isRefreshingRef.current) {
       console.log("Admin page mounted or auth changed, performing INITIAL data refresh");
+      
+      // Mark as refreshing to prevent duplicate refreshes
+      isRefreshingRef.current = true;
       
       // Enable realtime for critical tables immediately
       const tables = ['cafes', 'cafe_surveys', 'brand_sales', 'users'];
@@ -28,11 +33,14 @@ export const useAdminPage = () => {
         enableRealtimeForTable(table);
       });
       
-      // Force immediate data refresh
+      // Force immediate data refresh only once
       const forceRefresh = async () => {
         try {
           console.log(`Forcing immediate data refresh (attempt ${refreshAttemptCount + 1})`);
           toast.info("Refreshing all data...");
+          
+          const now = Date.now();
+          lastRefreshTimeRef.current = now;
           
           // Force fetch users immediately with higher priority
           await fetchUsers(true);
@@ -60,30 +68,45 @@ export const useAdminPage = () => {
         } catch (error) {
           console.error("Error during initial data refresh:", error);
           toast.error("Failed to refresh data");
+        } finally {
+          // Allow refreshing again after a significant delay
+          setTimeout(() => {
+            isRefreshingRef.current = false;
+          }, 30000); // 30 seconds cooldown
         }
       };
       
       forceRefresh();
     }
-  }, [isAdmin, authenticated, fetchUsers, refreshCafes, handleRefreshCafes, enableRealtimeForTable, refreshAttemptCount, users.length, cafes.length]);
+  }, [isAdmin, authenticated]);
 
-  // Reduced frequency of periodic refreshes for cafes
+  // Drastically reduced frequency of periodic refreshes - changed from every 15 seconds to 2 minutes
   useEffect(() => {
     if (isAdmin && authenticated) {
-      console.log("Setting up Admin page refresh intervals with reduced frequency");
+      console.log("Setting up Admin page refresh intervals with GREATLY reduced frequency");
       
-      // Reduce frequency - from 5 seconds to 15 seconds
+      // Greatly reduce frequency - from 15 seconds to 2 minutes
       const cafeRefreshInterval = setInterval(() => {
-        console.log("Admin periodic cafe refresh");
-        refreshCafes();
-        refreshCafeData();
-      }, 15000); // Reduced from 5s to 15s
+        const now = Date.now();
+        // Only refresh if last refresh was more than 2 minutes ago
+        if (now - lastRefreshTimeRef.current > 120000) {
+          console.log("Admin periodic cafe refresh");
+          lastRefreshTimeRef.current = now;
+          refreshCafes();
+          refreshCafeData();
+        }
+      }, 120000); // Reduced from 15s to 120s (2 minutes)
       
-      // Reduce frequency - from 5 seconds to 15 seconds
+      // Reduce frequency - from 15 seconds to 2 minutes
       const userRefreshInterval = setInterval(() => {
-        console.log("Admin periodic user refresh");
-        fetchUsers(true);
-      }, 15000); // Reduced from 5s to 15s
+        const now = Date.now();
+        // Only refresh if last refresh was more than 2 minutes ago
+        if (now - lastRefreshTimeRef.current > 120000) {
+          console.log("Admin periodic user refresh");
+          lastRefreshTimeRef.current = now;
+          fetchUsers(true);
+        }
+      }, 120000); // Reduced from 15s to 120s (2 minutes)
       
       return () => {
         console.log("Clearing Admin page refresh intervals");
