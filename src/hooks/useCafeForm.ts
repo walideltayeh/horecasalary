@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { CafeFormState } from '@/components/cafe/types/CafeFormTypes';
 import { useGPSLocation } from './useGPSLocation';
@@ -25,6 +24,21 @@ export const useCafeForm = (onSubmit?: (formData: CafeFormState & { latitude: nu
     governorate: '',
     city: '',
   });
+
+  // Add reset function to clear the form
+  const resetForm = () => {
+    setFormState({
+      name: '',
+      ownerName: '',
+      ownerNumber: '',
+      numberOfHookahs: 0,
+      numberOfTables: 0,
+      status: 'Pending',
+      photoUrl: '',
+      governorate: '',
+      city: '',
+    });
+  };
 
   const validateForm = useCallback(() => {
     // Validate that all required fields are filled
@@ -133,17 +147,7 @@ export const useCafeForm = (onSubmit?: (formData: CafeFormState & { latitude: nu
         await onSubmit(submissionData);
         
         // Reset form after successful submission
-        setFormState({
-          name: '',
-          ownerName: '',
-          ownerNumber: '',
-          numberOfHookahs: 0,
-          numberOfTables: 0,
-          status: 'Pending',
-          photoUrl: '',
-          governorate: '',
-          city: '',
-        });
+        resetForm();
       } catch (error: any) {
         console.error('Error submitting cafe:', error);
         toast.error(error.message || 'Failed to submit cafe');
@@ -164,6 +168,7 @@ export const useCafeForm = (onSubmit?: (formData: CafeFormState & { latitude: nu
     isCapturingLocation,
     showLocationDialog,
     setShowLocationDialog,
+    resetForm,
     getCafeSize: (numberOfHookahs: number) => {
       if (numberOfHookahs === 0) return 'In Negotiation';
       if (numberOfHookahs >= 1 && numberOfHookahs <= 3) return 'Small';

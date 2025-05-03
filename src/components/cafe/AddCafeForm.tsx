@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
 import { CafeFormLayout } from './layout/CafeFormLayout';
@@ -23,6 +23,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [localSurveyCompleted, setLocalSurveyCompleted] = useState(externalSurveyCompleted);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const {
     formState,
@@ -33,7 +34,8 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     getCafeSize,
     isCapturingLocation,
     showLocationDialog,
-    setShowLocationDialog
+    setShowLocationDialog,
+    resetForm
   } = useCafeForm();
 
   // Update local state when external surveyCompleted prop changes
@@ -64,6 +66,14 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     setShowSurvey(false);
   };
 
+  const handleFormSuccess = () => {
+    // Reset the form after successful submission
+    resetForm();
+    // Reset coordinates if needed
+    // Reset survey completion state if needed
+    setLocalSurveyCompleted(false);
+  };
+
   return (
     <CafeFormLayout
       isSubmitting={false}
@@ -77,6 +87,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         surveyCompleted={localSurveyCompleted}
         onPreSubmit={onPreSubmit}
         onShowSurvey={handleShowSurvey}
+        onSuccess={handleFormSuccess}
       >
         <CafeFormFields
           formState={formState}

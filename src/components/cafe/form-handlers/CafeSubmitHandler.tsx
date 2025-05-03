@@ -11,6 +11,7 @@ interface CafeSubmitHandlerProps {
   surveyCompleted: boolean;
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
   onShowSurvey: () => void;
+  onSuccess?: () => void; // Add callback for successful submission
   children: React.ReactNode;
 }
 
@@ -20,12 +21,14 @@ export const CafeSubmitHandler: React.FC<CafeSubmitHandlerProps> = ({
   surveyCompleted,
   onPreSubmit,
   onShowSurvey,
+  onSuccess,
   children
 }) => {
   const { user } = useAuth();
   const { isSubmitting, handleSubmit: submitCafe } = useSubmitCafe({
     onPreSubmit,
-    surveyCompleted
+    surveyCompleted,
+    onSuccess
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

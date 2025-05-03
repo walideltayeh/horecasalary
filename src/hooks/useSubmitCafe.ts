@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 interface UseSubmitCafeProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
   surveyCompleted: boolean;
+  onSuccess?: () => void; // Add callback for successful submission
 }
 
-export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafeProps) => {
+export const useSubmitCafe = ({ onPreSubmit, surveyCompleted, onSuccess }: UseSubmitCafeProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { addCafe } = useCafes();
@@ -53,6 +54,11 @@ export const useSubmitCafe = ({ onPreSubmit, surveyCompleted }: UseSubmitCafePro
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
         detail: { action: 'cafeAdded', cafeId }
       }));
+      
+      // Call the onSuccess callback if provided
+      if (onSuccess && cafeId) {
+        onSuccess();
+      }
       
       return cafeId;
     } catch (error: any) {

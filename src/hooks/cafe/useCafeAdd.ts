@@ -36,6 +36,12 @@ export const useCafeAdd = () => {
       
       console.log("Cafe added successfully:", data);
       toast.success(`Cafe "${cafeData.name}" added successfully`);
+      
+      // Dispatch a custom event to notify components that a cafe was added
+      window.dispatchEvent(new CustomEvent('cafe_added', { 
+        detail: { cafeId: data.id }
+      }));
+      
       return data.id;
     } catch (err: any) {
       console.error('Error adding cafe:', err);

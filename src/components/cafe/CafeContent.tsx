@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User } from '@/types';
 import AddCafeForm from './AddCafeForm';
 import CafeList from '@/components/CafeList';
@@ -14,6 +14,7 @@ interface CafeContentProps {
 
 const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurveyComplete }) => {
   const { refreshCafes } = useData();
+  const [formKey, setFormKey] = useState<number>(0); // Add a key to force re-render
 
   // Force initial data refresh on mount
   useEffect(() => {
@@ -25,9 +26,18 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
       refreshCafes();
     };
     
+    // Listen for cafe added event
+    const handleCafeAdded = () => {
+      console.log("Cafe added, forcing form reset");
+      setFormKey(prev => prev + 1); // Increment key to force form re-render
+    };
+    
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
+    window.addEventListener('cafe_added', handleCafeAdded);
+    
     return () => {
       window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
+      window.removeEventListener('cafe_added', handleCafeAdded);
     };
   }, [refreshCafes]);
   
@@ -52,6 +62,7 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
       </div>
 
       <AddCafeForm 
+        key={formKey} // Add key to force re-render when needed
         surveyCompleted={surveyCompleted}
         onPreSubmit={async () => true}
         onComplete={handleSurveyComplete}
