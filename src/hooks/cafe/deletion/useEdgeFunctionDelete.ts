@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDeleteLogger } from '@/hooks/cafe/useDeleteLogger';
 import { Cafe } from '@/types';
 
 /**
@@ -20,6 +21,7 @@ interface DeletionParams {
  */
 export const useEdgeFunctionDelete = () => {
   const { user } = useAuth();
+  const { logDeletion } = useDeleteLogger();
   
   /**
    * Main entry point for deleting a cafe via edge function
@@ -32,7 +34,9 @@ export const useEdgeFunctionDelete = () => {
       // Get current user ID
       const userId = user?.id;
       if (!userId) {
-        console.warn("DELETION: No user ID available for logging");
+        console.warn("DELETION: No user ID available for deletion");
+        toast.error("User ID is required for deletion. Please log in again.");
+        return false;
       }
       
       // Fetch the cafe data before deletion
@@ -42,7 +46,11 @@ export const useEdgeFunctionDelete = () => {
       }
       
       // Prepare parameters for deletion
-      const params = prepareDeletionParams(cafeId, userId || 'unknown', cafeData);
+      const params = prepareDeletionParams(cafeId, userId, cafeData);
+      
+      // Create a separate log entry independent of the deletion process
+      // This ensures we have a record even if deletion fails
+      await logDeletion('cafe', cafeId, userId, cafeData);
       
       // Call the edge function to delete cafe and related data
       const result = await invokeEdgeFunction(params);
@@ -132,7 +140,7 @@ export const useEdgeFunctionDelete = () => {
     cafeData?: any
   ): boolean => {
     if (result.error) {
-      console.log("DELETION: Edge function error:", result.error);
+      console.error("DELETION: Edge function error:", result.error);
       toast.error(`Deletion failed: ${result.error.message || "Edge function error"}`, {
         id: `delete-${cafeId}`,
         duration: 4000
@@ -143,9 +151,9 @@ export const useEdgeFunctionDelete = () => {
     if (result.data?.success) {
       console.log("DELETION: Edge function success:", result.data);
       
-      // Check if logging was successful
+      // Determine if logging was successful
       const logMessage = result.data.logged === false 
-        ? "Deletion completed, but logging failed."
+        ? "Deletion completed, but logging failed. The record might not appear in history."
         : "Deletion completed successfully with audit log.";
       
       // Notify on success
@@ -154,7 +162,7 @@ export const useEdgeFunctionDelete = () => {
         duration: 2000
       });
       
-      // Broadcast deletion event
+      // Broadcast deletion event with all details
       broadcastDeletionEvent(cafeId, userId, cafeData);
       return true;
     } else {
@@ -186,20 +194,27 @@ export const useEdgeFunctionDelete = () => {
  */
 export const broadcastDeletionEvent = (cafeId: string, userId?: string, cafeData?: any): void => {
   try {
-    // Dispatch custom event
+    // Ensure we have a timestamp for consistency
+    const timestamp = Date.now();
+    
+    // Make sure userId is never undefined in the event
+    const safeUserId = userId || 'unknown';
+    
+    // Dispatch custom event with complete details
     window.dispatchEvent(new CustomEvent('cafe_deleted', {
       detail: { 
         cafeId,
-        userId,
-        timestamp: Date.now(),
-        cafeData
+        userId: safeUserId,
+        timestamp,
+        cafeData,
+        eventType: 'deletion'
       }
     }));
     
-    // Store deletion information in localStorage
-    storeDeletionInfoInLocalStorage(cafeId, userId, cafeData);
+    // Store deletion information in localStorage with complete details
+    storeDeletionInfoInLocalStorage(cafeId, safeUserId, cafeData, timestamp);
     
-    console.log("Deletion event broadcast successfully", { cafeId, userId, cafeData });
+    console.log("Deletion event broadcast successfully", { cafeId, userId: safeUserId, timestamp, cafeData });
   } catch (e) {
     console.warn("DELETION: Could not dispatch events:", e);
   }
@@ -208,21 +223,24 @@ export const broadcastDeletionEvent = (cafeId: string, userId?: string, cafeData
 /**
  * Store deletion information in localStorage
  */
-const storeDeletionInfoInLocalStorage = (cafeId: string, userId?: string, cafeData?: any): void => {
+const storeDeletionInfoInLocalStorage = (
+  cafeId: string, 
+  userId: string, 
+  cafeData?: any, 
+  timestamp?: number
+): void => {
   try {
     localStorage.setItem('last_deleted_cafe', cafeId);
-    localStorage.setItem('last_deletion_time', String(Date.now()));
-    
-    if (userId) {
-      localStorage.setItem('last_deletion_by', userId);
-    }
+    localStorage.setItem('last_deletion_time', String(timestamp || Date.now()));
+    localStorage.setItem('last_deletion_by', userId);
     
     // Store simplified cafe data for reference
     if (cafeData) {
       try {
         localStorage.setItem('last_deleted_cafe_data', JSON.stringify({
+          id: cafeId,
           name: cafeData.name,
-          owner: cafeData.ownerName,
+          owner: cafeData.ownerName || cafeData.owner_name,
           location: `${cafeData.city}, ${cafeData.governorate}`
         }));
       } catch (e) {

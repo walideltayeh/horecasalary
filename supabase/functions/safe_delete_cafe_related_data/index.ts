@@ -24,7 +24,7 @@ const successResponse = (data: any, status = 200) => {
   );
 }
 
-// Create Supabase client (moved into a function to separate concerns)
+// Create Supabase client
 const getSupabaseClient = () => {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -37,13 +37,23 @@ const logDeletion = async (supabase: ReturnType<typeof createClient>, entityType
   console.log(`EDGE: Logging deletion - Type: ${entityType}, ID: ${entityId}, By: ${deletedBy}`);
   
   try {
+    // Validate inputs
+    if (!entityType || !entityId || !deletedBy) {
+      console.error("EDGE: Missing required parameters for deletion logging");
+      return false;
+    }
+    
+    // Ensure entityData is an object
+    const safeEntityData = entityData || { id: entityId };
+    
+    // Insert log entry
     const { error } = await supabase
       .from('deletion_logs')
       .insert({
         entity_type: entityType,
         entity_id: entityId,
         deleted_by: deletedBy,
-        entity_data: entityData || {}
+        entity_data: safeEntityData
       });
       
     if (error) {
@@ -77,48 +87,55 @@ const fetchCafeData = async (supabase: ReturnType<typeof createClient>, cafeId: 
   return data;
 }
 
-// Delete related brand sales function
-const deleteBrandSales = async (supabase: ReturnType<typeof createClient>, entityId: string) => {
-  console.log(`EDGE: Deleting brand_sales for ${entityId}`);
-  const { error } = await supabase
-    .from('brand_sales')
-    .delete()
-    .eq('survey_id', entityId);
-
-  if (error) {
-    console.error("EDGE: Error deleting brand_sales:", error);
-    return false;
+// Delete related records in tables
+const deleteRelatedRecords = async (supabase: ReturnType<typeof createClient>, cafeId: string) => {
+  // 1. Delete related records in brand_sales through surveys
+  const { data: surveyIds, error: surveyError } = await supabase
+    .from('cafe_surveys')
+    .select('id')
+    .eq('cafe_id', cafeId);
+  
+  if (!surveyError && surveyIds && surveyIds.length > 0) {
+    const surveyIdArray = surveyIds.map(s => s.id);
+    console.log(`EDGE: Found ${surveyIdArray.length} surveys to delete for cafe ${cafeId}`);
+    
+    const { error: brandSalesError } = await supabase
+      .from('brand_sales')
+      .delete()
+      .in('survey_id', surveyIdArray);
+    
+    if (brandSalesError) {
+      console.error("EDGE: Error deleting brand_sales:", brandSalesError);
+    }
   }
-  return true;
-}
-
-// Delete related cafe surveys function
-const deleteCafeSurveys = async (supabase: ReturnType<typeof createClient>, entityId: string) => {
-  console.log(`EDGE: Deleting cafe_surveys for ${entityId}`);
-  const { error } = await supabase
+  
+  // 2. Delete related cafe surveys
+  const { error: cafesSurveyError } = await supabase
     .from('cafe_surveys')
     .delete()
-    .eq('cafe_id', entityId);
-
-  if (error) {
-    console.error("EDGE: Error deleting cafe_surveys:", error);
+    .eq('cafe_id', cafeId);
+  
+  if (cafesSurveyError) {
+    console.error("EDGE: Error deleting cafe_surveys:", cafesSurveyError);
     return false;
   }
+  
   return true;
 }
 
 // Delete cafe function
-const deleteCafe = async (supabase: ReturnType<typeof createClient>, entityId: string) => {
-  console.log(`EDGE: Deleting cafe ${entityId}`);
+const deleteCafe = async (supabase: ReturnType<typeof createClient>, cafeId: string) => {
+  console.log(`EDGE: Deleting cafe ${cafeId}`);
   const { error } = await supabase
     .from('cafes')
     .delete()
-    .eq('id', entityId);
+    .eq('id', cafeId);
 
   if (error) {
     console.error("EDGE: Error deleting cafe:", error);
     return false;
   }
+  
   return true;
 }
 
@@ -131,7 +148,10 @@ const getDeletionLogs = async (supabase: ReturnType<typeof createClient>, params
   const { entityType, entityId, userId } = params;
   console.log("EDGE: Getting deletion logs", { entityType, entityId, userId });
   
-  let query = supabase.from('deletion_logs').select('*');
+  let query = supabase
+    .from('deletion_logs')
+    .select('*')
+    .order('deleted_at', { ascending: false });
   
   if (entityType) {
     query = query.eq('entity_type', entityType);
@@ -147,7 +167,7 @@ const getDeletionLogs = async (supabase: ReturnType<typeof createClient>, params
     query = query.eq('deleted_by', userId);
   }
   
-  const { data, error } = await query.order('deleted_at', { ascending: false });
+  const { data, error } = await query;
   
   if (error) {
     console.error("EDGE: Failed to get deletion logs:", error);
@@ -199,17 +219,26 @@ const performFullDeletion = async (
 
   console.log("EDGE: Deletion log created:", logSuccess);
   
-  // 1. Delete related records in brand_sales
-  const brandSalesDeleted = await deleteBrandSales(supabase, finalEntityId);
+  // First delete related records
+  const relatedDeleted = await deleteRelatedRecords(supabase, finalEntityId);
+  
+  if (!relatedDeleted) {
+    return { 
+      success: false, 
+      message: "Failed to delete related records", 
+      logged: logSuccess 
+    };
+  }
 
-  // 2. Delete related records in cafe_surveys
-  const surveysDeleted = await deleteCafeSurveys(supabase, finalEntityId);
-
-  // 3. Finally, delete the cafe
+  // Finally, delete the cafe
   const cafeDeleted = await deleteCafe(supabase, finalEntityId);
 
   if (!cafeDeleted) {
-    return { success: false, message: "Failed to delete cafe", logged: logSuccess };
+    return { 
+      success: false, 
+      message: "Failed to delete cafe", 
+      logged: logSuccess 
+    };
   }
 
   // If all operations were successful
@@ -218,6 +247,91 @@ const performFullDeletion = async (
     message: "Cafe and related data deleted successfully",
     logged: logSuccess 
   };
+}
+
+// Handle logging only request
+const handleLoggingRequest = async (supabase: ReturnType<typeof createClient>, requestData: any) => {
+  const { entityType, entityId, deletedBy, entityData } = requestData;
+  
+  if (!entityType || !entityId || !deletedBy) {
+    return errorResponse("Missing required parameters for deletion logging");
+  }
+  
+  const result = await logDeletion(supabase, entityType, entityId, deletedBy, entityData);
+  
+  if (!result) {
+    return errorResponse("Failed to log deletion", 500);
+  }
+  
+  return successResponse({ success: true, message: "Deletion logged successfully" });
+}
+
+// Handle get logs request
+const handleGetLogsRequest = async (supabase: ReturnType<typeof createClient>, requestData: any) => {
+  const { entityType, entityId, userId } = requestData;
+  const logs = await getDeletionLogs(supabase, { entityType, entityId, userId });
+  
+  if (logs === null) {
+    return errorResponse("Failed to get deletion logs", 500);
+  }
+  
+  return successResponse(logs);
+}
+
+// Handle get deleted cafe request
+const handleGetDeletedCafeRequest = async (supabase: ReturnType<typeof createClient>, cafeId: string) => {
+  const deletedCafe = await getDeletedCafe(supabase, cafeId);
+  
+  if (deletedCafe === null) {
+    return errorResponse("Cafe not found", 404);
+  }
+  
+  return successResponse(deletedCafe);
+}
+
+// Handle full deletion request 
+const handleFullDeletionRequest = async (supabase: ReturnType<typeof createClient>, requestData: any) => {
+  const { entityId, cafeId, entityType, deletedBy, entityData } = requestData;
+  
+  // First validate that we have all required parameters
+  // If cafeId is provided but not entityType/entityId, use cafeId as entityId
+  const finalEntityId = entityId || cafeId;
+  const finalEntityType = entityType || 'cafe';
+  
+  if (!finalEntityId) {
+    return errorResponse("Missing required cafeId/entityId for deletion");
+  }
+  
+  if (!deletedBy) {
+    return errorResponse("Missing deletedBy for deletion tracking");
+  }
+  
+  // If entityData is not provided, try to fetch cafe data
+  let finalEntityData = entityData;
+  
+  if (!finalEntityData) {
+    console.log(`EDGE: No entity data provided, fetching cafe data for ${finalEntityId}`);
+    finalEntityData = await fetchCafeData(supabase, finalEntityId);
+    
+    if (!finalEntityData) {
+      // Continue with deletion but won't have data for logging
+      finalEntityData = { id: finalEntityId, note: "Cafe data not available" };
+    }
+  }
+
+  try {
+    const result = await performFullDeletion(
+      supabase, 
+      finalEntityId, 
+      finalEntityType, 
+      deletedBy, 
+      finalEntityData
+    );
+
+    return successResponse(result, result.success ? 200 : 500);
+  } catch (error: any) {
+    return errorResponse(`Unexpected error during deletion: ${error.message}`, 500);
+  }
 }
 
 // Main request handler
@@ -235,99 +349,22 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("EDGE: Request data received:", requestData);
     
-    const { 
-      logOnly, 
-      entityType, 
-      entityId, 
-      deletedBy, 
-      entityData, 
-      action, 
-      cafeId, 
-      userId 
-    } = requestData;
-    
-    // HANDLE LOG DELETION
-    if (logOnly === true) {
-      console.log("EDGE: Logging deletion only");
-      
-      if (!entityType || !entityId || !deletedBy) {
-        return errorResponse("Missing required parameters for deletion logging");
-      }
-      
-      const result = await logDeletion(supabase, entityType, entityId, deletedBy, entityData);
-      
-      if (!result) {
-        return errorResponse("Failed to log deletion", 500);
-      }
-      
-      return successResponse({ success: true, message: "Deletion logged successfully" });
+    // Handle different types of requests
+    if (requestData.logOnly === true) {
+      return await handleLoggingRequest(supabase, requestData);
     }
     
-    // HANDLE GET LOGS ACTION
-    if (action === 'getLogs') {
-      const logs = await getDeletionLogs(supabase, { entityType, entityId, userId });
-      
-      if (logs === null) {
-        return errorResponse("Failed to get deletion logs", 500);
-      }
-      
-      return successResponse(logs);
+    if (requestData.action === 'getLogs') {
+      return await handleGetLogsRequest(supabase, requestData);
     }
     
-    // HANDLE GET DELETED CAFE ACTION
-    if (action === 'getDeletedCafe' && cafeId) {
-      const deletedCafe = await getDeletedCafe(supabase, cafeId);
-      
-      if (deletedCafe === null) {
-        return errorResponse("Cafe not found", 404);
-      }
-      
-      return successResponse(deletedCafe);
+    if (requestData.action === 'getDeletedCafe' && requestData.cafeId) {
+      return await handleGetDeletedCafeRequest(supabase, requestData.cafeId);
     }
     
-    // HANDLE FULL DELETION
-    // If we reach here, this is a full deletion request
-    console.log("EDGE: Attempting to delete cafe and related data");
+    // Handle full deletion request (default action)
+    return await handleFullDeletionRequest(supabase, requestData);
     
-    // First validate that we have all required parameters
-    // If cafeId is provided but not entityType/entityId, use cafeId as entityId
-    const finalEntityId = entityId || cafeId;
-    const finalEntityType = entityType || 'cafe';
-    
-    if (!finalEntityId) {
-      return errorResponse("Missing required cafeId/entityId for deletion");
-    }
-    
-    if (!deletedBy) {
-      return errorResponse("Missing deletedBy for deletion tracking");
-    }
-    
-    // If entityData is not provided, try to fetch cafe data
-    let finalEntityData = entityData;
-    
-    if (!finalEntityData) {
-      console.log(`EDGE: No entity data provided, fetching cafe data for ${finalEntityId}`);
-      finalEntityData = await fetchCafeData(supabase, finalEntityId);
-      
-      if (!finalEntityData) {
-        // Continue with deletion but won't have data for logging
-        finalEntityData = { id: finalEntityId, note: "Cafe data not available" };
-      }
-    }
-
-    try {
-      const result = await performFullDeletion(
-        supabase, 
-        finalEntityId, 
-        finalEntityType, 
-        deletedBy, 
-        finalEntityData
-      );
-
-      return successResponse(result, result.success ? 200 : 500);
-    } catch (error: any) {
-      return errorResponse(`Unexpected error during deletion: ${error.message}`, 500);
-    }
   } catch (error: any) {
     return errorResponse(error.message || 'Unknown error', 500);
   }
