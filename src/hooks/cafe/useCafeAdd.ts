@@ -37,18 +37,38 @@ export const useCafeAdd = () => {
       console.log("Cafe added successfully:", data);
       toast.success(`Cafe "${cafeData.name}" added successfully`);
       
-      // Dispatch multiple custom events to notify components that a cafe was added
+      // Dispatch more explicit events for cafe addition
+      // First a specific cafe_added event with complete details
       window.dispatchEvent(new CustomEvent('cafe_added', { 
-        detail: { cafeId: data.id }
+        detail: { 
+          cafeId: data.id,
+          name: cafeData.name,
+          timestamp: Date.now(),
+          forceRefresh: true
+        }
       }));
       
-      // Also dispatch the general data update event with high priority
+      // Also dispatch an explicit force refresh event
+      window.dispatchEvent(new CustomEvent('cafe_data_force_refresh', {
+        detail: { timestamp: Date.now() }
+      }));
+      
+      // Then the general data update event with explicit high priority flags
       window.dispatchEvent(new CustomEvent('horeca_data_updated', { 
         detail: { 
           action: 'cafeAdded',
           cafeId: data.id, 
           forceRefresh: true,
-          highPriority: true
+          highPriority: true,
+          timestamp: Date.now()
+        }
+      }));
+      
+      // Also explicitly dispatch stats updated event
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+        detail: { 
+          cafeId: data.id,
+          timestamp: Date.now()
         }
       }));
       
