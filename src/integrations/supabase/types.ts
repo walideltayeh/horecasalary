@@ -157,6 +157,9 @@ export type Database = {
           bonus_large_cafe: number
           bonus_medium_cafe: number
           bonus_small_cafe: number
+          contract_target_percentage_large: number | null
+          contract_target_percentage_medium: number | null
+          contract_target_percentage_small: number | null
           contract_threshold_percentage: number
           created_at: string | null
           id: string
@@ -176,6 +179,9 @@ export type Database = {
           bonus_large_cafe?: number
           bonus_medium_cafe?: number
           bonus_small_cafe?: number
+          contract_target_percentage_large?: number | null
+          contract_target_percentage_medium?: number | null
+          contract_target_percentage_small?: number | null
           contract_threshold_percentage?: number
           created_at?: string | null
           id?: string
@@ -195,6 +201,9 @@ export type Database = {
           bonus_large_cafe?: number
           bonus_medium_cafe?: number
           bonus_small_cafe?: number
+          contract_target_percentage_large?: number | null
+          contract_target_percentage_medium?: number | null
+          contract_target_percentage_small?: number | null
           contract_threshold_percentage?: number
           created_at?: string | null
           id?: string
