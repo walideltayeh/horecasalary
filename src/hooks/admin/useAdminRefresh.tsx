@@ -16,6 +16,11 @@ export const useAdminRefresh = () => {
       window.dispatchEvent(new CustomEvent('cafe_data_force_refresh', { 
         detail: { timestamp }
       }));
+
+      // Also refresh KPI settings
+      window.dispatchEvent(new CustomEvent('kpi_settings_updated', {
+        detail: { timestamp }
+      }));
       
       return true;
     } catch (error) {

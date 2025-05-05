@@ -32,15 +32,21 @@ const KPISettings: React.FC = () => {
       updatedSettings.basicSalaryPercentage = numValue;
     }
     
-    // Automatically calculate contract targets when visit targets change (70% of visit targets)
-    if (field === 'targetVisitsLarge') {
-      updatedSettings.targetContractsLarge = Math.ceil(numValue * 0.7);
+    // Update contract targets based on visit targets and percentages
+    if (field === 'targetVisitsLarge' || field === 'contractTargetPercentageLarge') {
+      updatedSettings.targetContractsLarge = Math.ceil(
+        updatedSettings.targetVisitsLarge * (updatedSettings.contractTargetPercentageLarge / 100)
+      );
     }
-    if (field === 'targetVisitsMedium') {
-      updatedSettings.targetContractsMedium = Math.ceil(numValue * 0.7);
+    if (field === 'targetVisitsMedium' || field === 'contractTargetPercentageMedium') {
+      updatedSettings.targetContractsMedium = Math.ceil(
+        updatedSettings.targetVisitsMedium * (updatedSettings.contractTargetPercentageMedium / 100)
+      );
     }
-    if (field === 'targetVisitsSmall') {
-      updatedSettings.targetContractsSmall = Math.ceil(numValue * 0.7);
+    if (field === 'targetVisitsSmall' || field === 'contractTargetPercentageSmall') {
+      updatedSettings.targetContractsSmall = Math.ceil(
+        updatedSettings.targetVisitsSmall * (updatedSettings.contractTargetPercentageSmall / 100)
+      );
     }
     
     // Update local state
@@ -225,7 +231,7 @@ const KPISettings: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Contract Targets</CardTitle>
-          <CardDescription>Contract targets are automatically set to 70% of visit targets (rounded up)</CardDescription>
+          <CardDescription>Set custom percentages for contract targets relative to visit targets</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
@@ -243,32 +249,100 @@ const KPISettings: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Large Cafe Contracts (70% of visits)</Label>
-              <Input
-                type="number"
-                value={settings.targetContractsLarge}
-                disabled
-                className="bg-gray-100"
-              />
+            {/* Large Cafe Contract Settings */}
+            <div className="space-y-4 border p-4 rounded-md">
+              <h4 className="font-semibold">Large Cafe</h4>
+              
+              <div>
+                <Label htmlFor="contractTargetPercentageLarge">Target Percentage (%)</Label>
+                <Input
+                  id="contractTargetPercentageLarge"
+                  type="number"
+                  value={settings.contractTargetPercentageLarge}
+                  onChange={(e) => handleChange('contractTargetPercentageLarge', e.target.value)}
+                  className="input-with-red-outline"
+                />
+                <div className="text-xs text-gray-500">
+                  % of visit targets
+                </div>
+              </div>
+              
+              <div>
+                <Label>Resulting Contracts Target</Label>
+                <Input
+                  type="number"
+                  value={settings.targetContractsLarge}
+                  disabled
+                  className="bg-gray-100"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  = {settings.targetVisitsLarge} × {settings.contractTargetPercentageLarge}%
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>Medium Cafe Contracts (70% of visits)</Label>
-              <Input
-                type="number"
-                value={settings.targetContractsMedium}
-                disabled
-                className="bg-gray-100"
-              />
+            
+            {/* Medium Cafe Contract Settings */}
+            <div className="space-y-4 border p-4 rounded-md">
+              <h4 className="font-semibold">Medium Cafe</h4>
+              
+              <div>
+                <Label htmlFor="contractTargetPercentageMedium">Target Percentage (%)</Label>
+                <Input
+                  id="contractTargetPercentageMedium"
+                  type="number"
+                  value={settings.contractTargetPercentageMedium}
+                  onChange={(e) => handleChange('contractTargetPercentageMedium', e.target.value)}
+                  className="input-with-red-outline"
+                />
+                <div className="text-xs text-gray-500">
+                  % of visit targets
+                </div>
+              </div>
+              
+              <div>
+                <Label>Resulting Contracts Target</Label>
+                <Input
+                  type="number"
+                  value={settings.targetContractsMedium}
+                  disabled
+                  className="bg-gray-100"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  = {settings.targetVisitsMedium} × {settings.contractTargetPercentageMedium}%
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>Small Cafe Contracts (70% of visits)</Label>
-              <Input
-                type="number"
-                value={settings.targetContractsSmall}
-                disabled
-                className="bg-gray-100"
-              />
+            
+            {/* Small Cafe Contract Settings */}
+            <div className="space-y-4 border p-4 rounded-md">
+              <h4 className="font-semibold">Small Cafe</h4>
+              
+              <div>
+                <Label htmlFor="contractTargetPercentageSmall">Target Percentage (%)</Label>
+                <Input
+                  id="contractTargetPercentageSmall"
+                  type="number"
+                  value={settings.contractTargetPercentageSmall}
+                  onChange={(e) => handleChange('contractTargetPercentageSmall', e.target.value)}
+                  className="input-with-red-outline"
+                />
+                <div className="text-xs text-gray-500">
+                  % of visit targets
+                </div>
+              </div>
+              
+              <div>
+                <Label>Resulting Contracts Target</Label>
+                <Input
+                  type="number"
+                  value={settings.targetContractsSmall}
+                  disabled
+                  className="bg-gray-100"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  = {settings.targetVisitsSmall} × {settings.contractTargetPercentageSmall}%
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>

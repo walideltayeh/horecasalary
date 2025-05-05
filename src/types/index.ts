@@ -38,6 +38,9 @@ export interface KPISettings {
   targetContractsLarge: number;
   targetContractsMedium: number;
   targetContractsSmall: number;
+  contractTargetPercentageLarge: number;
+  contractTargetPercentageMedium: number;
+  contractTargetPercentageSmall: number;
   bonusLargeCafe: number;
   bonusMediumCafe: number;
   bonusSmallCafe: number;
