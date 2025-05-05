@@ -1,3 +1,4 @@
+
 const translations = {
   // Common
   'app.title': 'HoReCa Móvil',
@@ -78,7 +79,6 @@ const translations = {
   'cafe.photo': 'Foto de Cafetería',
   'cafe.gps.note': 'Nota: La ubicación GPS no se puede cambiar después de la creación de la cafetería.',
   'cafe.saving': 'Guardando...',
-  'cafe.created.by': 'Cafeterías Creadas por',
 
   // Deletion Logs
   'deletion.logs.title': 'Registros de Eliminación',
