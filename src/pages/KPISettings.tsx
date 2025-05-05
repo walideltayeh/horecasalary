@@ -30,12 +30,24 @@ const KPISettings: React.FC = () => {
   }
 
   const handleSave = async () => {
-    await saveSettings();
-    toast({
-      title: "Settings Saved",
-      description: "KPI settings have been saved and will be reflected for all users.",
-      duration: 5000,
-    });
+    if (syncing) return; // Prevent multiple save attempts while syncing
+    
+    try {
+      await saveSettings();
+      toast({
+        title: "Settings Saved",
+        description: "KPI settings have been saved and will be reflected for all users.",
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error Saving Settings",
+        description: "There was a problem saving your settings. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
   return (
@@ -57,7 +69,7 @@ const KPISettings: React.FC = () => {
           ) : (
             <Button 
               onClick={handleSave} 
-              disabled={!hasUnsavedChanges}
+              disabled={!hasUnsavedChanges || syncing}
               className="flex items-center"
             >
               <Save className="mr-2 h-4 w-4" />

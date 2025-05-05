@@ -72,6 +72,7 @@ export const useKPIUpdater = (
       console.error('Error syncing KPI settings:', err);
       toast.error(`Failed to save settings: ${err.message}`);
     } finally {
+      // Ensure syncing state is always reset after save operation completes
       setIsSyncing(false);
     }
   };

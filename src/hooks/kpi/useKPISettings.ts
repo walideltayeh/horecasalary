@@ -10,6 +10,9 @@ export const useKPISettings = (
   const [syncing, setSyncing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
+  
+  // Track if there's a save in progress to prevent multiple save operations
+  const [saveInProgress, setSaveInProgress] = useState(false);
 
   // Update local state when kpiSettings change
   useEffect(() => {
@@ -50,26 +53,45 @@ export const useKPISettings = (
     setSettings(updatedSettings);
     setHasUnsavedChanges(true);
     
-    // If autoSave is enabled, update global state
-    if (autoSave) {
-      setSyncing(true);
-      updateKPISettings(updatedSettings);
+    // If autoSave is enabled, update global state with debouncing
+    if (autoSave && !saveInProgress) {
+      const debounceDelay = 1500; // Debounce delay of 1.5 seconds
       
-      // Set syncing to false after a short delay to show the syncing indicator
-      setTimeout(() => setSyncing(false), 1000);
+      setSyncing(true);
+      setSaveInProgress(true);
+      
+      const timeoutId = setTimeout(async () => {
+        try {
+          await updateKPISettings(updatedSettings);
+          setHasUnsavedChanges(false);
+        } finally {
+          setSaveInProgress(false);
+          setSyncing(false);
+        }
+      }, debounceDelay);
+      
+      // Clear timeout if component unmounts or if settings change again before timeout completes
+      return () => {
+        clearTimeout(timeoutId);
+        setSaveInProgress(false);
+      };
     }
   };
 
   // Manual save function
   const saveSettings = async () => {
-    if (!hasUnsavedChanges) return;
+    if (!hasUnsavedChanges || saveInProgress) return;
     
     setSyncing(true);
-    await updateKPISettings(settings);
-    setHasUnsavedChanges(false);
+    setSaveInProgress(true);
     
-    // Set syncing to false after a short delay to show the syncing indicator
-    setTimeout(() => setSyncing(false), 1000);
+    try {
+      await updateKPISettings(settings);
+      setHasUnsavedChanges(false);
+    } finally {
+      setSaveInProgress(false);
+      setSyncing(false);
+    }
   };
 
   // Calculate derived values
