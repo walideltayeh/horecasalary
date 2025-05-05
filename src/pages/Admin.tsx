@@ -28,9 +28,10 @@ const Admin: React.FC = () => {
   const isAuthenticated = useMemo(() => !!(user && isAdmin), [user, isAdmin]);
 
   // Reduce fetch frequency with debounced fetch
-  const fetchUsersWithDebounce = useCallback(() => {
+  const fetchUsersWithDebounce = useCallback(async () => {
     console.log("Admin component - fetching users");
-    fetchUsers(true);
+    // Explicitly return the Promise from fetchUsers to fix the TypeScript error
+    return fetchUsers(true);
   }, [fetchUsers]);
   
   // Refresh cafes with debounce 
@@ -92,7 +93,7 @@ const Admin: React.FC = () => {
       if (result) {
         toast.success(`User ${userData.name} added successfully`);
         // Force refresh users list
-        fetchUsersWithDebounce();
+        await fetchUsersWithDebounce();
       }
     } catch (error) {
       console.error("Error adding user:", error);
