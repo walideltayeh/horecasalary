@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLanguage } from '@/contexts/LanguageContext';
 import UserDashboard from '@/components/UserDashboard';
 import UserSalaryCards from '@/components/dashboard/UserSalaryCards';
 import UserKpiStats from '@/components/UserKpiStats';
@@ -14,6 +15,8 @@ import { useDashboardDataRefresh } from '@/components/dashboard/useDashboardData
 import UserDeletionLogs from '@/components/dashboard/UserDeletionLogs';
 
 const Dashboard: React.FC = () => {
+  const { t } = useLanguage();
+  
   const { 
     getVisitCounts, 
     getContractCounts, 
@@ -95,7 +98,7 @@ const Dashboard: React.FC = () => {
 
         <Tabs defaultValue="summary" value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
           <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            <TabsTrigger value="summary">Summary</TabsTrigger>
+            <TabsTrigger value="summary">{t('dashboard.summary')}</TabsTrigger>
             {users.filter(u => u.role === 'user').map((user) => (
               <TabsTrigger key={user.id} value={user.id}>{user.name}</TabsTrigger>
             ))}
@@ -118,8 +121,8 @@ const Dashboard: React.FC = () => {
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="deletions">Deletion History</TabsTrigger>
+          <TabsTrigger value="overview">{t('dashboard.overview')}</TabsTrigger>
+          <TabsTrigger value="deletions">{t('dashboard.deletion.history')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-6">

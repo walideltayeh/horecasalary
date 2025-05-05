@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { useEffect } from "react";
 
 // Pages
@@ -19,7 +19,7 @@ import AppLayout from "./components/AppLayout";
 import UserApp from "./pages/UserApp";
 import Index from "./pages/Index";
 
-// Create a custom event bus for cross-tab communication
+// Custom event bus for cross-tab communication
 const setupCrossTabSync = () => {
   // Create a broadcast channel if supported
   let broadcastChannel: BroadcastChannel | null = null;
@@ -133,27 +133,29 @@ const App = () => {
       {/* Fix 2: Move TooltipProvider inside BrowserRouter */}
       <BrowserRouter>
         <TooltipWrapper>
-          <AuthProvider>
-            <DataProvider>
-              <RouteTracker />
-              <Toaster />
-              <Sonner />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/user-app" element={<UserApp />} />
-                
-                <Route path="/" element={<AppLayout />}>
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="cafe-management" element={<CafeManagement />} />
-                  <Route path="kpi-settings" element={<KPISettings />} />
-                  <Route path="admin" element={<Admin />} />
-                </Route>
-                
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </DataProvider>
-          </AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <DataProvider>
+                <RouteTracker />
+                <Toaster />
+                <Sonner />
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/user-app" element={<UserApp />} />
+                  
+                  <Route path="/" element={<AppLayout />}>
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="cafe-management" element={<CafeManagement />} />
+                    <Route path="kpi-settings" element={<KPISettings />} />
+                    <Route path="admin" element={<Admin />} />
+                  </Route>
+                  
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </DataProvider>
+            </AuthProvider>
+          </LanguageProvider>
         </TooltipWrapper>
       </BrowserRouter>
     </QueryClientProvider>

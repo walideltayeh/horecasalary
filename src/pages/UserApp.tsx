@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import Dashboard from './Dashboard';
 import UserHeader from '@/components/layout/UserHeader';
 import UserNavigation from '@/components/layout/UserNavigation';
@@ -11,6 +12,7 @@ import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 
 const UserApp: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const mounted = useRef(true);
