@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from '@/contexts/DataContext';
 import CafeList from './CafeList';
@@ -24,62 +24,59 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   // Store last refresh time to prevent excessive refreshes
   const lastRefreshTime = useRef(Date.now());
   
+  // Refresh cafe data with throttling
+  const throttledRefresh = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastRefreshTime.current < 10000) { // 10 seconds throttling
+      console.log("UserDashboard - Refresh throttled");
+      return; 
+    }
+    
+    lastRefreshTime.current = now;
+    console.log("UserDashboard - Refreshing data");
+    await refreshCafes();
+  }, [refreshCafes]);
+  
   // Add effect to refresh data only once when the component mounts
   useEffect(() => {
-    const refreshData = async () => {
-      console.log("UserDashboard - Initial data refresh");
-      await refreshCafes();
-    };
+    console.log("UserDashboard - Initial data refresh");
+    throttledRefresh();
     
-    refreshData();
-    
-    // Listen for stats update events for immediate refresh
+    // Use managed event listeners with throttling for better performance
     const handleStatsUpdated = () => {
-      const now = Date.now();
-      if (now - lastRefreshTime.current < 5000) {
-        return; // Throttle updates
-      }
-      
-      lastRefreshTime.current = now;
-      console.log("UserDashboard - Refreshing due to stats update");
-      refreshCafes();
+      throttledRefresh();
     };
     
-    // Only listen for critical updates
+    // Only listen for critical updates with debouncing
     const handleDataUpdated = (e: CustomEvent) => {
       const detail = e.detail || {};
       // Only refresh for specific critical events
       if (detail.action === 'statusUpdate' || 
           detail.action === 'cafeCreated' || 
           detail.action === 'cafeDeleted') {
-            
-        // Add throttling
-        const now = Date.now();
-        if (now - lastRefreshTime.current < 5000) {
-          return;
-        }
-            
-        lastRefreshTime.current = now;
-        console.log("UserDashboard - Refreshing due to data update:", detail.action);
-        refreshCafes();
+        throttledRefresh();
       }
     };
     
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     window.addEventListener('horeca_data_updated', handleDataUpdated as any);
+    
     return () => {
       window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
       window.removeEventListener('horeca_data_updated', handleDataUpdated as any);
     };
-  }, [refreshCafes, userName]);
+  }, [throttledRefresh, userName]);
   
-  const salaryStats = calculateUserSalary(userId);
-  const visitCounts = getUserVisitCounts(userId);
-  const contractCounts = getUserContractCounts(userId);
-  const userCafes = cafes.filter(cafe => cafe.createdBy === userId);
+  // Memoize expensive calculations to prevent recalculation on every render
+  const salaryStats = useMemo(() => calculateUserSalary(userId), [calculateUserSalary, userId]);
+  const visitCounts = useMemo(() => getUserVisitCounts(userId), [getUserVisitCounts, userId]);
+  const contractCounts = useMemo(() => getUserContractCounts(userId), [getUserContractCounts, userId]);
   
-  console.log("UserDashboard render - Visit counts:", visitCounts);
-  console.log("UserDashboard render - Contract counts:", contractCounts);
+  // Memoize filtered cafes to prevent filtering on every render
+  const userCafes = useMemo(() => 
+    cafes.filter(cafe => cafe.createdBy === userId), 
+    [cafes, userId]
+  );
   
   return (
     <div className="space-y-6">
@@ -112,4 +109,4 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   );
 };
 
-export default UserDashboard;
+export default React.memo(UserDashboard);

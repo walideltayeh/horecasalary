@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,46 +27,47 @@ const Dashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<string>(user?.id || 'summary');
   const [initialRefreshDone, setInitialRefreshDone] = useState(false);
   
-  // Use the custom hook for data refresh with reduced frequency
-  useDashboardDataRefresh({ refreshCafes });
-  
-  // Perform just one refresh on mount instead of multiple
+  // Only refresh data once on mount with a delay to avoid excessive data loading
   useEffect(() => {
     if (initialRefreshDone) {
-      return; // Skip if already refreshed
+      return;
     }
 
-    const initialRefresh = async () => {
+    const initialRefreshTimer = setTimeout(async () => {
       console.log("Dashboard - Performing single initial refresh");
       setInitialRefreshDone(true);
       await refreshCafes();
       
       // Dispatch stats event to update all UI components
       window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
-    };
+    }, 100);
     
-    initialRefresh();
-    
-    // Listen for stats update events with reduced frequency
-    const lastRefreshTime = Date.now();
+    return () => clearTimeout(initialRefreshTimer);
+  }, [refreshCafes, initialRefreshDone]);
+  
+  // Optimize event listeners with heavy throttling and debouncing
+  useEffect(() => {
+    const lastRefreshTimeRef = { current: Date.now() };
     let throttleTimer: NodeJS.Timeout | null = null;
     
     const handleStatsUpdated = () => {
-      // Throttle stat updates substantially
+      // Extreme throttling for performance
       const now = Date.now();
-      if (now - lastRefreshTime < 20000) { // 20 seconds throttle
+      if (now - lastRefreshTimeRef.current < 30000) { // 30 seconds throttle
         return;
       }
       
-      // Debounce updates
+      // Heavy debounce to prevent multiple updates
       if (throttleTimer) {
         clearTimeout(throttleTimer);
       }
       
+      lastRefreshTimeRef.current = now;
+      
       throttleTimer = setTimeout(() => {
-        console.log("Dashboard - Stats updated event received");
+        console.log("Dashboard - Stats updated event received (throttled)");
         refreshCafes();
-      }, 500);
+      }, 1000);
     };
     
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
@@ -77,17 +78,20 @@ const Dashboard: React.FC = () => {
         clearTimeout(throttleTimer);
       }
     };
-  }, [refreshCafes, initialRefreshDone]);
+  }, [refreshCafes]);
   
-  // Calculate stats with immediate rendering
-  const visitCounts = getVisitCounts();
-  const contractCounts = getContractCounts();
-  const salaryStats = calculateSalary();
+  // Memoize expensive calculations to prevent recalculation on every render
+  const visitCounts = useMemo(() => getVisitCounts(), [getVisitCounts]);
+  const contractCounts = useMemo(() => getContractCounts(), [getContractCounts]);
+  const salaryStats = useMemo(() => calculateSalary(), [calculateSalary]);
   
-  console.log("Dashboard render - Visit counts:", visitCounts);
-  console.log("Dashboard render - Contract counts:", contractCounts);
+  // Memoize the filtered users for admin view to prevent recalculation on every render
+  const regularUsers = useMemo(() => 
+    users.filter(u => u.role === 'user'),
+    [users]
+  );
   
-  // Admin dashboard view
+  // Admin dashboard view with optimized rendering
   if (isAdmin) {
     return (
       <div className="space-y-8">
@@ -96,7 +100,7 @@ const Dashboard: React.FC = () => {
         <Tabs defaultValue="summary" value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
           <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             <TabsTrigger value="summary">Summary</TabsTrigger>
-            {users.filter(u => u.role === 'user').map((user) => (
+            {regularUsers.map((user) => (
               <TabsTrigger key={user.id} value={user.id}>{user.name}</TabsTrigger>
             ))}
           </TabsList>
@@ -105,13 +109,13 @@ const Dashboard: React.FC = () => {
             <AdminDashboardSummary />
           </TabsContent>
           
-          <AdminUserTabs users={users} />
+          <AdminUserTabs users={regularUsers} />
         </Tabs>
       </div>
     );
   }
   
-  // Regular user dashboard view with added deletion logs tab
+  // Regular user dashboard view with optimized rendering
   return (
     <div className="space-y-8">
       <DashboardHeader isAdmin={isAdmin} />
@@ -123,13 +127,13 @@ const Dashboard: React.FC = () => {
         </TabsList>
         
         <TabsContent value="overview" className="space-y-6">
-          {/* Salary Summary */}
+          {/* Salary Summary - memoized rendering */}
           <UserSalaryCards 
             salaryStats={salaryStats} 
             kpiSettings={kpiSettings} 
           />
 
-          {/* KPI Performance */}
+          {/* KPI Performance - memoized rendering */}
           <UserKpiStats
             salaryStats={salaryStats}
             visitCounts={visitCounts}
@@ -137,7 +141,7 @@ const Dashboard: React.FC = () => {
             kpiSettings={kpiSettings}
           />
 
-          {/* Bonus Summary */}
+          {/* Bonus Summary - memoized rendering */}
           <UserBonusSummary 
             contractCounts={contractCounts}
             kpiSettings={kpiSettings}
@@ -153,4 +157,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default React.memo(Dashboard);

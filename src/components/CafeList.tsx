@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import CafeEditDialog from './cafe/CafeEditDialog';
 import CafeTableActions from './cafe/CafeTableActions';
@@ -33,6 +33,45 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     setCafeToEdit
   } = useCafeListState(filterByUser, adminView);
   
+  // Memoize component props to reduce re-renders
+  const cafeTableProps = useMemo(() => ({
+    filteredCafes,
+    adminView,
+    loading,
+    isAdmin,
+    user,
+    deleteInProgress,
+    getCafeSize,
+    handleEdit,
+    handleUpdateStatus,
+    openDeleteConfirmation
+  }), [
+    filteredCafes,
+    adminView,
+    loading,
+    isAdmin,
+    user,
+    deleteInProgress,
+    getCafeSize,
+    handleEdit,
+    handleUpdateStatus,
+    openDeleteConfirmation
+  ]);
+  
+  // Memoize the dialog handler to prevent re-renders
+  const handleDialogClose = useMemo(() => () => {
+    setShowEditDialog(false);
+    setCafeToEdit(null);
+  }, [setShowEditDialog, setCafeToEdit]);
+  
+  // Memoize the save handler to prevent re-renders
+  const handleDialogSave = useMemo(() => () => {
+    setShowEditDialog(false);
+    setCafeToEdit(null);
+    // Dispatch event to trigger refresh across components
+    window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+  }, [setShowEditDialog, setCafeToEdit]);
+  
   return (
     <div className="space-y-4">
       <div className="flex justify-between mb-2">
@@ -51,33 +90,15 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
         />
       </div>
       
-      <CafeTable 
-        filteredCafes={filteredCafes}
-        adminView={adminView}
-        loading={loading}
-        isAdmin={isAdmin}
-        user={user}
-        deleteInProgress={deleteInProgress}
-        getCafeSize={getCafeSize}
-        handleEdit={handleEdit}
-        handleUpdateStatus={handleUpdateStatus}
-        openDeleteConfirmation={openDeleteConfirmation}
-      />
+      {/* Use memoized props */}
+      <CafeTable {...cafeTableProps} />
       
       {cafeToEdit && (
         <CafeEditDialog 
           cafe={cafeToEdit} 
           isOpen={showEditDialog}
-          onClose={() => {
-            setShowEditDialog(false);
-            setCafeToEdit(null);
-          }}
-          onSave={() => {
-            setShowEditDialog(false);
-            setCafeToEdit(null);
-            // Dispatch event to trigger refresh across components
-            window.dispatchEvent(new CustomEvent('horeca_data_updated'));
-          }}
+          onClose={handleDialogClose}
+          onSave={handleDialogSave}
         />
       )}
 
@@ -91,4 +112,4 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   );
 };
 
-export default CafeList;
+export default React.memo(CafeList);
