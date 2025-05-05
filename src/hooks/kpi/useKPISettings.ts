@@ -8,6 +8,8 @@ export const useKPISettings = (
 ) => {
   const [settings, setSettings] = useState({ ...kpiSettings });
   const [syncing, setSyncing] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [autoSave, setAutoSave] = useState(true);
 
   // Update local state when kpiSettings change
   useEffect(() => {
@@ -15,7 +17,6 @@ export const useKPISettings = (
   }, [kpiSettings]);
 
   const handleChange = (field: keyof KPISettings, value: string) => {
-    setSyncing(true);
     const numValue = Number(value);
     
     // Create a new settings object with the updated field
@@ -47,9 +48,25 @@ export const useKPISettings = (
     
     // Update local state
     setSettings(updatedSettings);
+    setHasUnsavedChanges(true);
     
-    // Update global state
-    updateKPISettings(updatedSettings);
+    // If autoSave is enabled, update global state
+    if (autoSave) {
+      setSyncing(true);
+      updateKPISettings(updatedSettings);
+      
+      // Set syncing to false after a short delay to show the syncing indicator
+      setTimeout(() => setSyncing(false), 1000);
+    }
+  };
+
+  // Manual save function
+  const saveSettings = async () => {
+    if (!hasUnsavedChanges) return;
+    
+    setSyncing(true);
+    await updateKPISettings(settings);
+    setHasUnsavedChanges(false);
     
     // Set syncing to false after a short delay to show the syncing indicator
     setTimeout(() => setSyncing(false), 1000);
@@ -68,7 +85,10 @@ export const useKPISettings = (
   return {
     settings,
     syncing,
+    hasUnsavedChanges,
     handleChange,
+    saveSettings,
+    setAutoSave,
     derivedValues: {
       kpiSalaryPercentage,
       contractKpiPercentage,

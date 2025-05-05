@@ -59,7 +59,7 @@ export const useKPIUpdater = (
           .eq('id', existingSettings[0].id);
           
         if (error) throw error;
-        toast.success("KPI settings updated");
+        // Toast is now handled by the manual save button
       } else {
         const { error } = await supabase
           .from('kpi_settings')
