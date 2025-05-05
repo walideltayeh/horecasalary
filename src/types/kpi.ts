@@ -3,7 +3,7 @@ import { KPISettings } from './index';
 
 export interface KPIContextType {
   kpiSettings: KPISettings;
-  updateKPISettings: (settings: Partial<KPISettings>, timeout?: number) => Promise<boolean>;
+  updateKPISettings: (settings: Partial<KPISettings>) => Promise<void>;
 }
 
 export const DEFAULT_KPI_SETTINGS: KPISettings = {
@@ -18,9 +18,6 @@ export const DEFAULT_KPI_SETTINGS: KPISettings = {
   targetContractsLarge: 10,
   targetContractsMedium: 15,
   targetContractsSmall: 20,
-  contractTargetPercentageLarge: 70,
-  contractTargetPercentageMedium: 70,
-  contractTargetPercentageSmall: 70,
   bonusLargeCafe: 100,
   bonusMediumCafe: 75,
   bonusSmallCafe: 50,

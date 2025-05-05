@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminPage } from '@/hooks/admin/useAdminPage';
@@ -24,56 +24,33 @@ const Admin: React.FC = () => {
     isDeletingUser
   } = useAdminPage();
 
-  // Memoize admin check to prevent unnecessary re-renders
-  const isAuthenticated = useMemo(() => !!(user && isAdmin), [user, isAdmin]);
-
-  // Reduce fetch frequency with debounced fetch
-  const fetchUsersWithDebounce = useCallback(async () => {
-    console.log("Admin component - fetching users");
-    // Explicitly return the Promise from fetchUsers to fix the TypeScript error
-    return fetchUsers(true);
-  }, [fetchUsers]);
-  
-  // Refresh cafes with debounce 
-  const handleRefreshCafes = useCallback(() => {
-    console.log("Admin component - refreshing cafes");
-    refreshCafes();
-  }, [refreshCafes]);
-
-  // Load initial data only once
+  // Explicit check for user data on component mount
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log("Admin component mounted - loading initial data");
-      fetchUsersWithDebounce();
-      handleRefreshCafes();
+    if (user && isAdmin) {
+      console.log("Admin component mounted - forcing user data refresh");
+      // Try to force fetch users data with explicit error handling
+      try {
+        fetchUsers(true);
+      } catch (error) {
+        console.error("Error fetching users on Admin mount:", error);
+        toast.error("Error loading user data. Please try refreshing the page.");
+      }
     }
-  }, [isAuthenticated, fetchUsersWithDebounce, handleRefreshCafes]);
+  }, [user, isAdmin, fetchUsers]);
 
-  // Handle cafe update events with debounce
+  // Force cafe refresh on mount and whenever the active tab changes to 'cafes'
   useEffect(() => {
-    if (!isAuthenticated) return;
-    
-    let debounceTimer: NodeJS.Timeout | null = null;
-    const lastUpdateTime = { current: Date.now() };
-    
+    if (user && isAdmin) {
+      console.log("Admin component - forcing cafe data refresh");
+      refreshCafes();
+    }
+  }, [user, isAdmin, refreshCafes]);
+
+  // Listen for cafe addition/update events
+  useEffect(() => {
     const handleCafeDataUpdated = () => {
-      // Throttle updates to prevent excessive refreshes
-      const now = Date.now();
-      if (now - lastUpdateTime.current < 5000) {
-        return;
-      }
-      
-      lastUpdateTime.current = now;
-      
-      // Debounce updates
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-      
-      debounceTimer = setTimeout(() => {
-        console.log("Admin detected cafe data update event - refreshing");
-        handleRefreshCafes();
-      }, 1000);
+      console.log("Admin detected cafe data update event");
+      refreshCafes();
     };
     
     window.addEventListener('horeca_data_updated', handleCafeDataUpdated);
@@ -82,65 +59,44 @@ const Admin: React.FC = () => {
     return () => {
       window.removeEventListener('horeca_data_updated', handleCafeDataUpdated);
       window.removeEventListener('cafe_added', handleCafeDataUpdated);
-      if (debounceTimer) clearTimeout(debounceTimer);
     };
-  }, [isAuthenticated, handleRefreshCafes]);
+  }, [refreshCafes]);
+
+  // Display debug info about authentication state
+  useEffect(() => {
+    console.log("Admin authentication state:", { 
+      user: user?.id, 
+      isAdmin, 
+      usersLoaded: users.length,
+      authenticatedAndAdmin: !!(user && isAdmin)
+    });
+  }, [user, isAdmin, users]);
 
   // Create a wrapper function to convert Promise<boolean> to Promise<void>
-  const addUser = useCallback(async (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => {
+  const addUser = async (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => {
     try {
       const result = await authAddUser(userData);
       if (result) {
         toast.success(`User ${userData.name} added successfully`);
         // Force refresh users list
-        await fetchUsersWithDebounce();
+        fetchUsers(true);
       }
     } catch (error) {
       console.error("Error adding user:", error);
       toast.error("Failed to add user. Please try again.");
     }
-  }, [authAddUser, fetchUsersWithDebounce]);
+  };
 
   // If not admin or not logged in, redirect to login
-  if (!isAuthenticated) {
-    console.log("Not admin or not logged in, redirecting to login");
+  if (!user || !isAdmin) {
+    console.log("Not admin or not logged in, redirecting to login", { user: !!user, isAdmin });
     return <Navigate to="/login" replace />;
   }
-
-  // Memoize tab contents to prevent unnecessary re-renders
-  const renderTabContent = () => {
-    switch(activeTab) {
-      case 'dashboard':
-        return <StatsOverview cafes={cafes} />;
-      case 'kpi':
-        return <SystemStats cafes={cafes} />;
-      case 'users':
-        return (
-          <UserManagement
-            users={users}
-            isLoadingUsers={isLoadingUsers}
-            error={null}
-            onAddUser={addUser}
-            onEditUser={updateUser}
-            onDeleteUser={deleteUser}
-            onRefreshUsers={fetchUsersWithDebounce}
-            isAddingUser={isAddingUser}
-            isDeletingUser={isDeletingUser}
-          />
-        );
-      case 'cafes':
-        return <CafeDatabase cafes={cafes} />;
-      case 'logs':
-        return <DeletionLogs />;
-      default:
-        return null;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-white">
       <AdminHeader 
-        onRefreshCafes={handleRefreshCafes} 
+        onRefreshCafes={refreshCafes} 
         loadingCafes={loadingCafes} 
       />
 
@@ -159,11 +115,39 @@ const Admin: React.FC = () => {
             <TabsTrigger value="logs">Logs</TabsTrigger>
           </TabsList>
           
-          {renderTabContent()}
+          <TabsContent value="dashboard">
+            <StatsOverview cafes={cafes} />
+          </TabsContent>
+          
+          <TabsContent value="kpi">
+            <SystemStats cafes={cafes} />
+          </TabsContent>
+          
+          <TabsContent value="users">
+            <UserManagement
+              users={users}
+              isLoadingUsers={isLoadingUsers}
+              error={null}
+              onAddUser={addUser}
+              onEditUser={updateUser}
+              onDeleteUser={deleteUser}
+              onRefreshUsers={() => fetchUsers(true)}
+              isAddingUser={isAddingUser}
+              isDeletingUser={isDeletingUser}
+            />
+          </TabsContent>
+          
+          <TabsContent value="cafes">
+            <CafeDatabase cafes={cafes} />
+          </TabsContent>
+          
+          <TabsContent value="logs">
+            <DeletionLogs />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
   );
 };
 
-export default React.memo(Admin);
+export default Admin;

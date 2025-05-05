@@ -8,7 +8,7 @@ export const useKPIUpdater = (
   setKpiSettings: React.Dispatch<React.SetStateAction<KPISettings>>,
   setIsSyncing: React.Dispatch<React.SetStateAction<boolean>>
 ) => {
-  const updateKPISettings = async (newSettings: Partial<KPISettings>, timeout = 10000): Promise<boolean> => {
+  const updateKPISettings = async (newSettings: Partial<KPISettings>): Promise<void> => {
     const updatedSettings = { ...kpiSettings, ...newSettings };
     
     if ('basicSalaryPercentage' in newSettings) {
@@ -19,72 +19,56 @@ export const useKPIUpdater = (
       updatedSettings.visitKpiPercentage = Math.max(0, Math.min(100, updatedSettings.visitKpiPercentage));
     }
     
-    // Update local state immediately for a responsive UI experience
     setKpiSettings(updatedSettings);
     
-    // Create a timeout promise
-    const timeoutPromise = new Promise<boolean>((_, reject) => {
-      setTimeout(() => reject(new Error('Save operation timed out')), timeout);
-    });
-
     try {
-      // Create the save promise
-      const savePromise = (async () => {
-        const mappedSettings = {
-          total_package: updatedSettings.totalPackage,
-          basic_salary_percentage: updatedSettings.basicSalaryPercentage,
-          visit_kpi_percentage: updatedSettings.visitKpiPercentage,
-          visit_threshold_percentage: updatedSettings.visitThresholdPercentage,
-          target_visits_large: updatedSettings.targetVisitsLarge,
-          target_visits_medium: updatedSettings.targetVisitsMedium,
-          target_visits_small: updatedSettings.targetVisitsSmall,
-          contract_threshold_percentage: updatedSettings.contractThresholdPercentage,
-          target_contracts_large: updatedSettings.targetContractsLarge,
-          target_contracts_medium: updatedSettings.targetContractsMedium,
-          target_contracts_small: updatedSettings.targetContractsSmall,
-          contract_target_percentage_large: updatedSettings.contractTargetPercentageLarge,
-          contract_target_percentage_medium: updatedSettings.contractTargetPercentageMedium,
-          contract_target_percentage_small: updatedSettings.contractTargetPercentageSmall,
-          bonus_large_cafe: updatedSettings.bonusLargeCafe,
-          bonus_medium_cafe: updatedSettings.bonusMediumCafe,
-          bonus_small_cafe: updatedSettings.bonusSmallCafe,
-          updated_at: new Date().toISOString()
-        };
+      setIsSyncing(true);
+      
+      const mappedSettings = {
+        total_package: updatedSettings.totalPackage,
+        basic_salary_percentage: updatedSettings.basicSalaryPercentage,
+        visit_kpi_percentage: updatedSettings.visitKpiPercentage,
+        visit_threshold_percentage: updatedSettings.visitThresholdPercentage,
+        target_visits_large: updatedSettings.targetVisitsLarge,
+        target_visits_medium: updatedSettings.targetVisitsMedium,
+        target_visits_small: updatedSettings.targetVisitsSmall,
+        contract_threshold_percentage: updatedSettings.contractThresholdPercentage,
+        target_contracts_large: updatedSettings.targetContractsLarge,
+        target_contracts_medium: updatedSettings.targetContractsMedium,
+        target_contracts_small: updatedSettings.targetContractsSmall,
+        bonus_large_cafe: updatedSettings.bonusLargeCafe,
+        bonus_medium_cafe: updatedSettings.bonusMediumCafe,
+        bonus_small_cafe: updatedSettings.bonusSmallCafe,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { data: existingSettings, error: queryError } = await supabase
+        .from('kpi_settings')
+        .select('id')
+        .limit(1);
         
-        setIsSyncing(true);
+      if (queryError) throw queryError;
         
-        const { data: existingSettings } = await supabase
+      if (existingSettings && existingSettings.length > 0) {
+        const { error } = await supabase
           .from('kpi_settings')
-          .select('id')
-          .limit(1);
+          .update(mappedSettings)
+          .eq('id', existingSettings[0].id);
           
-        if (existingSettings && existingSettings.length > 0) {
-          const { error } = await supabase
-            .from('kpi_settings')
-            .update(mappedSettings)
-            .eq('id', existingSettings[0].id);
-            
-          if (error) throw error;
-          return true;
-        } else {
-          const { error } = await supabase
-            .from('kpi_settings')
-            .insert([mappedSettings]);
-            
-          if (error) throw error;
-          toast.success("KPI settings created");
-          return true;
-        }
-      })();
-
-      // Race between the save and timeout
-      return await Promise.race([savePromise, timeoutPromise]);
+        if (error) throw error;
+        toast.success("KPI settings updated");
+      } else {
+        const { error } = await supabase
+          .from('kpi_settings')
+          .insert([mappedSettings]);
+          
+        if (error) throw error;
+        toast.success("KPI settings created");
+      }
     } catch (err: any) {
       console.error('Error syncing KPI settings:', err);
       toast.error(`Failed to save settings: ${err.message}`);
-      return false;
     } finally {
-      // Always reset syncing state
       setIsSyncing(false);
     }
   };

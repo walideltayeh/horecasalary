@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from './Dashboard';
@@ -17,7 +17,7 @@ const UserApp: React.FC = () => {
   const refreshTriggeredRef = useRef(false);
   const { handleLogout, isLoggingOut } = useLogoutHandler();
   
-  // Handle data refresh with improved performance
+  // Clear notification timeouts on unmount and only refresh once on mount
   useEffect(() => {
     mounted.current = true;
     
@@ -25,18 +25,13 @@ const UserApp: React.FC = () => {
     if (!refreshTriggeredRef.current) {
       refreshTriggeredRef.current = true;
       
-      // Use a small delay to ensure context is ready
-      const timer = setTimeout(() => {
-        if (mounted.current) {
-          console.log("UserApp - Initial data refresh");
-          const event = new CustomEvent('horeca_data_updated', {
-            detail: { action: 'cafeCreated', forceRefresh: true }
-          });
-          window.dispatchEvent(event);
-        }
+      // Force data refresh on mount with a small delay to ensure context is ready
+      setTimeout(() => {
+        const event = new CustomEvent('horeca_data_updated', {
+          detail: { action: 'cafeCreated', forceRefresh: true }
+        });
+        window.dispatchEvent(event);
       }, 300);
-      
-      return () => clearTimeout(timer);
     }
     
     return () => {
@@ -44,37 +39,12 @@ const UserApp: React.FC = () => {
     };
   }, []);
   
-  // Memoize handler function
-  const handleSurveyComplete = useCallback(() => {
-    setSurveyCompleted(true);
-  }, []);
-
-  // Redirect if not a user
   if (!user || user.role === 'admin') {
     return <Navigate to="/login" />;
   }
 
-  // Render specific tab content to prevent unnecessary re-renders
-  const renderActiveTabContent = () => {
-    if (activeTab === 'dashboard') {
-      return (
-        <ErrorBoundary fallback={<p>Error loading dashboard. Please try the Cafe tab instead.</p>}>
-          <Dashboard />
-        </ErrorBoundary>
-      );
-    }
-    
-    if (activeTab === 'cafe') {
-      return (
-        <CafeContent 
-          user={user} 
-          surveyCompleted={surveyCompleted} 
-          onSurveyComplete={handleSurveyComplete} 
-        />
-      );
-    }
-    
-    return null;
+  const handleSurveyComplete = () => {
+    setSurveyCompleted(true);
   };
 
   return (
@@ -82,7 +52,19 @@ const UserApp: React.FC = () => {
       <UserHeader user={user} />
       
       <main className="flex-1 overflow-y-auto p-4 pb-24">
-        {renderActiveTabContent()}
+        {activeTab === 'dashboard' ? (
+          <ErrorBoundary fallback={<p>Error loading dashboard. Please try the Cafe tab instead.</p>}>
+            <Dashboard />
+          </ErrorBoundary>
+        ) : null}
+        
+        {activeTab === 'cafe' && (
+          <CafeContent 
+            user={user} 
+            surveyCompleted={surveyCompleted} 
+            onSurveyComplete={handleSurveyComplete} 
+          />
+        )}
       </main>
       
       <UserNavigation
@@ -95,4 +77,4 @@ const UserApp: React.FC = () => {
   );
 };
 
-export default React.memo(UserApp);
+export default UserApp;

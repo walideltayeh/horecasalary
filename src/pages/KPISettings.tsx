@@ -1,85 +1,71 @@
 
 import React, { useState, useEffect } from 'react';
-import { useKPI } from '@/contexts/KPIContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useData } from '@/contexts/DataContext';
 import PasswordProtection from '@/components/PasswordProtection';
-import { Loader2, Save, AlertCircle } from 'lucide-react';
-import SalaryBreakdown from '@/components/kpi-settings/SalaryBreakdown';
-import VisitTargets from '@/components/kpi-settings/VisitTargets';
-import ContractTargets from '@/components/kpi-settings/ContractTargets';
-import BonusConfiguration from '@/components/kpi-settings/BonusConfiguration';
-import useKPISettings from '@/hooks/kpi/useKPISettings';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
 
 const KPISettings: React.FC = () => {
-  const { kpiSettings, updateKPISettings } = useKPI();
+  const { kpiSettings, updateKPISettings } = useData();
+  const [settings, setSettings] = useState({ ...kpiSettings });
   const [authenticated, setAuthenticated] = useState(false);
-  const [saveAttempts, setSaveAttempts] = useState(0);
-  
-  const { 
-    settings, 
-    syncing, 
-    hasUnsavedChanges,
-    saveError,
-    handleChange, 
-    saveSettings,
-    derivedValues 
-  } = useKPISettings(kpiSettings, updateKPISettings);
-  
-  // Reset save attempts counter when syncing state changes
+  const [syncing, setSyncing] = useState(false);
+
+  // Update local state when kpiSettings change
   useEffect(() => {
-    if (!syncing && saveAttempts > 0) {
-      setSaveAttempts(0);
+    setSettings({ ...kpiSettings });
+  }, [kpiSettings]);
+
+  const handleChange = (field: keyof typeof settings, value: string) => {
+    setSyncing(true);
+    const numValue = Number(value);
+    
+    // Create a new settings object with the updated field
+    const updatedSettings = { ...settings, [field]: numValue };
+    
+    // Special case for percentage fields that need to be calculated
+    if (field === 'basicSalaryPercentage') {
+      // Basic salary percentage changed, update KPI percentage to complement
+      const kpiPercentage = 100 - numValue;
+      updatedSettings.basicSalaryPercentage = numValue;
     }
-  }, [syncing]);
-  
+    
+    // Automatically calculate contract targets when visit targets change (70% of visit targets)
+    if (field === 'targetVisitsLarge') {
+      updatedSettings.targetContractsLarge = Math.ceil(numValue * 0.7);
+    }
+    if (field === 'targetVisitsMedium') {
+      updatedSettings.targetContractsMedium = Math.ceil(numValue * 0.7);
+    }
+    if (field === 'targetVisitsSmall') {
+      updatedSettings.targetContractsSmall = Math.ceil(numValue * 0.7);
+    }
+    
+    // Update local state
+    setSettings(updatedSettings);
+    
+    // Update global state
+    updateKPISettings(updatedSettings);
+    // Set syncing to false after a short delay to show the syncing indicator
+    setTimeout(() => setSyncing(false), 1000);
+  };
+
   // If not authenticated, show password protection
   if (!authenticated) {
     return <PasswordProtection onAuthenticate={() => setAuthenticated(true)} title="KPI Settings" />;
   }
 
-  // Handle manual save with error recovery
-  const handleSave = async () => {
-    if (syncing) return; // Prevent multiple save attempts while syncing
-    
-    setSaveAttempts(prev => prev + 1);
-    
-    try {
-      const success = await saveSettings();
-      
-      if (success) {
-        toast({
-          title: "Settings Saved",
-          description: "KPI settings have been saved and will be reflected for all users.",
-          duration: 3000,
-        });
-      } else if (saveAttempts >= 2) {
-        // After 3 attempts, offer a refresh suggestion
-        toast({
-          title: "Still Having Trouble Saving",
-          description: "Please try refreshing the page and making your changes again.",
-          variant: "destructive",
-          duration: 8000,
-        });
-      } else {
-        toast({
-          title: "Save Error",
-          description: "There was a problem saving your settings. Please try again.",
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast({
-        title: "Error Saving Settings",
-        description: "There was a problem saving your settings. Please try again.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
-  };
+  // Calculate derived values
+  const kpiSalaryPercentage = 100 - settings.basicSalaryPercentage;
+  const contractKpiPercentage = 100 - settings.visitKpiPercentage;
+  
+  const basicSalaryAmount = settings.totalPackage * (settings.basicSalaryPercentage / 100);
+  const kpiSalaryAmount = settings.totalPackage - basicSalaryAmount;
+  
+  const visitKpiAmount = kpiSalaryAmount * (settings.visitKpiPercentage / 100);
+  const contractKpiAmount = kpiSalaryAmount - visitKpiAmount;
 
   return (
     <div className="space-y-8">
@@ -88,67 +74,247 @@ const KPISettings: React.FC = () => {
           <h1 className="text-3xl font-bold mb-2">KPI Settings</h1>
           <p className="text-gray-600">Configure salary breakdown and performance targets</p>
         </div>
-        <div className="flex items-center space-x-3">
-          {hasUnsavedChanges && !syncing && (
-            <span className="text-amber-600 text-sm">Unsaved changes</span>
-          )}
-          {syncing ? (
-            <div className="flex items-center text-amber-600">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              <span>Syncing changes...</span>
-            </div>
-          ) : (
-            <Button 
-              onClick={handleSave} 
-              disabled={!hasUnsavedChanges || syncing}
-              className="flex items-center"
-              variant={saveError ? "destructive" : "default"}
-            >
-              {saveError ? <AlertCircle className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
-              {saveError ? "Retry Save" : "Save Changes"}
-            </Button>
-          )}
-        </div>
+        {syncing && (
+          <div className="flex items-center text-amber-600">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            <span>Syncing with server...</span>
+          </div>
+        )}
       </div>
 
-      {saveError && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {saveError} - Please try the save button again or refresh the page.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Salary Breakdown */}
-      <SalaryBreakdown 
-        settings={settings}
-        handleChange={handleChange}
-        basicSalaryAmount={derivedValues.basicSalaryAmount}
-        kpiSalaryPercentage={derivedValues.kpiSalaryPercentage}
-        kpiSalaryAmount={derivedValues.kpiSalaryAmount}
-        visitKpiAmount={derivedValues.visitKpiAmount}
-        contractKpiPercentage={derivedValues.contractKpiPercentage}
-        contractKpiAmount={derivedValues.contractKpiAmount}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Salary Breakdown</CardTitle>
+          <CardDescription>Configure the total package and salary components</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="totalPackage">Total Package ($)</Label>
+              <Input
+                id="totalPackage"
+                type="number"
+                value={settings.totalPackage}
+                onChange={(e) => handleChange('totalPackage', e.target.value)}
+                className="input-with-red-outline"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="basicSalaryPercentage">Basic Salary (%)</Label>
+                <Input
+                  id="basicSalaryPercentage"
+                  type="number"
+                  value={settings.basicSalaryPercentage}
+                  onChange={(e) => handleChange('basicSalaryPercentage', e.target.value)}
+                  className="input-with-red-outline"
+                />
+                <div className="text-sm text-gray-600 mt-1">
+                  = ${basicSalaryAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div>
+                <Label>KPI Salary (%)</Label>
+                <Input
+                  type="number"
+                  value={kpiSalaryPercentage}
+                  disabled
+                  className="bg-gray-100"
+                />
+                <div className="text-sm text-gray-600 mt-1">
+                  = ${kpiSalaryAmount.toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t">
+            <h3 className="font-medium mb-4">KPI Breakdown</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="visitKpiPercentage">Visit KPI (%)</Label>
+                <Input
+                  id="visitKpiPercentage"
+                  type="number"
+                  value={settings.visitKpiPercentage}
+                  onChange={(e) => handleChange('visitKpiPercentage', e.target.value)}
+                  className="input-with-red-outline"
+                />
+                <div className="text-sm text-gray-600 mt-1">
+                  = ${visitKpiAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div>
+                <Label>Contract KPI (%)</Label>
+                <Input
+                  type="number"
+                  value={contractKpiPercentage}
+                  disabled
+                  className="bg-gray-100"
+                />
+                <div className="text-sm text-gray-600 mt-1">
+                  = ${contractKpiAmount.toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Visit Targets */}
-      <VisitTargets 
-        settings={settings}
-        handleChange={handleChange}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Visit Targets</CardTitle>
+          <CardDescription>Set targets for cafe visits and threshold</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <Label htmlFor="visitThresholdPercentage">Visit Threshold (%)</Label>
+            <Input
+              id="visitThresholdPercentage"
+              type="number"
+              value={settings.visitThresholdPercentage}
+              onChange={(e) => handleChange('visitThresholdPercentage', e.target.value)}
+              className="input-with-red-outline"
+            />
+            <div className="text-sm text-gray-600 mt-1">
+              If visits are below this percentage, the visit KPI will be zero
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="targetVisitsLarge">Target Large Cafe Visits</Label>
+              <Input
+                id="targetVisitsLarge"
+                type="number"
+                value={settings.targetVisitsLarge}
+                onChange={(e) => handleChange('targetVisitsLarge', e.target.value)}
+                className="input-with-red-outline"
+              />
+            </div>
+            <div>
+              <Label htmlFor="targetVisitsMedium">Target Medium Cafe Visits</Label>
+              <Input
+                id="targetVisitsMedium"
+                type="number"
+                value={settings.targetVisitsMedium}
+                onChange={(e) => handleChange('targetVisitsMedium', e.target.value)}
+                className="input-with-red-outline"
+              />
+            </div>
+            <div>
+              <Label htmlFor="targetVisitsSmall">Target Small Cafe Visits</Label>
+              <Input
+                id="targetVisitsSmall"
+                type="number"
+                value={settings.targetVisitsSmall}
+                onChange={(e) => handleChange('targetVisitsSmall', e.target.value)}
+                className="input-with-red-outline"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Contract Targets */}
-      <ContractTargets 
-        settings={settings}
-        handleChange={handleChange}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Contract Targets</CardTitle>
+          <CardDescription>Contract targets are automatically set to 70% of visit targets (rounded up)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <Label htmlFor="contractThresholdPercentage">Contract Threshold (%)</Label>
+            <Input
+              id="contractThresholdPercentage"
+              type="number"
+              value={settings.contractThresholdPercentage}
+              onChange={(e) => handleChange('contractThresholdPercentage', e.target.value)}
+              className="input-with-red-outline"
+            />
+            <div className="text-sm text-gray-600 mt-1">
+              If contracts are below this percentage, the contract KPI will be zero
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Large Cafe Contracts (70% of visits)</Label>
+              <Input
+                type="number"
+                value={settings.targetContractsLarge}
+                disabled
+                className="bg-gray-100"
+              />
+            </div>
+            <div>
+              <Label>Medium Cafe Contracts (70% of visits)</Label>
+              <Input
+                type="number"
+                value={settings.targetContractsMedium}
+                disabled
+                className="bg-gray-100"
+              />
+            </div>
+            <div>
+              <Label>Small Cafe Contracts (70% of visits)</Label>
+              <Input
+                type="number"
+                value={settings.targetContractsSmall}
+                disabled
+                className="bg-gray-100"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Bonus Configuration */}
-      <BonusConfiguration 
-        settings={settings}
-        handleChange={handleChange}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Contract Bonus</CardTitle>
+          <CardDescription>Set bonus amounts for different cafe sizes</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="bonusLargeCafe">Large Cafe Bonus ($)</Label>
+              <Input
+                id="bonusLargeCafe"
+                type="number"
+                value={settings.bonusLargeCafe}
+                onChange={(e) => handleChange('bonusLargeCafe', e.target.value)}
+                className="input-with-red-outline"
+              />
+            </div>
+            <div>
+              <Label htmlFor="bonusMediumCafe">Medium Cafe Bonus ($)</Label>
+              <Input
+                id="bonusMediumCafe"
+                type="number"
+                value={settings.bonusMediumCafe}
+                onChange={(e) => handleChange('bonusMediumCafe', e.target.value)}
+                className="input-with-red-outline"
+              />
+            </div>
+            <div>
+              <Label htmlFor="bonusSmallCafe">Small Cafe Bonus ($)</Label>
+              <Input
+                id="bonusSmallCafe"
+                type="number"
+                value={settings.bonusSmallCafe}
+                onChange={(e) => handleChange('bonusSmallCafe', e.target.value)}
+                className="input-with-red-outline"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
