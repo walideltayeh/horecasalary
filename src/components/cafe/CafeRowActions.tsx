@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Clock, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { getCafeSize } from '@/utils/cafeUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeRowActionsProps {
   cafe: Cafe;
@@ -23,6 +24,8 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
   handleUpdateStatus,
   openDeleteConfirmation
 }) => {
+  const { t } = useLanguage();
+  
   // Check if this particular cafe is being deleted
   const isDeleting = deleteInProgress === cafe.id;
   
@@ -43,7 +46,7 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
           onClick={() => handleEdit(cafe)}
           disabled={isDeleting}
         >
-          <Pencil className="h-3 w-3" /> Edit
+          <Pencil className="h-3 w-3" /> {t('button.edit')}
         </Button>
       )}
     
@@ -56,7 +59,7 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
             onClick={() => handleUpdateStatus(cafe.id, 'Visited')}
             disabled={isDeleting || anyDeletionInProgress}
           >
-            <Clock className="h-3 w-3" /> Mark Visited
+            <Clock className="h-3 w-3" /> {t('cafe.mark.visited')}
           </Button>
           
           <TooltipProvider>
@@ -74,13 +77,13 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
                     onClick={() => !isInNegotiation && handleUpdateStatus(cafe.id, 'Contracted')}
                     disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
                   >
-                    <Check className="h-3 w-3" /> Mark Contracted
+                    <Check className="h-3 w-3" /> {t('cafe.mark.contracted')}
                   </Button>
                 </div>
               </TooltipTrigger>
               {isInNegotiation && (
                 <TooltipContent>
-                  <p>Cafes in negotiation (0 hookahs) cannot be marked as contracted</p>
+                  <p>{t('cafe.negotiation.warning')}</p>
                 </TooltipContent>
               )}
             </Tooltip>
@@ -104,13 +107,13 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
                   onClick={() => !isInNegotiation && handleUpdateStatus(cafe.id, 'Contracted')}
                   disabled={isDeleting || anyDeletionInProgress || isInNegotiation}
                 >
-                  <Check className="h-3 w-3" /> Mark Contracted
+                  <Check className="h-3 w-3" /> {t('cafe.mark.contracted')}
                 </Button>
               </div>
             </TooltipTrigger>
             {isInNegotiation && (
               <TooltipContent>
-                <p>Cafes in negotiation (0 hookahs) cannot be marked as contracted</p>
+                <p>{t('cafe.negotiation.warning')}</p>
               </TooltipContent>
             )}
           </Tooltip>
@@ -134,12 +137,12 @@ const CafeRowActions: React.FC<CafeRowActionsProps> = ({
           {isDeleting ? (
             <>
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              Deleting...
+              {t('cafe.deleting')}
             </>
           ) : (
             <>
               <Trash2 className="h-3 w-3" />
-              Delete
+              {t('button.delete')}
             </>
           )}
         </Button>

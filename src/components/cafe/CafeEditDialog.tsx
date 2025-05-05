@@ -10,6 +10,7 @@ import { CafeLocationEditInfo } from './edit/CafeLocationEditInfo';
 import { useEditCafeDialog } from '@/hooks/useEditCafeDialog';
 import { Label } from "@/components/ui/label";
 import CafeStatusSelect from './CafeStatusSelect';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeEditDialogProps {
   cafe: Cafe;
@@ -19,6 +20,7 @@ interface CafeEditDialogProps {
 }
 
 const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, onSave }) => {
+  const { t } = useLanguage();
   const {
     formData,
     isSubmitting,
@@ -34,7 +36,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
     }}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Cafe</DialogTitle>
+          <DialogTitle>{t('button.edit')} {cafe.name}</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
@@ -44,7 +46,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           />
           
           <div className="space-y-2">
-            <Label htmlFor="status">Cafe Status <span className="text-red-500">*</span></Label>
+            <Label htmlFor="status">{t('cafe.status')} <span className="text-red-500">*</span></Label>
             <CafeStatusSelect
               selectedStatus={formData.status as 'Pending' | 'Visited' | 'Contracted'}
               onSelectChange={handleSelectChange}
@@ -64,7 +66,7 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           />
           
           <div className="grid gap-2">
-            <Label>Cafe Photo <span className="text-red-500">*</span></Label>
+            <Label>{t('cafe.photo')} <span className="text-red-500">*</span></Label>
             <PhotoUpload 
               onPhotoChange={(url) => handleSelectChange('photoUrl', url)}
               initialUrl={formData.photoUrl} 
@@ -72,16 +74,16 @@ const CafeEditDialog: React.FC<CafeEditDialogProps> = ({ cafe, isOpen, onClose, 
           </div>
 
           <div className="text-sm text-gray-500 mt-2">
-            <p>Note: GPS location cannot be changed after cafe creation.</p>
+            <p>{t('cafe.gps.note')}</p>
           </div>
         </div>
         
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Cancel
+            {t('button.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save Changes"}
+            {isSubmitting ? t('cafe.saving') : t('button.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

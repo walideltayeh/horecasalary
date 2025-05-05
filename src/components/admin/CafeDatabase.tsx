@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeDatabaseProps {
   cafes?: Cafe[];
@@ -15,6 +16,7 @@ interface CafeDatabaseProps {
 
 const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes = [] }) => {
   const { refreshCafes, loading } = useData();
+  const { t } = useLanguage();
 
   // Force initial data refresh on mount
   useEffect(() => {
@@ -51,8 +53,8 @@ const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes = [] }) => {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Cafe Database</CardTitle>
-          <CardDescription>All cafes in the system</CardDescription>
+          <CardTitle>{t('cafe.database')}</CardTitle>
+          <CardDescription>{t('cafe.all')}</CardDescription>
         </div>
         <div className="flex gap-2">
           <Button
@@ -62,7 +64,7 @@ const CafeDatabase: React.FC<CafeDatabaseProps> = ({ cafes = [] }) => {
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Refreshing...' : 'Force Refresh'}
+            {loading ? t('cafe.refreshing') : t('cafe.force.refresh')}
           </Button>
           <ExportToExcel cafes={cafes} />
         </div>

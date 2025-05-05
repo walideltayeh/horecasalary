@@ -6,6 +6,7 @@ import CafeTableActions from './cafe/CafeTableActions';
 import CafeTable from './cafe/CafeTable';
 import DeleteConfirmationDialog from './cafe/DeleteConfirmationDialog';
 import { useCafeListState } from '@/hooks/cafe/useCafeListState';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeListProps {
   adminView?: boolean;
@@ -14,6 +15,7 @@ interface CafeListProps {
 
 const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) => {
   const { user, isAdmin } = useAuth();
+  const { t } = useLanguage();
   const {
     loading,
     refreshing,
@@ -38,9 +40,9 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
       <div className="flex justify-between mb-2">
         <div>
           {loading ? (
-            <p className="text-gray-500 text-sm">Loading cafe data...</p>
+            <p className="text-gray-500 text-sm">{t('cafe.loading')}</p>
           ) : (
-            <p className="text-gray-500 text-sm">{filteredCafes.length} cafes found {adminView ? '(Admin view)' : ''}</p>
+            <p className="text-gray-500 text-sm">{filteredCafes.length} {t('cafe.found')} {adminView ? '(Admin view)' : ''}</p>
           )}
         </div>
         <CafeTableActions 

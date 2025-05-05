@@ -1,4 +1,3 @@
-
 const translations = {
   // Common
   'app.title': 'HoReCa Mobile',
@@ -70,6 +69,16 @@ const translations = {
   'cafe.refresh.data': 'Refresh Data',
   'cafe.refreshing': 'Refreshing...',
   'cafe.force.refresh': 'Force Refresh',
+  'cafe.found': 'cafes found',
+  'cafe.loading': 'Loading cafe data...',
+  'cafe.mark.visited': 'Mark Visited',
+  'cafe.mark.contracted': 'Mark Contracted',
+  'cafe.deleting': 'Deleting...',
+  'cafe.negotiation.warning': 'Cafes in negotiation (0 hookahs) cannot be marked as contracted',
+  'cafe.photo': 'Cafe Photo',
+  'cafe.gps.note': 'Note: GPS location cannot be changed after cafe creation.',
+  'cafe.saving': 'Saving...',
+  'cafe.created.by': 'Cafes Created by',
 
   // Deletion Logs
   'deletion.logs.title': 'Deletion Logs',

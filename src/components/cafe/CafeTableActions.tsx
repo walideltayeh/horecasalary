@@ -5,6 +5,7 @@ import { RefreshCcw } from 'lucide-react';
 import ExportToExcel from '../admin/ExportToExcel';
 import { Cafe } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeTableActionsProps {
   loading: boolean;
@@ -19,6 +20,8 @@ const CafeTableActions: React.FC<CafeTableActionsProps> = ({
   filteredCafes, 
   handleRefresh 
 }) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="flex gap-2">
       <ExportToExcel cafes={filteredCafes} />
@@ -33,7 +36,7 @@ const CafeTableActions: React.FC<CafeTableActionsProps> = ({
               disabled={loading || refreshing}
             >
               <RefreshCcw className={`h-3 w-3 ${loading || refreshing ? 'animate-spin' : ''}`} /> 
-              {loading || refreshing ? 'Refreshing...' : 'Refresh Data'}
+              {loading || refreshing ? t('cafe.refreshing') : t('cafe.refresh.data')}
             </Button>
           </TooltipTrigger>
           <TooltipContent>

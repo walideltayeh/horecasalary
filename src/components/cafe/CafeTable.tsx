@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Cafe } from '@/types';
 import CafeTableRow from './CafeTableRow';
 import CafeTableSkeleton from './CafeTableSkeleton';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeTableProps {
   filteredCafes: Cafe[];
@@ -30,6 +31,8 @@ const CafeTable: React.FC<CafeTableProps> = ({
   handleUpdateStatus,
   openDeleteConfirmation
 }) => {
+  const { t } = useLanguage();
+  
   // Count cafes by size and status
   const sizeCounts = {
     small: filteredCafes.filter(cafe => getCafeSize(cafe.numberOfHookahs) === 'Small').length,
@@ -42,14 +45,14 @@ const CafeTable: React.FC<CafeTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Size</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Owner</TableHead>
-            {adminView && <TableHead>Created By</TableHead>}
-            <TableHead>Date Added</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('cafe.name')}</TableHead>
+            <TableHead>{t('cafe.size')}</TableHead>
+            <TableHead>{t('cafe.location')}</TableHead>
+            <TableHead>{t('cafe.status')}</TableHead>
+            <TableHead>{t('cafe.owner')}</TableHead>
+            {adminView && <TableHead>{t('cafe.created.by')}</TableHead>}
+            <TableHead>{t('cafe.date.added')}</TableHead>
+            <TableHead className="text-right">{t('cafe.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -58,7 +61,7 @@ const CafeTable: React.FC<CafeTableProps> = ({
           ) : filteredCafes.length === 0 ? (
             <TableRow>
               <TableCell colSpan={adminView ? 8 : 7} className="text-center py-4 text-muted-foreground">
-                No cafes found. {!adminView && "Add some cafes to see them here."}
+                {t('cafe.no.cafes')}
               </TableCell>
             </TableRow>
           ) : (

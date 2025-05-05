@@ -5,6 +5,7 @@ import { useData } from '@/contexts/DataContext';
 import CafeList from './CafeList';
 import UserKpiStats from './UserKpiStats';
 import UserSalaryCards from './dashboard/UserSalaryCards';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UserDashboardProps {
   userId: string;
@@ -20,6 +21,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
     getUserContractCounts,
     refreshCafes
   } = useData();
+  const { t } = useLanguage();
   
   // Store last refresh time to prevent excessive refreshes
   const lastRefreshTime = useRef(Date.now());
@@ -83,7 +85,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold">{userName}'s Dashboard</h2>
+      <h2 className="text-xl font-bold">{userName}'s {t('dashboard.title')}</h2>
       
       {/* Salary Summary */}
       <UserSalaryCards 
@@ -102,7 +104,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
       {/* Cafes List */}
       <Card>
         <CardHeader>
-          <CardTitle>Cafes Created by {userName}</CardTitle>
+          <CardTitle>{t('cafe.created.by')} {userName}</CardTitle>
         </CardHeader>
         <CardContent>
           <CafeList filterByUser={userId} adminView={true} />

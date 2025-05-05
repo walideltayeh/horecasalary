@@ -5,6 +5,7 @@ import AddCafeForm from './AddCafeForm';
 import CafeList from '@/components/CafeList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from '@/contexts/DataContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeContentProps {
   user: User | null;
@@ -14,6 +15,7 @@ interface CafeContentProps {
 
 const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurveyComplete }) => {
   const { refreshCafes } = useData();
+  const { t } = useLanguage();
   const [formKey, setFormKey] = useState<number>(0); // Add a key to force re-render
 
   // Force initial data refresh on mount
@@ -57,8 +59,8 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold mb-2">Cafe Management</h1>
-        <p className="text-gray-600">Add and manage cafe information</p>
+        <h1 className="text-2xl font-bold mb-2">{t('cafe.management.title')}</h1>
+        <p className="text-gray-600">{t('cafe.management.subtitle')}</p>
       </div>
 
       <AddCafeForm 
@@ -70,8 +72,8 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
 
       <Card>
         <CardHeader>
-          <CardTitle>My Cafes</CardTitle>
-          <CardDescription>List of cafes you've added</CardDescription>
+          <CardTitle>{t('cafe.my.cafes')}</CardTitle>
+          <CardDescription>{t('cafe.list')}</CardDescription>
         </CardHeader>
         <CardContent>
           <CafeList filterByUser={user?.id} />
