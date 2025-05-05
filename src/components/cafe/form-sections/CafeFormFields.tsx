@@ -7,6 +7,7 @@ import { CafeLocationInfo } from '../CafeLocationInfo';
 import { Label } from '@/components/ui/label';
 import { PhotoUpload } from '../PhotoUpload';
 import { GPSCapture } from '../GPSCapture';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeFormFieldsProps {
   formState: CafeFormState;
@@ -36,6 +37,8 @@ const CafeFormFields = ({
   showLocationDialog,
   setShowLocationDialog
 }: CafeFormFieldsProps) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="space-y-6">
       <CafeBasicInfo
@@ -58,7 +61,7 @@ const CafeFormFields = ({
 
       {/* Photo Upload */}
       <div className="space-y-2">
-        <Label>Cafe Photo <span className="text-red-500">*</span></Label>
+        <Label>{t('cafe.form.photo')} <span className="text-red-500">*</span></Label>
         <PhotoUpload
           onPhotoChange={(url) => handleSelectChange('photoUrl', url)}
           initialUrl={formState.photoUrl}
@@ -67,7 +70,7 @@ const CafeFormFields = ({
 
       {/* GPS Capture */}
       <div className="space-y-2">
-        <Label>GPS Location <span className="text-red-500">*</span></Label>
+        <Label>{t('cafe.form.gps')} <span className="text-red-500">*</span></Label>
         <GPSCapture
           coordinates={coordinates}
           onCaptureGPS={handleCaptureGPS}

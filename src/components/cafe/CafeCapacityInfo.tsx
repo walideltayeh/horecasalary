@@ -3,17 +3,20 @@ import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CafeFormProps } from './types/CafeFormTypes';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const CafeCapacityInfo = ({ 
   formState, 
   onInputChange,
   cafeSize 
 }: Pick<CafeFormProps, 'formState' | 'onInputChange' | 'cafeSize'>) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
         <Label htmlFor="numberOfHookahs">
-          Number of Hookahs <span className="text-red-500">*</span>
+          {t('cafe.form.hookahs')} <span className="text-red-500">*</span>
         </Label>
         <Input 
           id="numberOfHookahs" 
@@ -26,16 +29,16 @@ export const CafeCapacityInfo = ({
           required
         />
         <div className="mt-2">
-          <div>Current Size: <span className="cafe-size-value">{cafeSize}</span></div>
+          <div>{t('cafe.form.size.current')}: <span className="cafe-size-value">{cafeSize}</span></div>
           <div className="cafe-size-legend">
-            1-3 hookahs: Small | 4-7 hookahs: Medium | 7+ hookahs: Large | 0 hookahs: In Negotiation
+            {t('cafe.form.size.legend')}
           </div>
         </div>
       </div>
       
       <div className="space-y-2">
         <Label htmlFor="numberOfTables">
-          Number of Tables <span className="text-red-500">*</span>
+          {t('cafe.form.tables')} <span className="text-red-500">*</span>
         </Label>
         <Input 
           id="numberOfTables" 

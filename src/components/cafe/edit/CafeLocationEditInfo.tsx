@@ -3,6 +3,7 @@ import React from 'react';
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getGovernorates } from '@/utils/locationUtils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeLocationEditInfoProps {
   formData: {
@@ -19,17 +20,18 @@ export const CafeLocationEditInfo: React.FC<CafeLocationEditInfoProps> = ({
   handleSelectChange
 }) => {
   const governorates = getGovernorates();
+  const { t } = useLanguage();
 
   return (
     <>
       <div className="grid gap-2">
-        <Label htmlFor="governorate">Governorate</Label>
+        <Label htmlFor="governorate">{t('cafe.form.governorate')}</Label>
         <Select
           value={formData.governorate}
           onValueChange={(value) => handleSelectChange('governorate', value)}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select governorate" />
+            <SelectValue placeholder={t('cafe.form.select.governorate')} />
           </SelectTrigger>
           <SelectContent>
             {governorates.map((gov) => (
@@ -42,14 +44,14 @@ export const CafeLocationEditInfo: React.FC<CafeLocationEditInfoProps> = ({
       </div>
       
       <div className="grid gap-2">
-        <Label htmlFor="city">City</Label>
+        <Label htmlFor="city">{t('cafe.form.city')}</Label>
         <Select
           value={formData.city}
           onValueChange={(value) => handleSelectChange('city', value)}
           disabled={!formData.governorate}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select city" />
+            <SelectValue placeholder={t('cafe.form.select.city')} />
           </SelectTrigger>
           <SelectContent>
             {availableCities.map((city) => (

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CafeFormState } from './cafe/types/CafeFormTypes';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeBrandSurveyProps {
   cafeFormData: CafeFormState & { createdBy: string; latitude: number; longitude: number; status: string };
@@ -26,6 +27,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
   onComplete, 
   onCancel 
 }) => {
+  const { t } = useLanguage();
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,12 +72,12 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
   return (
     <div className="bg-white rounded-lg">
       <CardHeader>
-        <CardTitle>Brand Sales Survey</CardTitle>
+        <CardTitle>{t('survey.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium mb-3">Select brands sold in this cafe:</h3>
+            <h3 className="text-sm font-medium mb-3">{t('survey.select.brands')}</h3>
             <div className="grid grid-cols-2 gap-4">
               {BRANDS.map(brand => (
                 <div key={brand} className="flex items-center space-x-2">
@@ -92,7 +94,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
 
           {selectedBrands.size > 0 && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium">Weekly sales per brand:</h3>
+              <h3 className="text-sm font-medium">{t('survey.weekly.sales')}</h3>
               {brandSales.map(sale => (
                 <div key={sale.brand} className="flex items-center gap-4">
                   <Label htmlFor={`packs-${sale.brand}`} className="w-32">{sale.brand}:</Label>
@@ -104,7 +106,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
                     onChange={(e) => handlePacksChange(sale.brand, parseInt(e.target.value) || 0)}
                     className="w-32"
                   />
-                  <span className="text-sm text-gray-500">packs per week</span>
+                  <span className="text-sm text-gray-500">{t('survey.packs.per.week')}</span>
                 </div>
               ))}
             </div>
@@ -117,7 +119,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
             disabled={isSubmitting || selectedBrands.size === 0}
             className="flex-1"
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Survey'}
+            {isSubmitting ? t('survey.submitting') : t('survey.submit')}
           </Button>
           
           {onCancel && (
@@ -127,7 +129,7 @@ export const CafeBrandSurvey: React.FC<CafeBrandSurveyProps> = ({
               disabled={isSubmitting}
               className="flex-1"
             >
-              Cancel
+              {t('survey.cancel')}
             </Button>
           )}
         </div>

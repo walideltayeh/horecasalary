@@ -2,6 +2,7 @@
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CafeCapacityEditInfoProps {
   formData: {
@@ -15,10 +16,12 @@ export const CafeCapacityEditInfo: React.FC<CafeCapacityEditInfoProps> = ({
   formData, 
   handleInputChange 
 }) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="grid gap-2">
-        <Label htmlFor="numberOfHookahs">Number of Hookahs</Label>
+        <Label htmlFor="numberOfHookahs">{t('cafe.form.hookahs')}</Label>
         <Input
           id="numberOfHookahs"
           name="numberOfHookahs"
@@ -26,16 +29,16 @@ export const CafeCapacityEditInfo: React.FC<CafeCapacityEditInfoProps> = ({
           value={formData.numberOfHookahs}
           onChange={handleInputChange}
           min={0}
-          aria-label="Number of Hookahs"
+          aria-label={t('cafe.form.hookahs')}
           className="focus:border-blue-500"
         />
         <div className="text-xs text-gray-500">
-          Used for cafe size categorization
+          {t('cafe.form.size.current')}
         </div>
       </div>
       
       <div className="grid gap-2">
-        <Label htmlFor="numberOfTables">Number of Tables</Label>
+        <Label htmlFor="numberOfTables">{t('cafe.form.tables')}</Label>
         <Input
           id="numberOfTables"
           name="numberOfTables"
@@ -43,7 +46,7 @@ export const CafeCapacityEditInfo: React.FC<CafeCapacityEditInfoProps> = ({
           value={formData.numberOfTables}
           onChange={handleInputChange}
           min={0}
-          aria-label="Number of Tables"
+          aria-label={t('cafe.form.tables')}
           className="focus:border-blue-500"
         />
       </div>

@@ -80,6 +80,34 @@ const translations = {
   'cafe.gps.note': 'Note: GPS location cannot be changed after cafe creation.',
   'cafe.saving': 'Saving...',
 
+  // Cafe Form Fields
+  'cafe.form.cafe.name': 'Cafe Name',
+  'cafe.form.owner.name': 'Owner\'s Name',
+  'cafe.form.owner.phone': 'Owner\'s Phone Number',
+  'cafe.form.cafe.status': 'Cafe Status',
+  'cafe.form.hookahs': 'Number of Hookahs',
+  'cafe.form.tables': 'Number of Tables',
+  'cafe.form.governorate': 'Governorate',
+  'cafe.form.city': 'City',
+  'cafe.form.select.governorate': 'Select governorate',
+  'cafe.form.select.city': 'Select city',
+  'cafe.form.select.governorate.first': 'Select governorate first',
+  'cafe.form.photo': 'Cafe Photo',
+  'cafe.form.gps': 'GPS Location',
+  'cafe.form.required': 'required',
+  'cafe.form.gps.note': 'GPS location cannot be changed after cafe creation.',
+  'cafe.form.size.current': 'Current Size',
+  'cafe.form.size.legend': '1-3 hookahs: Small | 4-7 hookahs: Medium | 7+ hookahs: Large | 0 hookahs: In Negotiation',
+
+  // Brand Survey
+  'survey.title': 'Brand Sales Survey',
+  'survey.select.brands': 'Select brands sold in this cafe:',
+  'survey.weekly.sales': 'Weekly sales per brand:',
+  'survey.packs.per.week': 'packs per week',
+  'survey.submit': 'Submit Survey',
+  'survey.submitting': 'Submitting...',
+  'survey.cancel': 'Cancel',
+
   // Deletion Logs
   'deletion.logs.title': 'Deletion Logs',
   'deletion.logs.subtitle': 'History of deleted items',

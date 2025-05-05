@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CafeFormProps } from './types/CafeFormTypes';
 import { getGovernorates, getCitiesForGovernorate } from '@/utils/locationUtils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const CafeLocationInfo = ({ 
   formState, 
@@ -12,6 +13,7 @@ export const CafeLocationInfo = ({
 }: Pick<CafeFormProps, 'formState' | 'onSelectChange' | 'availableCities'>) => {
   const [cities, setCities] = useState<string[]>([]);
   const governorates = getGovernorates();
+  const { t } = useLanguage();
 
   // Update cities when governorate changes
   useEffect(() => {
@@ -32,7 +34,7 @@ export const CafeLocationInfo = ({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
         <Label htmlFor="governorate">
-          Governorate <span className="text-red-500">*</span>
+          {t('cafe.form.governorate')} <span className="text-red-500">*</span>
         </Label>
         <Select 
           value={formState.governorate} 
@@ -40,7 +42,7 @@ export const CafeLocationInfo = ({
           required
         >
           <SelectTrigger id="governorate" className="input-with-red-outline">
-            <SelectValue placeholder="Select governorate" />
+            <SelectValue placeholder={t('cafe.form.select.governorate')} />
           </SelectTrigger>
           <SelectContent>
             {governorates.map((location) => (
@@ -54,7 +56,7 @@ export const CafeLocationInfo = ({
       
       <div className="space-y-2">
         <Label htmlFor="city">
-          City <span className="text-red-500">*</span>
+          {t('cafe.form.city')} <span className="text-red-500">*</span>
         </Label>
         <Select 
           value={formState.city} 
@@ -63,7 +65,7 @@ export const CafeLocationInfo = ({
           required
         >
           <SelectTrigger id="city" className="input-with-red-outline">
-            <SelectValue placeholder={cities.length ? "Select city" : "Select governorate first"} />
+            <SelectValue placeholder={cities.length ? t('cafe.form.select.city') : t('cafe.form.select.governorate.first')} />
           </SelectTrigger>
           <SelectContent>
             {cities.map((city) => (

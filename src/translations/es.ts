@@ -80,6 +80,34 @@ const translations = {
   'cafe.gps.note': 'Nota: La ubicación GPS no se puede cambiar después de la creación de la cafetería.',
   'cafe.saving': 'Guardando...',
 
+  // Cafe Form Fields
+  'cafe.form.cafe.name': 'Nombre de Cafetería',
+  'cafe.form.owner.name': 'Nombre del Propietario',
+  'cafe.form.owner.phone': 'Número de Teléfono del Propietario',
+  'cafe.form.cafe.status': 'Estado de Cafetería',
+  'cafe.form.hookahs': 'Número de Pipas',
+  'cafe.form.tables': 'Número de Mesas',
+  'cafe.form.governorate': 'Gobernación',
+  'cafe.form.city': 'Ciudad',
+  'cafe.form.select.governorate': 'Seleccionar gobernación',
+  'cafe.form.select.city': 'Seleccionar ciudad',
+  'cafe.form.select.governorate.first': 'Seleccionar gobernación primero',
+  'cafe.form.photo': 'Foto de Cafetería',
+  'cafe.form.gps': 'Ubicación GPS',
+  'cafe.form.required': 'requerido',
+  'cafe.form.gps.note': 'La ubicación GPS no se puede cambiar después de la creación de la cafetería.',
+  'cafe.form.size.current': 'Tamaño Actual',
+  'cafe.form.size.legend': '1-3 pipas: Pequeño | 4-7 pipas: Mediano | 7+ pipas: Grande | 0 pipas: En Negociación',
+
+  // Brand Survey
+  'survey.title': 'Encuesta de Ventas de Marcas',
+  'survey.select.brands': 'Seleccione las marcas vendidas en esta cafetería:',
+  'survey.weekly.sales': 'Ventas semanales por marca:',
+  'survey.packs.per.week': 'paquetes por semana',
+  'survey.submit': 'Enviar Encuesta',
+  'survey.submitting': 'Enviando...',
+  'survey.cancel': 'Cancelar',
+
   // Deletion Logs
   'deletion.logs.title': 'Registros de Eliminación',
   'deletion.logs.subtitle': 'Historial de elementos eliminados',
