@@ -47,9 +47,18 @@ const KPISettings: React.FC = () => {
     setSettings(updatedSettings);
     
     // Update global state
-    updateKPISettings(updatedSettings);
-    // Set syncing to false after a short delay to show the syncing indicator
-    setTimeout(() => setSyncing(false), 1000);
+    updateKPISettings(updatedSettings)
+      .then(success => {
+        // If update was not successful, might want to handle it
+        if (!success) {
+          console.warn('KPI update was not successful');
+        }
+        // Set syncing to false after a short delay to show the syncing indicator
+        setTimeout(() => setSyncing(false), 1000);
+      })
+      .catch(() => {
+        setSyncing(false);
+      });
   };
 
   // If not authenticated, show password protection

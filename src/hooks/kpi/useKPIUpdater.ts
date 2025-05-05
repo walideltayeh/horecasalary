@@ -8,7 +8,7 @@ export const useKPIUpdater = (
   setKpiSettings: React.Dispatch<React.SetStateAction<KPISettings>>,
   setIsSyncing: React.Dispatch<React.SetStateAction<boolean>>
 ) => {
-  const updateKPISettings = async (newSettings: Partial<KPISettings>): Promise<void> => {
+  const updateKPISettings = async (newSettings: Partial<KPISettings>, timeout?: number): Promise<boolean> => {
     const updatedSettings = { ...kpiSettings, ...newSettings };
     
     if ('basicSalaryPercentage' in newSettings) {
@@ -65,9 +65,17 @@ export const useKPIUpdater = (
         if (error) throw error;
         toast.success("KPI settings created");
       }
+      
+      // If a timeout is provided, add a delay before resolving
+      if (timeout && timeout > 0) {
+        await new Promise(resolve => setTimeout(resolve, timeout));
+      }
+      
+      return true;
     } catch (err: any) {
       console.error('Error syncing KPI settings:', err);
       toast.error(`Failed to save settings: ${err.message}`);
+      return false;
     } finally {
       setIsSyncing(false);
     }
