@@ -19,6 +19,19 @@ export const useKPIUpdater = (
       updatedSettings.visitKpiPercentage = Math.max(0, Math.min(100, updatedSettings.visitKpiPercentage));
     }
     
+    // Recalculate contract targets whenever visit targets or percentages change
+    if ('targetVisitsLarge' in newSettings || 'contractTargetPercentageLarge' in newSettings) {
+      updatedSettings.targetContractsLarge = Math.ceil(updatedSettings.targetVisitsLarge * (updatedSettings.contractTargetPercentageLarge / 100));
+    }
+    
+    if ('targetVisitsMedium' in newSettings || 'contractTargetPercentageMedium' in newSettings) {
+      updatedSettings.targetContractsMedium = Math.ceil(updatedSettings.targetVisitsMedium * (updatedSettings.contractTargetPercentageMedium / 100));
+    }
+    
+    if ('targetVisitsSmall' in newSettings || 'contractTargetPercentageSmall' in newSettings) {
+      updatedSettings.targetContractsSmall = Math.ceil(updatedSettings.targetVisitsSmall * (updatedSettings.contractTargetPercentageSmall / 100));
+    }
+    
     setKpiSettings(updatedSettings);
     
     try {
@@ -36,6 +49,9 @@ export const useKPIUpdater = (
         target_contracts_large: updatedSettings.targetContractsLarge,
         target_contracts_medium: updatedSettings.targetContractsMedium,
         target_contracts_small: updatedSettings.targetContractsSmall,
+        contract_target_percentage_large: updatedSettings.contractTargetPercentageLarge,
+        contract_target_percentage_medium: updatedSettings.contractTargetPercentageMedium,
+        contract_target_percentage_small: updatedSettings.contractTargetPercentageSmall,
         bonus_large_cafe: updatedSettings.bonusLargeCafe,
         bonus_medium_cafe: updatedSettings.bonusMediumCafe,
         bonus_small_cafe: updatedSettings.bonusSmallCafe,
