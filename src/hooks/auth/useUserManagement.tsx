@@ -1,10 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export function useUserManagement() {
   const [isLoading, setIsLoading] = useState(false);
+  const operationInProgressRef = useRef<string | null>(null);
 
   // Helper function to notify updates across tabs
   const notifyUserDataChange = () => {
@@ -15,39 +16,75 @@ export function useUserManagement() {
     }
   };
 
+  // Add retry logic for reliability
+  const retryOperation = async <T>(
+    operation: () => Promise<T>, 
+    maxRetries: number = 2
+  ): Promise<T> => {
+    let lastError: any;
+    let retryCount = 0;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        console.error(`Operation failed (attempt ${retryCount + 1}/${maxRetries + 1}):`, error);
+        retryCount++;
+        
+        if (retryCount <= maxRetries) {
+          // Exponential backoff
+          const delay = 1000 * Math.pow(2, retryCount - 1);
+          console.log(`Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    throw lastError;
+  };
+
   const addUser = async (userData: { 
     name: string; 
     email: string; 
     password: string; 
     role: 'admin' | 'user' 
   }): Promise<boolean> => {
+    // Prevent concurrent operations
+    if (operationInProgressRef.current === 'add') {
+      console.warn("Add user operation already in progress");
+      return false;
+    }
+    
     try {
       setIsLoading(true);
+      operationInProgressRef.current = 'add';
       console.log("Adding new user:", userData.email);
       
       const email = userData.email.includes('@') ? userData.email : `${userData.email}@horeca.app`;
       
-      const { data, error } = await supabase.functions.invoke('admin', {
-        method: 'POST',
-        body: {
-          action: 'createUser',
-          userData: {
-            email: email,
-            password: userData.password,
-            name: userData.name,
-            role: userData.role
+      const result = await retryOperation(async () => {
+        const { data, error } = await supabase.functions.invoke('admin', {
+          method: 'POST',
+          body: {
+            action: 'createUser',
+            userData: {
+              email: email,
+              password: userData.password,
+              name: userData.name,
+              role: userData.role
+            }
           }
+        });
+        
+        if (error || data?.error) {
+          throw new Error(error?.message || data?.error || 'Failed to add user');
         }
+        
+        return data;
       });
 
-      if (error || data?.error) {
-        const errorMessage = error?.message || data?.error || 'Failed to add user';
-        console.error('Error adding user:', errorMessage);
-        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to add user');
-        return false;
-      }
-
-      console.log("User added successfully:", data);
+      console.log("User added successfully:", result);
       toast.success(`User ${userData.name} added successfully`);
       notifyUserDataChange();
       return true;
@@ -57,6 +94,7 @@ export function useUserManagement() {
       return false;
     } finally {
       setIsLoading(false);
+      operationInProgressRef.current = null;
     }
   };
 
@@ -66,8 +104,15 @@ export function useUserManagement() {
     password?: string; 
     role?: 'admin' | 'user' 
   }): Promise<boolean> => {
+    // Prevent concurrent operations
+    if (operationInProgressRef.current === 'update') {
+      console.warn("Update user operation already in progress");
+      return false;
+    }
+    
     try {
       setIsLoading(true);
+      operationInProgressRef.current = 'update';
       console.log("Updating user:", userId, userData);
 
       const updatePayload: any = { id: userId };
@@ -83,22 +128,23 @@ export function useUserManagement() {
 
       console.log("Update payload:", updatePayload);
       
-      const { data, error } = await supabase.functions.invoke('admin', {
-        method: 'POST',
-        body: {
-          action: 'updateUser',
-          userData: updatePayload
+      const result = await retryOperation(async () => {
+        const { data, error } = await supabase.functions.invoke('admin', {
+          method: 'POST',
+          body: {
+            action: 'updateUser',
+            userData: updatePayload
+          }
+        });
+        
+        if (error || data?.error) {
+          throw new Error(error?.message || data?.error || 'Failed to update user');
         }
+        
+        return data;
       });
 
-      if (error || data?.error) {
-        const errorMessage = error?.message || data?.error || 'Failed to update user';
-        console.error('Error updating user:', errorMessage);
-        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user');
-        return false;
-      }
-
-      console.log("User updated successfully:", data);
+      console.log("User updated successfully:", result);
       toast.success('User updated successfully');
       notifyUserDataChange();
       return true;
@@ -108,28 +154,37 @@ export function useUserManagement() {
       return false;
     } finally {
       setIsLoading(false);
+      operationInProgressRef.current = null;
     }
   };
 
   const deleteUser = async (userId: string): Promise<boolean> => {
+    // Prevent concurrent operations
+    if (operationInProgressRef.current === 'delete') {
+      console.warn("Delete user operation already in progress");
+      return false;
+    }
+    
     try {
       setIsLoading(true);
+      operationInProgressRef.current = 'delete';
       console.log("Deleting user:", userId);
 
-      const { data, error } = await supabase.functions.invoke('admin', {
-        method: 'POST',
-        body: {
-          action: 'deleteUser',
-          userData: { id: userId }
+      const result = await retryOperation(async () => {
+        const { data, error } = await supabase.functions.invoke('admin', {
+          method: 'POST',
+          body: {
+            action: 'deleteUser',
+            userData: { id: userId }
+          }
+        });
+        
+        if (error || data?.error) {
+          throw new Error(error?.message || data?.error || 'Failed to delete user');
         }
+        
+        return data;
       });
-
-      if (error || data?.error) {
-        const errorMessage = error?.message || data?.error || 'Failed to delete user';
-        console.error('Error deleting user:', errorMessage);
-        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to delete user');
-        return false;
-      }
 
       console.log("User deleted successfully");
       toast.success('User deleted successfully');
@@ -141,6 +196,7 @@ export function useUserManagement() {
       return false;
     } finally {
       setIsLoading(false);
+      operationInProgressRef.current = null;
     }
   };
 

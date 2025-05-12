@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User } from "@/types";
 import UserManagementSection from './UserManagementSection';
 import UserListSection from './UserListSection';
@@ -32,23 +32,69 @@ const UserManagement: React.FC<UserManagementProps> = ({
   isDeletingUser: propIsDeletingUser
 }) => {
   const [selectedTab, setSelectedTab] = useState("all");
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  const refreshInProgressRef = React.useRef(false);
   
-  // Force data refresh on mount and at regular intervals
-  useEffect(() => {
-    console.log("UserManagement mounted, refreshing users data");
-    // Initial fetch
-    onRefreshUsers();
+  // Memoize refresh function to prevent recreations
+  const refreshUserData = useCallback(async () => {
+    // Prevent concurrent refreshes
+    if (refreshInProgressRef.current) {
+      console.log("User Management refresh already in progress, skipping");
+      return;
+    }
     
-    // Set up polling with shorter interval
-    const refreshInterval = setInterval(() => {
-      console.log("UserManagement automatic refresh triggered");
-      onRefreshUsers();
-    }, 5000); // Poll every 5 seconds for better reactivity
+    // Throttle refreshes to at most once every 30 seconds
+    const now = Date.now();
+    if (now - lastRefreshTime < 30000) {
+      console.log("User Management throttling refresh - too recent");
+      return;
+    }
+    
+    try {
+      console.log("UserManagement refreshing data");
+      refreshInProgressRef.current = true;
+      setLastRefreshTime(now);
+      await onRefreshUsers();
+    } catch (error) {
+      console.error("Error during users refresh:", error);
+    } finally {
+      refreshInProgressRef.current = false;
+    }
+  }, [onRefreshUsers, lastRefreshTime]);
+  
+  // Significantly reduced polling frequency - from every 5s to every 2 minutes
+  useEffect(() => {
+    // Only fetch on mount, not on every interval
+    if (!isLoadingUsers) {
+      refreshUserData();
+    }
+    
+    // Set up very infrequent polling - once every 2 minutes
+    const pollInterval = setInterval(() => {
+      refreshUserData();
+    }, 120000); // 2 minutes in ms
     
     return () => {
-      clearInterval(refreshInterval);
+      clearInterval(pollInterval);
     };
-  }, [onRefreshUsers]);
+  }, [refreshUserData, isLoadingUsers]);
+  
+  // Listen for user data change events
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'users_updated') {
+        // Add delay to prevent concurrent requests
+        setTimeout(() => {
+          refreshUserData();
+        }, 5000);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [refreshUserData]);
   
   const {
     editDialogOpen,
@@ -75,13 +121,14 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
   const handleEditUserSave = async () => {
     try {
-      // The key fix: handle success as a boolean return value
       const success = await handleEditUser(editUser.id, editUser);
       if (success) {
         setEditDialogOpen(false);
         toast.success("User updated successfully");
-        // Force refresh after edit
-        await onRefreshUsers();
+        // Force refresh after edit with delay to prevent race conditions
+        setTimeout(() => {
+          onRefreshUsers();
+        }, 2000);
       }
     } catch (error) {
       console.error("Error updating user:", error);
@@ -92,8 +139,6 @@ const UserManagement: React.FC<UserManagementProps> = ({
   // Use prop values if provided, otherwise use values from the hook
   const effectiveIsAddingUser = propIsAddingUser !== undefined ? propIsAddingUser : isAddingUser;
   const effectiveIsDeletingUser = propIsDeletingUser !== undefined ? propIsDeletingUser : isDeletingUser;
-
-  console.log("UserManagement render with users:", users);
   
   return (
     <>
@@ -109,7 +154,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
         isDeletingUser={effectiveIsDeletingUser}
         onEditUser={openEditDialog}
         onDeleteUser={handleDeleteUser}
-        onRefreshUsers={onRefreshUsers}
+        onRefreshUsers={refreshUserData}
       />
 
       <EditUserDialog

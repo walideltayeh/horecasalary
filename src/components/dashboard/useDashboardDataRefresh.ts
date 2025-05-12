@@ -14,9 +14,9 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
         return;
       }
       
-      // Reduce throttling - now only 30 seconds instead of 2 minutes
+      // Significantly increase throttling - now 2 minutes instead of 30 seconds
       const now = Date.now();
-      if (!force && now - lastRefreshTime.current < 30000) {
+      if (!force && now - lastRefreshTime.current < 120000) {
         console.log("Dashboard throttling refresh - too recent");
         return;
       }
@@ -33,39 +33,30 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
       }
     };
     
-    // Listen for important data update events with reduced throttling
+    // Listen for important data update events with increased throttling
     const handleCafeDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
-      // More relaxed criteria for critical updates - especially for additions
+      // More restrictive criteria for critical updates
       const isCriticalUpdate = 
         detail.forceRefresh === true || 
-        detail.highPriority === true ||
         detail.action === 'statusUpdate' || 
         detail.action === 'cafeAdded';
       
       if (isCriticalUpdate) {
-        // Reduce debounce delay for critical updates
+        // Set a longer debounce delay
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
         
-        // Set a shorter timer for critical updates
+        // Increase debounce timer to 3 seconds
         timerRef.current = setTimeout(() => {
           refreshWithThrottle(true);
-        }, 500);
+        }, 3000);
       }
     };
     
-    // Listen for cafe added events specifically with high priority
-    const handleCafeAdded = () => {
-      console.log("Dashboard detected cafe_added event - high priority refresh");
-      // Always treat cafe_added as high priority
-      refreshWithThrottle(true);
-    };
-    
     // Specifically listen for cafe_added events
-    window.addEventListener('cafe_added', handleCafeAdded);
     window.addEventListener('horeca_data_updated', handleCafeDataUpdated as any);
     
     return () => {
@@ -73,7 +64,6 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
         clearTimeout(timerRef.current);
       }
       window.removeEventListener('horeca_data_updated', handleCafeDataUpdated as any);
-      window.removeEventListener('cafe_added', handleCafeAdded);
     };
   }, [refreshCafes]);
 };

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminPage } from '@/hooks/admin/useAdminPage';
@@ -15,6 +15,9 @@ import { toast } from '@/components/ui/use-toast';
 const Admin: React.FC = () => {
   const { user, isAdmin, addUser: authAddUser, deleteUser, updateUser, users, fetchUsers } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  const refreshInProgressRef = React.useRef<boolean>(false);
+  
   const {
     isLoadingUsers,
     cafes,
@@ -24,13 +27,44 @@ const Admin: React.FC = () => {
     isDeletingUser
   } = useAdminPage();
 
+  // Throttled refresh function for cafe data
+  const handleRefreshCafes = useCallback(async (force = false) => {
+    // Prevent concurrent refreshes
+    if (refreshInProgressRef.current) {
+      console.log("Admin: Cafe refresh already in progress");
+      return;
+    }
+    
+    const now = Date.now();
+    // Only allow forced refreshes or time-based refreshes (2 minutes)
+    if (!force && now - lastRefreshTime < 120000) {
+      console.log("Admin: Throttling cafe refresh - too recent");
+      return;
+    }
+    
+    try {
+      console.log("Admin: Refreshing cafe data");
+      refreshInProgressRef.current = true;
+      setLastRefreshTime(now);
+      await refreshCafes();
+    } catch (error) {
+      console.error("Admin: Error refreshing cafes:", error);
+    } finally {
+      refreshInProgressRef.current = false;
+    }
+  }, [refreshCafes, lastRefreshTime]);
+
   // Explicit check for user data on component mount
   useEffect(() => {
     if (user && isAdmin) {
       console.log("Admin component mounted - forcing user data refresh");
-      // Try to force fetch users data with explicit error handling
       try {
-        fetchUsers(true);
+        // Use a timeout to avoid race conditions on component mount
+        const timer = setTimeout(() => {
+          fetchUsers(true);
+        }, 1000);
+        
+        return () => clearTimeout(timer);
       } catch (error) {
         console.error("Error fetching users on Admin mount:", error);
         toast.error("Error loading user data. Please try refreshing the page.");
@@ -41,45 +75,32 @@ const Admin: React.FC = () => {
   // Force cafe refresh on mount and whenever the active tab changes to 'cafes'
   useEffect(() => {
     if (user && isAdmin) {
-      console.log("Admin component - forcing cafe data refresh");
-      refreshCafes();
+      // Force refresh only when mounting or switching to cafes tab
+      if (activeTab === 'cafes') {
+        handleRefreshCafes(true);
+      } else if (activeTab === 'users') {
+        // Only refresh users when switching to users tab
+        fetchUsers(true).catch(err => {
+          console.error("Error fetching users when switching tabs:", err);
+        });
+      }
     }
-  }, [user, isAdmin, refreshCafes]);
+  }, [user, isAdmin, activeTab, handleRefreshCafes, fetchUsers]);
 
-  // Listen for cafe addition/update events
-  useEffect(() => {
-    const handleCafeDataUpdated = () => {
-      console.log("Admin detected cafe data update event");
-      refreshCafes();
-    };
-    
-    window.addEventListener('horeca_data_updated', handleCafeDataUpdated);
-    window.addEventListener('cafe_added', handleCafeDataUpdated);
-    
-    return () => {
-      window.removeEventListener('horeca_data_updated', handleCafeDataUpdated);
-      window.removeEventListener('cafe_added', handleCafeDataUpdated);
-    };
-  }, [refreshCafes]);
-
-  // Display debug info about authentication state
-  useEffect(() => {
-    console.log("Admin authentication state:", { 
-      user: user?.id, 
-      isAdmin, 
-      usersLoaded: users.length,
-      authenticatedAndAdmin: !!(user && isAdmin)
-    });
-  }, [user, isAdmin, users]);
-
-  // Create a wrapper function to convert Promise<boolean> to Promise<void>
+  // Create a wrapper function to handle user addition
   const addUser = async (userData: { name: string; email: string; password: string; role: 'admin' | 'user' }) => {
     try {
+      console.log("Admin: Adding user:", userData.name);
       const result = await authAddUser(userData);
+      
       if (result) {
         toast.success(`User ${userData.name} added successfully`);
-        // Force refresh users list
-        fetchUsers(true);
+        // Force refresh users list after a delay
+        setTimeout(() => {
+          fetchUsers(true);
+        }, 2000);
+      } else {
+        toast.error("Failed to add user. Please check the details and try again.");
       }
     } catch (error) {
       console.error("Error adding user:", error);
@@ -96,8 +117,8 @@ const Admin: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <AdminHeader 
-        onRefreshCafes={refreshCafes} 
-        loadingCafes={loadingCafes} 
+        onRefreshCafes={() => handleRefreshCafes(true)} 
+        loadingCafes={loadingCafes || refreshInProgressRef.current} 
       />
 
       <div className="container mx-auto py-8">

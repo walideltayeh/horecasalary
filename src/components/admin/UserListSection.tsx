@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
@@ -27,20 +27,47 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   onDeleteUser,
   onRefreshUsers
 }) => {
+  // Count user total only when the array changes
+  const userCount = useMemo(() => users.length, [users]);
+  
+  // Throttle refresh button clicks
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const lastRefreshTimeRef = React.useRef(0);
+  
+  const handleRefresh = async () => {
+    const now = Date.now();
+    // Throttle to once every 5 seconds
+    if (now - lastRefreshTimeRef.current < 5000) {
+      console.log("Refresh throttled, too recent");
+      return;
+    }
+    
+    try {
+      setIsRefreshing(true);
+      lastRefreshTimeRef.current = now;
+      await onRefreshUsers();
+    } finally {
+      // Add a minimum visual feedback time
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 800);
+    }
+  };
+  
   return (
     <Card className="mt-8">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>User List</CardTitle>
-          <CardDescription>Users registered in the system ({users.length})</CardDescription>
+          <CardDescription>Users registered in the system ({userCount})</CardDescription>
         </div>
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={onRefreshUsers}
-          disabled={isLoadingUsers}
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoadingUsers}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingUsers ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing || isLoadingUsers ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </CardHeader>
