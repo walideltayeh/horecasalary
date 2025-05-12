@@ -32,16 +32,8 @@ const KPISettings: React.FC = () => {
       updatedSettings.basicSalaryPercentage = numValue;
     }
     
-    // Automatically calculate contract targets when visit targets change (70% of visit targets)
-    if (field === 'targetVisitsLarge') {
-      updatedSettings.targetContractsLarge = Math.ceil(numValue * 0.7);
-    }
-    if (field === 'targetVisitsMedium') {
-      updatedSettings.targetContractsMedium = Math.ceil(numValue * 0.7);
-    }
-    if (field === 'targetVisitsSmall') {
-      updatedSettings.targetContractsSmall = Math.ceil(numValue * 0.7);
-    }
+    // Note: We've removed the automatic contract target calculations here
+    // Contract targets are now independently set
     
     // Update local state
     setSettings(updatedSettings);
@@ -234,7 +226,7 @@ const KPISettings: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Contract Targets</CardTitle>
-          <CardDescription>Contract targets are automatically set to 70% of visit targets (rounded up)</CardDescription>
+          <CardDescription>Set targets for contract KPIs</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
@@ -253,30 +245,33 @@ const KPISettings: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label>Large Cafe Contracts (70% of visits)</Label>
+              <Label htmlFor="targetContractsLarge">Large Cafe Contracts</Label>
               <Input
+                id="targetContractsLarge"
                 type="number"
                 value={settings.targetContractsLarge}
-                disabled
-                className="bg-gray-100"
+                onChange={(e) => handleChange('targetContractsLarge', e.target.value)}
+                className="input-with-red-outline"
               />
             </div>
             <div>
-              <Label>Medium Cafe Contracts (70% of visits)</Label>
+              <Label htmlFor="targetContractsMedium">Medium Cafe Contracts</Label>
               <Input
+                id="targetContractsMedium"
                 type="number"
                 value={settings.targetContractsMedium}
-                disabled
-                className="bg-gray-100"
+                onChange={(e) => handleChange('targetContractsMedium', e.target.value)}
+                className="input-with-red-outline"
               />
             </div>
             <div>
-              <Label>Small Cafe Contracts (70% of visits)</Label>
+              <Label htmlFor="targetContractsSmall">Small Cafe Contracts</Label>
               <Input
+                id="targetContractsSmall"
                 type="number"
                 value={settings.targetContractsSmall}
-                disabled
-                className="bg-gray-100"
+                onChange={(e) => handleChange('targetContractsSmall', e.target.value)}
+                className="input-with-red-outline"
               />
             </div>
           </div>
