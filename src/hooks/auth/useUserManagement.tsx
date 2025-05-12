@@ -17,9 +17,9 @@ export function useUserManagement() {
   };
 
   // Add retry logic for reliability
-  const retryOperation = async <T>(
+  const retryOperation = async <T,>(
     operation: () => Promise<T>, 
-    maxRetries: number = 2
+    maxRetries = 2
   ): Promise<T> => {
     let lastError: any;
     let retryCount = 0;
@@ -37,11 +37,13 @@ export function useUserManagement() {
           const delay = 1000 * Math.pow(2, retryCount - 1);
           console.log(`Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
+          // Exponential backoff
+          delay *= 2;
         }
       }
     }
     
-    throw lastError;
+    throw lastError!;
   };
 
   const addUser = async (userData: { 
