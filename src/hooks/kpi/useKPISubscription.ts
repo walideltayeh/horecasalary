@@ -16,6 +16,9 @@ interface KPIRealtimePayload {
   target_contracts_large: number;
   target_contracts_medium: number;
   target_contracts_small: number;
+  contract_target_percentage_large: number | null;
+  contract_target_percentage_medium: number | null;
+  contract_target_percentage_small: number | null;
   bonus_large_cafe: number;
   bonus_medium_cafe: number;
   bonus_small_cafe: number;
@@ -45,6 +48,9 @@ export const useKPISubscription = (setKpiSettings: React.Dispatch<React.SetState
             targetContractsLarge: newData.target_contracts_large,
             targetContractsMedium: newData.target_contracts_medium,
             targetContractsSmall: newData.target_contracts_small,
+            contractTargetPercentageLarge: newData.contract_target_percentage_large || 70,
+            contractTargetPercentageMedium: newData.contract_target_percentage_medium || 70,
+            contractTargetPercentageSmall: newData.contract_target_percentage_small || 70,
             bonusLargeCafe: newData.bonus_large_cafe,
             bonusMediumCafe: newData.bonus_medium_cafe,
             bonusSmallCafe: newData.bonus_small_cafe,
