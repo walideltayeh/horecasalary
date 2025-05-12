@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,12 +32,10 @@ export function useUserManagement() {
         retryCount++;
         
         if (retryCount <= maxRetries) {
-          // Exponential backoff
+          // Calculate delay using exponential backoff
           const delay = 1000 * Math.pow(2, retryCount - 1);
           console.log(`Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
-          // Exponential backoff
-          delay *= 2;
         }
       }
     }
