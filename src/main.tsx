@@ -1,19 +1,19 @@
 
 import { createRoot } from 'react-dom/client'
 import { StrictMode, Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
+import ErrorBoundary from './components/common/ErrorBoundary'
 import App from './App.tsx'
 import './index.css'
 
 // Error fallback component
-const ErrorFallback = ({ error, resetErrorBoundary }) => {
+const ErrorFallback = ({ error }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
         <h2 className="text-red-500 text-xl font-bold mb-4">Something went wrong</h2>
         <p className="text-gray-700 mb-4">{error.message}</p>
         <button
-          onClick={resetErrorBoundary}
+          onClick={() => window.location.reload()}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
         >
           Try again
@@ -35,7 +35,7 @@ const LoadingFallback = () => (
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <ErrorBoundary fallback={<ErrorFallback error={{ message: "An unexpected error occurred" }} />}>
       <Suspense fallback={<LoadingFallback />}>
         <App />
       </Suspense>

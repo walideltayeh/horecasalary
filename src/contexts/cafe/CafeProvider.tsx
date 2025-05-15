@@ -3,7 +3,7 @@ import React from 'react';
 import { getCafeSize } from '@/utils/cafeUtils';
 import { useCafeState } from './useCafeState';
 import { useCafeEvents, useCafeDeletionEvents } from './CafeEvents';
-import { CafeContext } from './useCafeContext';
+import { useCafeContext } from './useCafeContext';
 
 export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { 
@@ -29,6 +29,8 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLastRefreshTime, 
     lastRefreshTime 
   });
+
+  const CafeContext = useCafeContext();
 
   return (
     <CafeContext.Provider
