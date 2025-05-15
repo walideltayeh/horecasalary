@@ -35,9 +35,6 @@ export const useCafeEvents = ({
         }
       }));
       
-      // Also dispatch stats updated event to ensure all components refresh
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
-      
       console.log("Manual refresh completed successfully");
     } catch (error) {
       console.error("Error during manual refresh:", error);
@@ -61,9 +58,6 @@ export const useCafeDeletionEvents = ({
     // Force refresh data after a short delay
     setTimeout(() => {
       fetchCafes(true);
-      
-      // Also dispatch stats updated event
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
     }, 300);
   }, [fetchCafes]);
   

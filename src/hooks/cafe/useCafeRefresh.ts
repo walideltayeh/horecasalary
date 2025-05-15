@@ -7,31 +7,25 @@ export const useCafeRefresh = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { refreshCafes } = useData();
   const lastRefreshTimeRef = useRef<number>(0);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleRefresh = async () => {
     // Prevent multiple refreshes
-    if (refreshing) return; 
-    
-    // Add throttling - only refresh once every 5 seconds
-    const now = Date.now();
-    if (now - lastRefreshTimeRef.current < 5000) {
-      console.log("Throttling refresh request - too soon since last refresh");
+    if (refreshing) {
+      console.log("Refresh already in progress, skipping");
       return;
-    }
-    
-    // Cancel any pending refresh
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
     }
     
     try {
       setRefreshing(true);
-      lastRefreshTimeRef.current = now;
+      lastRefreshTimeRef.current = Date.now();
       console.log("Refreshing cafe data from server...");
       
-      await refreshCafes();
+      // Always use force=true for manual refreshes
+      await refreshCafes(true);
       console.log("Data refreshed successfully");
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('cafe_data_force_refresh'));
     } catch (error) {
       console.error("Error during refresh:", error);
       toast.error("Failed to refresh data");

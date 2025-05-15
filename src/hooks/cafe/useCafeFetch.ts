@@ -16,13 +16,8 @@ export const useCafeFetch = (
   const fetchingRef = useRef<boolean>(false);
   const lastFetchTimeRef = useRef<number>(0);
   const isAdminRef = useRef<boolean>(false);
-  const dataFreshUntilRef = useRef<number>(0);
   const fetchAttemptCount = useRef<number>(0);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const cafeCache = useRef<{data: Cafe[] | null, timestamp: number}>({
-    data: null,
-    timestamp: 0
-  });
 
   // Update admin status when user changes
   if (user) {
@@ -32,17 +27,12 @@ export const useCafeFetch = (
   }
 
   const fetchCafes = useCallback(async (force = false) => {
-    // Cache data for 15 seconds unless force=true
+    // Debug logging to track fetches
+    console.log("fetchCafes called with force =", force);
+    
+    // Debounce frequent fetch requests (within 1 second) unless forced
     const now = Date.now();
-    const CACHE_TIME = 15000; // 15 seconds
-    
-    if (!force && now < dataFreshUntilRef.current && cafeCache.current.data) {
-      console.log("Using cached cafe data - refresh not needed");
-      return;
-    }
-    
-    // Debounce frequent fetch requests (within 3 seconds)
-    if (!force && now - lastFetchTimeRef.current < 3000) {
+    if (!force && now - lastFetchTimeRef.current < 1000) {
       console.log("Fetch request debounced - too recent");
       return;
     }
@@ -62,6 +52,7 @@ export const useCafeFetch = (
     }
     
     try {
+      console.log("Starting fetch operation...");
       fetchingRef.current = true;
       setLoading(true);
       lastFetchTimeRef.current = now;
@@ -90,7 +81,7 @@ export const useCafeFetch = (
         throw error;
       }
       
-      console.log("Cafes fetched:", data?.length || 0);
+      console.log("Cafes fetched successfully:", data?.length || 0);
       
       if (data) {
         const mappedCafes = data.map(cafe => ({
@@ -112,16 +103,7 @@ export const useCafeFetch = (
         
         console.log("Mapped cafes:", mappedCafes.length, "isAdmin:", isAdminRef.current);
         
-        // Update cache with fresh data
-        cafeCache.current = {
-          data: mappedCafes,
-          timestamp: now
-        };
-        
         setCafes(mappedCafes);
-        
-        // Set the time until which data is considered fresh
-        dataFreshUntilRef.current = now + CACHE_TIME;
       }
     } catch (err: any) {
       // Only handle errors that aren't from aborting the request
@@ -134,6 +116,7 @@ export const useCafeFetch = (
         }
       }
     } finally {
+      console.log("Fetch operation completed");
       setLoading(false);
       fetchingRef.current = false;
       abortControllerRef.current = null;

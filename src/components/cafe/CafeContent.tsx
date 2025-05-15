@@ -18,32 +18,32 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
   const { t } = useLanguage();
   const [formKey, setFormKey] = useState<number>(0); // Add a key to force re-render
 
-  // Force initial data refresh on mount
+  // Force immediate data refresh on mount
   useEffect(() => {
     console.log("CafeContent - Initial data refresh");
-    refreshCafes(true).catch(err => console.error("Error refreshing cafe data:", err));
+    refreshCafes(true);
     
-    // Also listen for stats update events
-    const handleStatsUpdated = () => {
-      console.log("CafeContent - Stats updated event received");
-      refreshCafes(true).catch(err => console.error("Error refreshing after stats update:", err));
+    // Listen for data update events that should trigger a refresh
+    const handleDataUpdate = () => {
+      console.log("CafeContent - Data update event received, refreshing");
+      refreshCafes(true);
     };
     
     // Listen for cafe added event
     const handleCafeAdded = () => {
       console.log("Cafe added, forcing form reset");
       setFormKey(prev => prev + 1); // Increment key to force form re-render
-      refreshCafes(true).catch(err => console.error("Error refreshing after cafe added:", err));
+      refreshCafes(true);
     };
     
-    window.addEventListener('cafe_stats_updated', handleStatsUpdated);
+    window.addEventListener('cafe_stats_updated', handleDataUpdate);
     window.addEventListener('cafe_added', handleCafeAdded);
-    window.addEventListener('cafe_data_force_refresh', () => refreshCafes(true));
+    window.addEventListener('cafe_data_force_refresh', handleDataUpdate);
     
     return () => {
-      window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
+      window.removeEventListener('cafe_stats_updated', handleDataUpdate);
       window.removeEventListener('cafe_added', handleCafeAdded);
-      window.removeEventListener('cafe_data_force_refresh', () => refreshCafes(true));
+      window.removeEventListener('cafe_data_force_refresh', handleDataUpdate);
     };
   }, [refreshCafes]);
   
@@ -51,16 +51,12 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
     onSurveyComplete();
     
     // Force a refresh after survey completion
-    const event = new CustomEvent('horeca_data_updated', { 
-      detail: { action: 'cafeCreated', forceRefresh: true }
-    });
-    window.dispatchEvent(event);
+    console.log("Survey completed - triggering refresh");
+    refreshCafes(true);
     
-    // Also trigger a stats update
+    // Dispatch events to ensure all components update
+    window.dispatchEvent(new CustomEvent('cafe_added'));
     window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
-    
-    // Force a refresh
-    refreshCafes(true).catch(err => console.error("Error refreshing after survey completion:", err));
   };
 
   return (

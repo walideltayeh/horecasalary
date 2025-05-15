@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,65 +27,37 @@ const Dashboard: React.FC = () => {
   
   const { user, users, isAdmin } = useAuth();
   const [selectedTab, setSelectedTab] = useState<string>(user?.id || 'summary');
-  const [initialRefreshDone, setInitialRefreshDone] = useState(false);
   
-  // Use the custom hook for data refresh with reduced frequency
-  useDashboardDataRefresh({ refreshCafes });
-  
-  // Perform just one refresh on mount instead of multiple
+  // Critical: Force refresh on mount to ensure data is loaded
   useEffect(() => {
-    if (initialRefreshDone) {
-      return; // Skip if already refreshed
-    }
-
-    const initialRefresh = async () => {
-      console.log("Dashboard - Performing single initial refresh");
-      setInitialRefreshDone(true);
-      await refreshCafes();
-      
-      // Dispatch stats event to update all UI components
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
+    console.log("Dashboard - Performing initial data refresh");
+    // Force refresh with no debouncing
+    refreshCafes(true).catch(err => console.error("Dashboard refresh error:", err));
+    
+    // Also listen for data update events
+    const handleDataUpdate = () => {
+      console.log("Dashboard - Data update event received");
+      refreshCafes(true).catch(err => console.error("Dashboard refresh error:", err));
     };
     
-    initialRefresh();
-    
-    // Listen for stats update events with reduced frequency
-    const lastRefreshTime = Date.now();
-    let throttleTimer: NodeJS.Timeout | null = null;
-    
-    const handleStatsUpdated = () => {
-      // Throttle stat updates substantially
-      const now = Date.now();
-      if (now - lastRefreshTime < 20000) { // 20 seconds throttle
-        return;
-      }
-      
-      // Debounce updates
-      if (throttleTimer) {
-        clearTimeout(throttleTimer);
-      }
-      
-      throttleTimer = setTimeout(() => {
-        console.log("Dashboard - Stats updated event received");
-        refreshCafes();
-      }, 500);
-    };
-    
-    window.addEventListener('cafe_stats_updated', handleStatsUpdated);
+    window.addEventListener('cafe_data_force_refresh', handleDataUpdate);
+    window.addEventListener('cafe_added', handleDataUpdate);
     
     return () => {
-      window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
-      if (throttleTimer) {
-        clearTimeout(throttleTimer);
-      }
+      window.removeEventListener('cafe_data_force_refresh', handleDataUpdate);
+      window.removeEventListener('cafe_added', handleDataUpdate);
     };
-  }, [refreshCafes, initialRefreshDone]);
+  }, [refreshCafes]);
+  
+  // Use the custom hook for periodic data refresh
+  useDashboardDataRefresh({ refreshCafes });
   
   // Calculate stats with immediate rendering
   const visitCounts = getVisitCounts();
   const contractCounts = getContractCounts();
   const salaryStats = calculateSalary();
   
+  console.log("Dashboard render - cafes count:", cafes.length);
   console.log("Dashboard render - Visit counts:", visitCounts);
   console.log("Dashboard render - Contract counts:", contractCounts);
   

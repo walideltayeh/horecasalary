@@ -8,7 +8,7 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: (force
   
   useEffect(() => {
     // Force an initial refresh when the dashboard mounts
-    console.log("Dashboard mounted - triggering initial refresh");
+    console.log("Dashboard hook mounted - triggering initial refresh");
     refreshCafes(true).catch(err => console.error("Initial dashboard refresh failed:", err));
     
     const refreshWithThrottle = async (force = false) => {
@@ -20,7 +20,7 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: (force
       
       // Apply throttling for non-forced refreshes
       const now = Date.now();
-      if (!force && now - lastRefreshTime.current < 60000) { // 1 minute throttle
+      if (!force && now - lastRefreshTime.current < 30000) { // 30 second throttle for regular updates
         console.log("Dashboard throttling refresh - too recent");
         return;
       }
@@ -37,49 +37,40 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: (force
       }
     };
     
-    // Listen for important data update events with throttling
-    const handleCafeDataUpdated = (event: CustomEvent) => {
-      const detail = event.detail || {};
+    // Listen for data update events with throttling
+    const handleDataUpdated = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
       
       // Check for critical updates that should bypass throttling
       const isCriticalUpdate = 
         detail.forceRefresh === true || 
         detail.action === 'statusUpdate' || 
-        detail.action === 'cafeAdded';
+        detail.action === 'cafeAdded' ||
+        detail.action === 'cafeDeleted';
       
-      if (isCriticalUpdate) {
-        // Clear any existing debounce timer
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-        
-        // Set a short debounce timer to prevent rapid-fire updates
-        timerRef.current = setTimeout(() => {
-          console.log("Critical data update detected - refreshing dashboard");
-          refreshWithThrottle(true);
-        }, 1000);
-      } else {
-        // For non-critical updates, use a longer debounce and respect throttling
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-        
-        timerRef.current = setTimeout(() => {
-          refreshWithThrottle(false);
-        }, 2000);
+      // Clear any existing debounce timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
       }
+      
+      // Set debounce timer
+      timerRef.current = setTimeout(() => {
+        refreshWithThrottle(isCriticalUpdate);
+      }, isCriticalUpdate ? 500 : 2000);
     };
     
-    // Register event listeners
-    window.addEventListener('horeca_data_updated', handleCafeDataUpdated as any);
-    window.addEventListener('cafe_stats_updated', () => refreshWithThrottle(true));
+    // Register event listeners for various data change events
+    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    window.addEventListener('cafe_data_force_refresh', () => refreshWithThrottle(true));
     window.addEventListener('cafe_added', () => refreshWithThrottle(true));
+    window.addEventListener('cafe_deleted', () => refreshWithThrottle(true));
     
     return () => {
       // Clean up event listeners and timers
-      window.removeEventListener('horeca_data_updated', handleCafeDataUpdated as any);
-      window.removeEventListener('cafe_stats_updated', () => refreshWithThrottle(true));
+      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+      window.removeEventListener('cafe_data_force_refresh', () => refreshWithThrottle(true));
       window.removeEventListener('cafe_added', () => refreshWithThrottle(true));
+      window.removeEventListener('cafe_deleted', () => refreshWithThrottle(true));
       
       if (timerRef.current) {
         clearTimeout(timerRef.current);

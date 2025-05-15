@@ -1,12 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { Cafe } from '@/types';
 import { useCafeRefresh } from './useCafeRefresh';
 import { useCafeEdit } from './useCafeEdit';
 import { useCafeStatusUpdate } from './useCafeStatusUpdate';
 import { useCafeDelete } from './useCafeDelete';
-import { useEventListeners } from './useEventListeners';
 
 export const useCafeListState = (filterByUser?: string, adminView = false) => {
   const { cafes, getCafeSize, loading, refreshCafes, deleteCafe } = useData();
@@ -23,17 +22,38 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
   const { handleUpdateStatus } = useCafeStatusUpdate(setLocalCafes, cafes);
   
   // Use extracted hook for delete functionality
-  // Pass in the deleteCafe and refreshCafes functions from context to avoid circular dependencies
   const { deleteInProgress, cafeToDelete, openDeleteConfirmation, closeDeleteConfirmation, handleDelete } = 
     useCafeDelete(deleteCafe, refreshCafes);
   
-  // Set up event listeners and pass handleRefresh to enable auto-refreshing on events
-  useEventListeners(setLocalCafes, refreshing, deleteInProgress, handleRefresh);
+  // Memoized refresh handler that forces data refresh
+  const memoizedRefresh = useCallback(async () => {
+    console.log("useCafeListState - forcing refresh");
+    await refreshCafes(true);
+  }, [refreshCafes]);
+  
+  // Set up event listeners for data refresh
+  useEffect(() => {
+    const handleDataUpdated = () => {
+      console.log("CafeList detected data update event - refreshing");
+      memoizedRefresh();
+    };
+    
+    window.addEventListener('cafe_data_force_refresh', handleDataUpdated);
+    window.addEventListener('cafe_added', handleDataUpdated);
+    window.addEventListener('cafe_deleted', handleDataUpdated);
+    
+    // Clean up listeners on unmount
+    return () => {
+      window.removeEventListener('cafe_data_force_refresh', handleDataUpdated);
+      window.removeEventListener('cafe_added', handleDataUpdated);
+      window.removeEventListener('cafe_deleted', handleDataUpdated);
+    };
+  }, [memoizedRefresh]);
   
   // Update local cafes when the main cafes state changes
   useEffect(() => {
     setLocalCafes(cafes);
-    console.log("CafeList render - all cafes:", cafes);
+    console.log("CafeList - cafes updated:", cafes.length);
     if (filterByUser) {
       console.log("Filtering cafes by user ID:", filterByUser);
     }
@@ -45,6 +65,7 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
     if (!adminView && filterByUser) {
       result = localCafes.filter(cafe => cafe.createdBy === filterByUser);
     }
+    console.log("Setting filtered cafes:", result.length, "from total:", localCafes.length);
     setFilteredCafes(result);
   }, [localCafes, adminView, filterByUser]);
 
@@ -59,7 +80,7 @@ export const useCafeListState = (filterByUser?: string, adminView = false) => {
     getCafeSize,
     handleEdit,
     handleUpdateStatus,
-    handleRefresh,
+    handleRefresh: memoizedRefresh, // Use the memoized function that forces refresh
     openDeleteConfirmation,
     closeDeleteConfirmation,
     handleDelete,

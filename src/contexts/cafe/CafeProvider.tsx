@@ -25,19 +25,20 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastRefreshTime 
   });
 
+  // Create the context value with all required properties
+  const contextValue = {
+    cafes,
+    addCafe,
+    updateCafe,
+    updateCafeStatus,
+    getCafeSize,
+    deleteCafe,
+    loading,
+    refreshCafes
+  };
+
   return (
-    <CafeContext.Provider
-      value={{
-        cafes,
-        addCafe,
-        updateCafe,
-        updateCafeStatus,
-        getCafeSize,
-        deleteCafe,
-        loading,
-        refreshCafes
-      }}
-    >
+    <CafeContext.Provider value={contextValue}>
       {children}
     </CafeContext.Provider>
   );

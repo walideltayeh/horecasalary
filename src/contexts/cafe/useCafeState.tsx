@@ -76,36 +76,28 @@ export const useCafeState = () => {
     }
   }, [memoizedFetchCafes, deleteViaEdgeFunction, clientSideDeletion]);
   
-  // Add refresh on mount with staggered loading to prevent simultaneous requests
+  // Fetch data on mount - CRITICAL to ensure data loads initially
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      
-      // Force immediate data fetch to ensure data is available
-      console.log("Initial mount - forcing immediate data fetch");
-      memoizedFetchCafes(true);
-    }
+    // Always force immediate data fetch when component mounts
+    console.log("useCafeState mounted - forcing immediate data fetch");
+    memoizedFetchCafes(true);
     
-    // Listen for deletion events
-    const handleDeletion = () => {
-      console.log("Deletion event detected, refreshing cafes");
-      // Slight delay to allow server processing
-      setTimeout(() => memoizedFetchCafes(true), 800); 
-    };
-    
-    const handleDataRefresh = () => {
-      console.log("Manual data refresh requested");
+    // Listen for critical events
+    const handleCriticalEvent = () => {
+      console.log("Critical event detected - refreshing cafes");
       memoizedFetchCafes(true);
     };
     
-    window.addEventListener('cafe_deleted', handleDeletion);
-    window.addEventListener('cafe_data_force_refresh', handleDataRefresh);
-    window.addEventListener('horeca_data_updated', handleDataRefresh);
+    window.addEventListener('cafe_deleted', handleCriticalEvent);
+    window.addEventListener('cafe_data_force_refresh', handleCriticalEvent);
+    window.addEventListener('cafe_added', handleCriticalEvent);
+    window.addEventListener('horeca_data_updated', handleCriticalEvent);
     
     return () => {
-      window.removeEventListener('cafe_deleted', handleDeletion);
-      window.removeEventListener('cafe_data_force_refresh', handleDataRefresh);
-      window.removeEventListener('horeca_data_updated', handleDataRefresh);
+      window.removeEventListener('cafe_deleted', handleCriticalEvent);
+      window.removeEventListener('cafe_data_force_refresh', handleCriticalEvent);
+      window.removeEventListener('cafe_added', handleCriticalEvent);
+      window.removeEventListener('horeca_data_updated', handleCriticalEvent);
     };
   }, [memoizedFetchCafes]);
   
