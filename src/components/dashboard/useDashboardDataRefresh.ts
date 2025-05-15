@@ -1,16 +1,12 @@
 
 import { useEffect, useRef } from 'react';
 
-export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: (force?: boolean) => Promise<void> }) => {
+export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => Promise<void> }) => {
   const lastRefreshTime = useRef(Date.now());
   const refreshInProgressRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
-    // Force an initial refresh when the dashboard mounts
-    console.log("Dashboard hook mounted - triggering initial refresh");
-    refreshCafes(true).catch(err => console.error("Initial dashboard refresh failed:", err));
-    
     const refreshWithThrottle = async (force = false) => {
       // Prevent concurrent refreshes
       if (refreshInProgressRef.current) {
@@ -18,9 +14,9 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: (force
         return;
       }
       
-      // Apply throttling for non-forced refreshes
+      // Significantly increase throttling - now 2 minutes instead of 30 seconds
       const now = Date.now();
-      if (!force && now - lastRefreshTime.current < 30000) { // 30 second throttle for regular updates
+      if (!force && now - lastRefreshTime.current < 120000) {
         console.log("Dashboard throttling refresh - too recent");
         return;
       }
@@ -28,7 +24,7 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: (force
       try {
         refreshInProgressRef.current = true;
         lastRefreshTime.current = now;
-        await refreshCafes(force);
+        await refreshCafes();
         console.log("Dashboard data refreshed at", new Date(now).toLocaleTimeString());
       } catch (error) {
         console.error("Error refreshing dashboard data:", error);
@@ -37,44 +33,37 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: (force
       }
     };
     
-    // Listen for data update events with throttling
-    const handleDataUpdated = (event: Event) => {
-      const detail = (event as CustomEvent).detail || {};
+    // Listen for important data update events with increased throttling
+    const handleCafeDataUpdated = (event: CustomEvent) => {
+      const detail = event.detail || {};
       
-      // Check for critical updates that should bypass throttling
+      // More restrictive criteria for critical updates
       const isCriticalUpdate = 
         detail.forceRefresh === true || 
         detail.action === 'statusUpdate' || 
-        detail.action === 'cafeAdded' ||
-        detail.action === 'cafeDeleted';
+        detail.action === 'cafeAdded';
       
-      // Clear any existing debounce timer
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
+      if (isCriticalUpdate) {
+        // Set a longer debounce delay
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+        
+        // Increase debounce timer to 3 seconds
+        timerRef.current = setTimeout(() => {
+          refreshWithThrottle(true);
+        }, 3000);
       }
-      
-      // Set debounce timer
-      timerRef.current = setTimeout(() => {
-        refreshWithThrottle(isCriticalUpdate);
-      }, isCriticalUpdate ? 500 : 2000);
     };
     
-    // Register event listeners for various data change events
-    window.addEventListener('horeca_data_updated', handleDataUpdated);
-    window.addEventListener('cafe_data_force_refresh', () => refreshWithThrottle(true));
-    window.addEventListener('cafe_added', () => refreshWithThrottle(true));
-    window.addEventListener('cafe_deleted', () => refreshWithThrottle(true));
+    // Specifically listen for cafe_added events
+    window.addEventListener('horeca_data_updated', handleCafeDataUpdated as any);
     
     return () => {
-      // Clean up event listeners and timers
-      window.removeEventListener('horeca_data_updated', handleDataUpdated);
-      window.removeEventListener('cafe_data_force_refresh', () => refreshWithThrottle(true));
-      window.removeEventListener('cafe_added', () => refreshWithThrottle(true));
-      window.removeEventListener('cafe_deleted', () => refreshWithThrottle(true));
-      
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
+      window.removeEventListener('horeca_data_updated', handleCafeDataUpdated as any);
     };
   }, [refreshCafes]);
 };

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from '@/contexts/DataContext';
 import CafeList from './CafeList';
@@ -23,25 +23,55 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   } = useData();
   const { t } = useLanguage();
   
-  // Force immediate data refresh on component mount
+  // Store last refresh time to prevent excessive refreshes
+  const lastRefreshTime = useRef(Date.now());
+  
+  // Add effect to refresh data only once when the component mounts
   useEffect(() => {
-    console.log("UserDashboard - Initial data refresh for user:", userName);
-    refreshCafes(true);
-    
-    // Listen for critical updates that require immediate refresh
-    const handleCriticalUpdate = () => {
-      console.log("UserDashboard - Critical update detected, refreshing data");
-      refreshCafes(true);
+    const refreshData = async () => {
+      console.log("UserDashboard - Initial data refresh");
+      await refreshCafes();
     };
     
-    window.addEventListener('cafe_data_force_refresh', handleCriticalUpdate);
-    window.addEventListener('cafe_added', handleCriticalUpdate);
-    window.addEventListener('cafe_deleted', handleCriticalUpdate);
+    refreshData();
     
+    // Listen for stats update events for immediate refresh
+    const handleStatsUpdated = () => {
+      const now = Date.now();
+      if (now - lastRefreshTime.current < 5000) {
+        return; // Throttle updates
+      }
+      
+      lastRefreshTime.current = now;
+      console.log("UserDashboard - Refreshing due to stats update");
+      refreshCafes();
+    };
+    
+    // Only listen for critical updates
+    const handleDataUpdated = (e: CustomEvent) => {
+      const detail = e.detail || {};
+      // Only refresh for specific critical events
+      if (detail.action === 'statusUpdate' || 
+          detail.action === 'cafeCreated' || 
+          detail.action === 'cafeDeleted') {
+            
+        // Add throttling
+        const now = Date.now();
+        if (now - lastRefreshTime.current < 5000) {
+          return;
+        }
+            
+        lastRefreshTime.current = now;
+        console.log("UserDashboard - Refreshing due to data update:", detail.action);
+        refreshCafes();
+      }
+    };
+    
+    window.addEventListener('cafe_stats_updated', handleStatsUpdated);
+    window.addEventListener('horeca_data_updated', handleDataUpdated as any);
     return () => {
-      window.removeEventListener('cafe_data_force_refresh', handleCriticalUpdate);
-      window.removeEventListener('cafe_added', handleCriticalUpdate);
-      window.removeEventListener('cafe_deleted', handleCriticalUpdate);
+      window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
+      window.removeEventListener('horeca_data_updated', handleDataUpdated as any);
     };
   }, [refreshCafes, userName]);
   
@@ -50,10 +80,8 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId, userName }) => {
   const contractCounts = getUserContractCounts(userId);
   const userCafes = cafes.filter(cafe => cafe.createdBy === userId);
   
-  console.log("UserDashboard render for:", userName);
-  console.log("- User has cafes:", userCafes.length);
-  console.log("- Visit counts:", visitCounts);
-  console.log("- Contract counts:", contractCounts);
+  console.log("UserDashboard render - Visit counts:", visitCounts);
+  console.log("UserDashboard render - Contract counts:", contractCounts);
   
   return (
     <div className="space-y-6">

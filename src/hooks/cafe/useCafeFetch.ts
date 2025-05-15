@@ -3,22 +3,21 @@ import { useCallback, useRef } from 'react';
 import { Cafe } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { withSupabaseRetry, isNetworkError, isOnline } from '@/utils/networkUtils';
 
 /**
  * Hook that provides functionality to fetch cafe data from the database
- * with optimized networking, caching, and error handling
+ * with optimized networking and caching
  */
 export const useCafeFetch = (
   user: any | null,
-  setCafes: (cafes: Cafe[]) => void,
+  setCafes: React.Dispatch<React.SetStateAction<Cafe[]>>,
   setLoading: (loading: boolean) => void
 ) => {
   const fetchingRef = useRef<boolean>(false);
   const lastFetchTimeRef = useRef<number>(0);
   const isAdminRef = useRef<boolean>(false);
+  const dataFreshUntilRef = useRef<number>(0);
   const fetchAttemptCount = useRef<number>(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Update admin status when user changes
   if (user) {
@@ -28,30 +27,20 @@ export const useCafeFetch = (
   }
 
   const fetchCafes = useCallback(async (force = false) => {
-    // Debug logging to track fetches
-    console.log("fetchCafes called with force =", force);
+    // Cache data for 15 seconds unless force=true
+    const now = Date.now();
+    const CACHE_TIME = 15000; // 15 seconds
     
-    // Check if we're online before attempting to fetch
-    if (!isOnline()) {
-      console.log("Device is offline, cannot fetch data");
-      toast.error("You appear to be offline. Please check your internet connection.");
+    if (!force && now < dataFreshUntilRef.current) {
+      console.log("Using cached cafe data - refresh not needed");
       return;
     }
     
-    // Debounce frequent fetch requests (within 1 second) unless forced
-    const now = Date.now();
-    if (!force && now - lastFetchTimeRef.current < 1000) {
+    // Debounce frequent fetch requests (within 5 seconds)
+    if (!force && now - lastFetchTimeRef.current < 5000) {
       console.log("Fetch request debounced - too recent");
       return;
     }
-    
-    // Cancel any in-flight request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Create new abort controller for this request
-    abortControllerRef.current = new AbortController();
     
     // Prevent concurrent fetches
     if (fetchingRef.current) {
@@ -60,7 +49,6 @@ export const useCafeFetch = (
     }
     
     try {
-      console.log("Starting fetch operation...");
       fetchingRef.current = true;
       setLoading(true);
       lastFetchTimeRef.current = now;
@@ -81,42 +69,18 @@ export const useCafeFetch = (
         `)
         .order('created_at', { ascending: false });
         
-      // Use our retry mechanism
-      // Fix the typing issue by explicitly casting the Promise
-      const queryPromise = query as unknown as Promise<{ data: any; error: any }>;
-      const { data, error } = await withSupabaseRetry(
-        () => queryPromise,
-        {
-          maxRetries: 5,
-          initialDelay: 1000,
-          maxDelay: 15000,
-          onRetry: (attempt, err) => {
-            console.log(`Retrying cafe fetch (attempt ${attempt}) after error:`, err);
-            if (attempt === 1) {
-              toast.info("Network issue detected. Retrying...", { id: "network-retry" });
-            }
-          }
-        }
-      );
+      const { data, error } = await query;
         
       if (error) {
         console.error("Error fetching cafes:", error);
-        
-        if (isNetworkError(error)) {
-          toast.error("Network connectivity issue. Please check your internet connection.", { 
-            id: "network-error",
-            duration: 10000
-          });
-        } else {
-          toast.error(`Failed to fetch cafes: ${error.message}`);
-        }
+        toast.error(`Failed to fetch cafes: ${error.message}`);
         throw error;
       }
       
-      console.log("Cafes fetched successfully:", data ? data.length : 0);
+      console.log("Cafes fetched:", data?.length || 0);
       
       if (data) {
-        const mappedCafes = data.map((cafe: any) => ({
+        const mappedCafes = data.map(cafe => ({
           id: cafe.id,
           name: cafe.name,
           ownerName: cafe.owner_name,
@@ -134,24 +98,21 @@ export const useCafeFetch = (
         }));
         
         console.log("Mapped cafes:", mappedCafes.length, "isAdmin:", isAdminRef.current);
-        
         setCafes(mappedCafes);
+        
+        // Set the time until which data is considered fresh
+        dataFreshUntilRef.current = now + CACHE_TIME;
       }
     } catch (err: any) {
-      // Only handle errors that aren't from aborting the request
-      if (err.name !== 'AbortError') {
-        console.error('Error fetching cafes:', err);
-        
-        // Only show toast errors on first few attempts to avoid spamming
-        if (fetchAttemptCount.current <= 2) {
-          toast.error(err.message || 'Failed to fetch cafes');
-        }
+      console.error('Error fetching cafes:', err);
+      
+      // Only show toast errors on first few attempts to avoid spamming
+      if (fetchAttemptCount.current <= 3) {
+        toast.error(err.message || 'Failed to fetch cafes');
       }
     } finally {
-      console.log("Fetch operation completed");
       setLoading(false);
       fetchingRef.current = false;
-      abortControllerRef.current = null;
     }
   }, [setCafes, setLoading, user?.id]);
 

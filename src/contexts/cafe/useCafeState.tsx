@@ -1,30 +1,27 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeSubscription } from '@/hooks/useCafeSubscription';
 import { useCafeDataManager } from './hooks/useCafeDataManager';
 import { useClientSideDelete } from '@/hooks/cafe/deletion/useClientSideDelete';
 import { useEdgeFunctionDelete } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const useCafeState = () => {
   const { user } = useAuth();
-  const [lastRefreshTime, setLastRefreshTime] = useState<number>(Date.now());
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const pendingDeletions = useRef<Set<string>>(new Set());
-  const isInitialMount = useRef<boolean>(true);
   
   // Use the modified hooks without the deleteCafe dependency
   const { loading, setLoading, addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
   
   // Use a separate hook for managing cafe data
-  const { cafes, setCafes } = useCafeDataManager();
+  const { cafes, setCafes, pendingDeletions: dataPendingDeletions } = useCafeDataManager();
   
-  // Import the fetchCafes from useCafeSubscription with memoization
+  // Import the fetchCafes from useCafeSubscription
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
-  
-  // Memoize fetchCafes to prevent unnecessary hook recreations
-  const memoizedFetchCafes = useCallback(fetchCafes, [fetchCafes]);
   
   // Get client-side deletion functionality
   const { clientSideDeletion } = useClientSideDelete();
@@ -33,7 +30,7 @@ export const useCafeState = () => {
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
   
   // Implement a proper deleteCafe function that uses the edge function with a fallback
-  const deleteCafe = useCallback(async (cafeId: string): Promise<boolean> => {
+  const deleteCafe = async (cafeId: string): Promise<boolean> => {
     console.log("Delete cafe called for:", cafeId);
     
     try {
@@ -43,8 +40,8 @@ export const useCafeState = () => {
       
       if (result) {
         console.log("DELETION: Edge function deletion successful");
-        // Always refresh cafes after deletion - with a delay to allow server processing
-        setTimeout(() => memoizedFetchCafes(true), 500);
+        // Always refresh cafes after deletion
+        setTimeout(() => fetchCafes(true), 500);
         return true;
       }
       
@@ -59,7 +56,7 @@ export const useCafeState = () => {
       const clientResult = await clientSideDeletion(cafeId);
       
       // Always refresh cafes after deletion attempt
-      setTimeout(() => memoizedFetchCafes(true), 500);
+      setTimeout(() => fetchCafes(true), 500);
       
       return clientResult;
     } catch (err: any) {
@@ -70,42 +67,33 @@ export const useCafeState = () => {
       });
       
       // Always refresh cafes to ensure UI is up to date
-      setTimeout(() => memoizedFetchCafes(true), 500);
+      setTimeout(() => fetchCafes(true), 500);
       
       return false;
     }
-  }, [memoizedFetchCafes, deleteViaEdgeFunction, clientSideDeletion]);
+  };
   
-  // Fetch data on mount - CRITICAL to ensure data loads initially
+  // Add refresh on mount
   useEffect(() => {
-    // Always force immediate data fetch when component mounts
-    console.log("useCafeState mounted - forcing immediate data fetch");
-    memoizedFetchCafes(true);
-    
-    // Listen for critical events
-    const handleCriticalEvent = () => {
-      console.log("Critical event detected - refreshing cafes");
-      memoizedFetchCafes(true);
+    fetchCafes(true);
+    // Listen for deletion events
+    const handleDeletion = () => {
+      console.log("Deletion event detected, refreshing cafes");
+      fetchCafes(true);
     };
     
-    window.addEventListener('cafe_deleted', handleCriticalEvent);
-    window.addEventListener('cafe_data_force_refresh', handleCriticalEvent);
-    window.addEventListener('cafe_added', handleCriticalEvent);
-    window.addEventListener('horeca_data_updated', handleCriticalEvent);
+    window.addEventListener('cafe_deleted', handleDeletion);
     
     return () => {
-      window.removeEventListener('cafe_deleted', handleCriticalEvent);
-      window.removeEventListener('cafe_data_force_refresh', handleCriticalEvent);
-      window.removeEventListener('cafe_added', handleCriticalEvent);
-      window.removeEventListener('horeca_data_updated', handleCriticalEvent);
+      window.removeEventListener('cafe_deleted', handleDeletion);
     };
-  }, [memoizedFetchCafes]);
+  }, []);
   
   return { 
     cafes,
     setCafes,
     loading,
-    fetchCafes: memoizedFetchCafes,
+    fetchCafes,
     addCafe,
     updateCafe,
     updateCafeStatus,

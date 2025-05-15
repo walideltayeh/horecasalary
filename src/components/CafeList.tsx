@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import CafeEditDialog from './cafe/CafeEditDialog';
 import CafeTableActions from './cafe/CafeTableActions';
@@ -34,15 +34,6 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     setShowEditDialog,
     setCafeToEdit
   } = useCafeListState(filterByUser, adminView);
-  
-  // Always force a refresh when the component mounts
-  useEffect(() => {
-    console.log("CafeList mounted - triggering refresh");
-    handleRefresh();
-  }, [handleRefresh]);
-  
-  console.log("CafeList rendering with", filteredCafes.length, "cafes", 
-              "adminView:", adminView, "filterByUser:", filterByUser);
   
   return (
     <div className="space-y-4">
@@ -86,8 +77,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           onSave={() => {
             setShowEditDialog(false);
             setCafeToEdit(null);
-            // Force refresh after saving
-            window.dispatchEvent(new CustomEvent('cafe_data_force_refresh'));
+            // Dispatch event to trigger refresh across components
+            window.dispatchEvent(new CustomEvent('horeca_data_updated'));
           }}
         />
       )}

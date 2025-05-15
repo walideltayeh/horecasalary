@@ -2,21 +2,26 @@
 import React from 'react';
 import { getCafeSize } from '@/utils/cafeUtils';
 import { useCafeState } from './useCafeState';
-import { useCafeEvents } from './CafeEvents';
-import { CafeContext } from '../CafeContext';
+import { useCafeEvents, useCafeDeletionEvents } from './CafeEvents';
+import { CafeContext } from './useCafeContext';
 
 export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { 
     cafes, 
+    setCafes,
     loading, 
+    fetchCafes, 
     addCafe, 
     updateCafe, 
     updateCafeStatus, 
     deleteCafe,
-    fetchCafes,
     lastRefreshTime,
-    setLastRefreshTime
+    setLastRefreshTime,
+    pendingDeletions
   } = useCafeState();
+  
+  // Set up events for cafe deletion
+  useCafeDeletionEvents({ fetchCafes });
   
   // Set up refreshing functionality
   const { refreshCafes } = useCafeEvents({ 
@@ -25,20 +30,19 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastRefreshTime 
   });
 
-  // Create the context value with all required properties
-  const contextValue = {
-    cafes,
-    addCafe,
-    updateCafe,
-    updateCafeStatus,
-    getCafeSize,
-    deleteCafe,
-    loading,
-    refreshCafes
-  };
-
   return (
-    <CafeContext.Provider value={contextValue}>
+    <CafeContext.Provider
+      value={{
+        cafes,
+        addCafe,
+        updateCafe,
+        updateCafeStatus,
+        getCafeSize,
+        deleteCafe,
+        loading,
+        refreshCafes
+      }}
+    >
       {children}
     </CafeContext.Provider>
   );
