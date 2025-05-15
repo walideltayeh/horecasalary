@@ -3,6 +3,7 @@ import { useCallback, useRef } from 'react';
 import { Cafe } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { withSupabaseRetry, isNetworkError, isOnline } from '@/utils/networkUtils';
 
 /**
  * Hook that provides functionality to fetch cafe data from the database
@@ -29,6 +30,13 @@ export const useCafeFetch = (
   const fetchCafes = useCallback(async (force = false) => {
     // Debug logging to track fetches
     console.log("fetchCafes called with force =", force);
+    
+    // Check if we're online before attempting to fetch
+    if (!isOnline()) {
+      console.log("Device is offline, cannot fetch data");
+      toast.error("You appear to be offline. Please check your internet connection.");
+      return;
+    }
     
     // Debounce frequent fetch requests (within 1 second) unless forced
     const now = Date.now();
@@ -73,11 +81,33 @@ export const useCafeFetch = (
         `)
         .order('created_at', { ascending: false });
         
-      const { data, error } = await query;
+      // Use our new retry mechanism
+      const { data, error } = await withSupabaseRetry(
+        () => query,
+        {
+          maxRetries: 5,
+          initialDelay: 1000,
+          maxDelay: 15000,
+          onRetry: (attempt, err) => {
+            console.log(`Retrying cafe fetch (attempt ${attempt}) after error:`, err);
+            if (attempt === 1) {
+              toast.info("Network issue detected. Retrying...", { id: "network-retry" });
+            }
+          }
+        }
+      );
         
       if (error) {
         console.error("Error fetching cafes:", error);
-        toast.error(`Failed to fetch cafes: ${error.message}`);
+        
+        if (isNetworkError(error)) {
+          toast.error("Network connectivity issue. Please check your internet connection.", { 
+            id: "network-error",
+            duration: 10000
+          });
+        } else {
+          toast.error(`Failed to fetch cafes: ${error.message}`);
+        }
         throw error;
       }
       

@@ -11,6 +11,7 @@ declare global {
   interface Window {
     cafeDataLastRefreshed?: number;
     cafeDataRefreshCallbacks?: Array<() => void>;
+    connectivityStatus?: 'online' | 'recovering' | 'offline';
   }
 }
 
@@ -34,9 +35,57 @@ export const supabase = createClient<Database>(
     },
     db: {
       schema: 'public'
+    },
+    global: {
+      fetch: (...args) => {
+        // Use custom fetch with built-in timeout
+        return Promise.race([
+          fetch(...args),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 15000)
+          )
+        ]) as Promise<Response>;
+      }
     }
   }
 );
+
+// Initialize connectivity status
+if (typeof window !== 'undefined') {
+  window.connectivityStatus = navigator.onLine ? 'online' : 'offline';
+  
+  // Set up online/offline event listeners
+  window.addEventListener('online', () => {
+    console.log('Device is back online, attempting to reconnect...');
+    window.connectivityStatus = 'recovering';
+    
+    // Update status after successful reconnection
+    checkConnectivity().then(isConnected => {
+      window.connectivityStatus = isConnected ? 'online' : 'offline';
+      if (isConnected) {
+        console.log('Successfully reconnected to Supabase');
+        refreshCafeData();
+      }
+    });
+  });
+  
+  window.addEventListener('offline', () => {
+    console.log('Device went offline');
+    window.connectivityStatus = 'offline';
+  });
+}
+
+// Helper function to check connectivity to Supabase
+async function checkConnectivity(): Promise<boolean> {
+  try {
+    // Simple health check query
+    await supabase.from('cafes').select('count').limit(1).maybeSingle();
+    return true;
+  } catch (error) {
+    console.error('Connectivity check failed:', error);
+    return false;
+  }
+}
 
 // Manual function to initialize database structure
 const initializeDatabase = async () => {
@@ -54,8 +103,19 @@ const initializeDatabase = async () => {
   }
 };
 
-// Call database initialization on client load
-initializeDatabase();
+// Call database initialization on client load with retry logic
+(async function initWithRetry(attempts = 0) {
+  try {
+    await initializeDatabase();
+  } catch (err) {
+    if (attempts < 3) {
+      console.log(`Retrying database initialization (attempt ${attempts + 1})...`);
+      setTimeout(() => initWithRetry(attempts + 1), 2000 * Math.pow(2, attempts));
+    } else {
+      console.error('Failed to initialize database after multiple attempts');
+    }
+  }
+})();
 
 // Enable realtime for tables specifically related to cafes
 export const enableRealtimeForTables = async () => {
@@ -144,8 +204,19 @@ export const enableRealtimeForTables = async () => {
   }
 };
 
-// Call the function when the client is initialized
-enableRealtimeForTables();
+// Call the function when the client is initialized with retry logic
+(async function enableRealtimeWithRetry(attempts = 0) {
+  try {
+    await enableRealtimeForTables();
+  } catch (err) {
+    if (attempts < 3) {
+      console.log(`Retrying realtime setup (attempt ${attempts + 1})...`);
+      setTimeout(() => enableRealtimeWithRetry(attempts + 1), 3000 * Math.pow(2, attempts));
+    } else {
+      console.error('Failed to enable realtime after multiple attempts');
+    }
+  }
+})();
 
 // Add a global callback registry for refresh events
 if (typeof window !== 'undefined') {
@@ -182,5 +253,16 @@ export const refreshCafeData = () => {
     window.cafeDataLastRefreshed = Date.now();
   } catch (e) {
     console.warn("Could not set global refresh flag");
+  }
+  
+  // Execute all registered callbacks
+  if (window.cafeDataRefreshCallbacks) {
+    window.cafeDataRefreshCallbacks.forEach(cb => {
+      try {
+        cb();
+      } catch (e) {
+        console.error('Error executing refresh callback:', e);
+      }
+    });
   }
 };

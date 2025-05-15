@@ -1,29 +1,18 @@
 
-import React from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import AppSidebar from './layout/AppSidebar';
-import MainContent from './layout/MainContent';
+import React from "react";
+import { Outlet } from "react-router-dom";
+import { Toaster } from "sonner";
+import ErrorBoundary from "./common/ErrorBoundary";
+import ConnectivityMonitor from "./common/ConnectivityMonitor";
 
-const AppLayout: React.FC = () => {
-  const { user } = useAuth();
-  const location = useLocation();
-  
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-  
+export default function AppLayout() {
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <AppSidebar user={user} location={location} />
-
-      {/* Main content */}
-      <MainContent>
+    <div className="min-h-screen bg-background text-foreground">
+      <ErrorBoundary>
         <Outlet />
-      </MainContent>
+      </ErrorBoundary>
+      <Toaster richColors position="top-center" />
+      <ConnectivityMonitor />
     </div>
   );
-};
-
-export default AppLayout;
+}
