@@ -81,9 +81,11 @@ export const useCafeFetch = (
         `)
         .order('created_at', { ascending: false });
         
-      // Use our new retry mechanism
+      // Use our retry mechanism
+      // Fix the typing issue by explicitly casting the Promise
+      const queryPromise = query as unknown as Promise<{ data: any; error: any }>;
       const { data, error } = await withSupabaseRetry(
-        () => query,
+        () => queryPromise,
         {
           maxRetries: 5,
           initialDelay: 1000,
@@ -111,10 +113,10 @@ export const useCafeFetch = (
         throw error;
       }
       
-      console.log("Cafes fetched successfully:", data?.length || 0);
+      console.log("Cafes fetched successfully:", data ? data.length : 0);
       
       if (data) {
-        const mappedCafes = data.map(cafe => ({
+        const mappedCafes = data.map((cafe: any) => ({
           id: cafe.id,
           name: cafe.name,
           ownerName: cafe.owner_name,
