@@ -1,18 +1,18 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeSubscription } from '@/hooks/useCafeSubscription';
 import { useCafeDataManager } from './hooks/useCafeDataManager';
 import { useClientSideDelete } from '@/hooks/cafe/deletion/useClientSideDelete';
 import { useEdgeFunctionDelete } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const useCafeState = () => {
   const { user } = useAuth();
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const pendingDeletions = useRef<Set<string>>(new Set());
+  const isInitialMount = useRef<boolean>(true);
   
   // Use the modified hooks without the deleteCafe dependency
   const { loading, setLoading, addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
@@ -20,8 +20,11 @@ export const useCafeState = () => {
   // Use a separate hook for managing cafe data
   const { cafes, setCafes, pendingDeletions: dataPendingDeletions } = useCafeDataManager();
   
-  // Import the fetchCafes from useCafeSubscription
+  // Import the fetchCafes from useCafeSubscription with memoization
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
+  
+  // Memoize fetchCafes to prevent unnecessary hook recreations
+  const memoizedFetchCafes = useCallback(fetchCafes, [fetchCafes]);
   
   // Get client-side deletion functionality
   const { clientSideDeletion } = useClientSideDelete();
@@ -30,7 +33,7 @@ export const useCafeState = () => {
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
   
   // Implement a proper deleteCafe function that uses the edge function with a fallback
-  const deleteCafe = async (cafeId: string): Promise<boolean> => {
+  const deleteCafe = useCallback(async (cafeId: string): Promise<boolean> => {
     console.log("Delete cafe called for:", cafeId);
     
     try {
@@ -40,8 +43,8 @@ export const useCafeState = () => {
       
       if (result) {
         console.log("DELETION: Edge function deletion successful");
-        // Always refresh cafes after deletion
-        setTimeout(() => fetchCafes(true), 500);
+        // Always refresh cafes after deletion - with a delay to allow server processing
+        setTimeout(() => memoizedFetchCafes(true), 500);
         return true;
       }
       
@@ -56,7 +59,7 @@ export const useCafeState = () => {
       const clientResult = await clientSideDeletion(cafeId);
       
       // Always refresh cafes after deletion attempt
-      setTimeout(() => fetchCafes(true), 500);
+      setTimeout(() => memoizedFetchCafes(true), 500);
       
       return clientResult;
     } catch (err: any) {
@@ -67,19 +70,28 @@ export const useCafeState = () => {
       });
       
       // Always refresh cafes to ensure UI is up to date
-      setTimeout(() => fetchCafes(true), 500);
+      setTimeout(() => memoizedFetchCafes(true), 500);
       
       return false;
     }
-  };
+  }, [memoizedFetchCafes, deleteViaEdgeFunction, clientSideDeletion]);
   
-  // Add refresh on mount
+  // Add refresh on mount with staggered loading to prevent simultaneous requests
   useEffect(() => {
-    fetchCafes(true);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      
+      // Stagger the initial data fetch to avoid overloading on app startup
+      setTimeout(() => {
+        memoizedFetchCafes(true);
+      }, 500);
+    }
+    
     // Listen for deletion events
     const handleDeletion = () => {
       console.log("Deletion event detected, refreshing cafes");
-      fetchCafes(true);
+      // Slight delay to allow server processing
+      setTimeout(() => memoizedFetchCafes(true), 800); 
     };
     
     window.addEventListener('cafe_deleted', handleDeletion);
@@ -87,13 +99,13 @@ export const useCafeState = () => {
     return () => {
       window.removeEventListener('cafe_deleted', handleDeletion);
     };
-  }, []);
+  }, [memoizedFetchCafes]);
   
   return { 
     cafes,
     setCafes,
     loading,
-    fetchCafes,
+    fetchCafes: memoizedFetchCafes,
     addCafe,
     updateCafe,
     updateCafeStatus,

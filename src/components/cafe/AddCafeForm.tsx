@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
 import { CafeFormLayout } from './layout/CafeFormLayout';
@@ -24,6 +24,9 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
   const [showSurvey, setShowSurvey] = useState(false);
   const [localSurveyCompleted, setLocalSurveyCompleted] = useState(externalSurveyCompleted);
   const formRef = useRef<HTMLFormElement>(null);
+  const initialFormStateSet = useRef<boolean>(false);
+  const formStateRef = useRef<CafeFormState | null>(null);
+  const [formKey, setFormKey] = useState<number>(0);
 
   const {
     formState,
@@ -38,44 +41,101 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     resetForm
   } = useCafeForm();
 
+  // Store form state in ref for recovery mechanism
+  useEffect(() => {
+    formStateRef.current = formState;
+  }, [formState]);
+
+  // Save form state to session storage as backup
+  const saveFormStateToStorage = useCallback(() => {
+    if (formStateRef.current) {
+      try {
+        sessionStorage.setItem('cafeFormData', JSON.stringify(formStateRef.current));
+        sessionStorage.setItem('cafeFormCoordinates', JSON.stringify(coordinates));
+      } catch (err) {
+        console.error("Error saving form state to session storage:", err);
+      }
+    }
+  }, [coordinates]);
+
+  // Periodically save form data to avoid loss
+  useEffect(() => {
+    const saveInterval = setInterval(saveFormStateToStorage, 5000);
+    
+    // Try to load saved form data on initial mount
+    if (!initialFormStateSet.current) {
+      try {
+        const savedFormData = sessionStorage.getItem('cafeFormData');
+        const savedCoordinates = sessionStorage.getItem('cafeFormCoordinates');
+        
+        if (savedFormData) {
+          initialFormStateSet.current = true;
+          // Implement form recovery logic here if needed
+          console.log("Found saved form data that could be recovered if needed");
+        }
+      } catch (err) {
+        console.error("Error loading saved form data:", err);
+      }
+    }
+    
+    return () => {
+      clearInterval(saveInterval);
+      saveFormStateToStorage();
+    };
+  }, [saveFormStateToStorage]);
+
   // Update local state when external surveyCompleted prop changes
   useEffect(() => {
     setLocalSurveyCompleted(externalSurveyCompleted);
   }, [externalSurveyCompleted]);
 
-  // Call onFormChange whenever formState changes
+  // Call onFormChange whenever formState changes, with debouncing
   useEffect(() => {
     if (onFormChange) {
-      onFormChange(formState);
+      const timer = setTimeout(() => {
+        onFormChange(formState);
+      }, 300);
+      
+      return () => clearTimeout(timer);
     }
   }, [formState, onFormChange]);
 
-  const handleShowSurvey = () => {
+  const handleShowSurvey = useCallback(() => {
     setShowSurvey(true);
-  };
+  }, []);
 
-  const handleSurveyComplete = () => {
+  const handleSurveyComplete = useCallback(() => {
     setLocalSurveyCompleted(true);
     setShowSurvey(false);
     if (onComplete) {
       onComplete();
     }
-  };
+  }, [onComplete]);
 
-  const handleCancelSurvey = () => {
+  const handleCancelSurvey = useCallback(() => {
     setShowSurvey(false);
-  };
+  }, []);
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = useCallback(() => {
     // Reset the form after successful submission
     resetForm();
-    // Reset coordinates if needed
-    // Reset survey completion state if needed
+    setFormKey(prev => prev + 1);
+    
+    // Clear session storage form data
+    try {
+      sessionStorage.removeItem('cafeFormData');
+      sessionStorage.removeItem('cafeFormCoordinates');
+    } catch (err) {
+      console.error("Error clearing stored form data:", err);
+    }
+    
+    // Reset survey completion state
     setLocalSurveyCompleted(false);
-  };
+  }, [resetForm]);
 
   return (
     <CafeFormLayout
+      key={formKey}
       isSubmitting={false}
       hasHookahs={formState.numberOfHookahs >= 1}
       surveyCompleted={localSurveyCompleted}

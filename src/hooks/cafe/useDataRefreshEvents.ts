@@ -3,7 +3,7 @@ import { useEffect, useCallback, useRef } from 'react';
 
 /**
  * Hook for setting up event listeners for data refresh events
- * With drastically reduced refresh frequency
+ * With optimized refresh frequency and proper cleanup
  */
 export const useDataRefreshEvents = (
   onRefresh: (force?: boolean) => Promise<void>
@@ -13,7 +13,7 @@ export const useDataRefreshEvents = (
   const pendingRefreshRef = useRef<boolean>(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Clean, highly debounced refresh function
+  // Clean, optimized debounced refresh function
   const debouncedRefresh = useCallback(async (force?: boolean) => {
     // Clear any existing timeout
     if (debounceTimeoutRef.current) {
@@ -30,8 +30,8 @@ export const useDataRefreshEvents = (
         return;
       }
       
-      // Reduce throttling - now only 10 seconds (was 30 seconds)
-      if (!force && now - lastRefreshTimeRef.current < 10000) {
+      // Apply throttling - 5 seconds between non-forced refreshes
+      if (!force && now - lastRefreshTimeRef.current < 5000) {
         return;
       }
       
@@ -46,69 +46,46 @@ export const useDataRefreshEvents = (
           pendingRefreshRef.current = false;
           setTimeout(() => {
             debouncedRefresh(false);
-          }, 2000); // Reduced from 5s to 2s
+          }, 1000);
         }
       } catch (error) {
         console.error("Error in debouncedRefresh:", error);
       } finally {
         refreshInProgressRef.current = false;
       }
-    }, 500); // Reduced from 2000ms to 500ms
+    }, 300); // Reduced debounce time for better responsiveness
   }, [onRefresh]);
   
   // Set up event listeners for data updates
   const setupEventListeners = useCallback(() => {
-    // Listen for manual refresh requests with reduced throttling
+    // Handle refresh requests with proper throttling
     const handleRefreshRequested = (event: CustomEvent) => {
-      const now = Date.now();
       const force = event.detail?.force === true;
-      
-      // Reduce throttling for non-forced refreshes to 5 seconds (was 10 seconds)
-      if (!force && now - lastRefreshTimeRef.current < 5000) {
-        console.log("Throttling refresh request - too soon since last refresh");
-        return;
-      }
-      
       debouncedRefresh(force);
     };
     
     // Handle specific cafe added events with high priority
-    const handleCafeAdded = (event: CustomEvent) => {
-      console.log("Cafe added event detected in DataRefreshEvents", event.detail);
-      // Always treat cafe additions as forced refreshes to bypass throttling
+    const handleCafeAdded = () => {
+      console.log("Cafe added event detected in DataRefreshEvents");
+      // Always treat cafe additions as forced refreshes
       debouncedRefresh(true);
     };
     
-    // Listen for data update events with reduced throttling
+    // Handle data updated events
     const handleDataUpdated = (event: CustomEvent) => {
-      const now = Date.now();
       const detail = event.detail || {};
       
-      // Reduce throttle time to 5 seconds (was 10 seconds)
-      if (now - lastRefreshTimeRef.current < 5000) {
-        console.log("Throttling data update - too soon since last refresh");
-        return;
-      }
-      
-      // Explicitly check for cafe addition events
-      const isCafeAddition = detail.action === 'cafeAdded';
-      
-      // Determine if this is a critical update that should force a refresh
+      // Check for critical updates that should force a refresh
       const isCriticalUpdate = 
         detail.forceRefresh === true ||
         detail.highPriority === true ||
         detail.action === 'statusUpdate' || 
-        isCafeAddition;
+        detail.action === 'cafeAdded';
       
-      if (isCriticalUpdate) {
-        console.log("Critical update detected:", detail.action);
-        debouncedRefresh(true); // Force refresh for critical updates
-      } else {
-        debouncedRefresh(false);
-      }
+      debouncedRefresh(isCriticalUpdate);
     };
     
-    // Listen for forced refresh events
+    // Handle forced refresh events
     const handleForceRefresh = () => {
       console.log("Force refresh event received");
       debouncedRefresh(true);

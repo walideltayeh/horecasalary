@@ -4,12 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Hook for managing real-time channel subscriptions to cafe-related tables
- * Uses a more efficient approach with improved throttling
+ * Uses a more efficient approach with improved throttling and channel management
  */
 export const useRealtimeChannels = (
   onDataChange: (force?: boolean) => Promise<void>
 ) => {
-  const channelsRef = useRef<any[]>([]);
+  const channelRef = useRef<any>(null);
   const lastUpdateTimeRef = useRef<number>(0);
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -24,16 +24,14 @@ export const useRealtimeChannels = (
 
     console.log("Setting up cafe realtime channels with optimized updates...");
     
-    // Clean up existing channels first
-    if (channelsRef.current.length > 0) {
-      channelsRef.current.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
-      channelsRef.current = [];
+    // Clean up existing channel first
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
 
     try {
-      // Function to process updates in batches with increased debounce time
+      // Function to process updates in batches with appropriate debounce time
       const processUpdates = () => {
         if (pendingUpdatesRef.current.size === 0) return;
         
@@ -42,12 +40,13 @@ export const useRealtimeChannels = (
         // Reset pending updates
         pendingUpdatesRef.current.clear();
         
-        // Trigger a single refresh with increased throttling
+        // Trigger a single refresh with smart throttling
         const now = Date.now();
-        if (now - lastUpdateTimeRef.current > 10000) {  // Increased from 5s to 10s
+        if (now - lastUpdateTimeRef.current > 5000) {  // 5s minimum between refreshes
           lastUpdateTimeRef.current = now;
           
           // Dispatch event rather than performing direct refresh
+          // This helps coordinate multiple update sources
           window.dispatchEvent(new CustomEvent('horeca_data_updated'));
         }
       };
@@ -62,14 +61,14 @@ export const useRealtimeChannels = (
           clearTimeout(updateTimeoutRef.current);
         }
         
-        // Set a new timeout to process all pending updates with increased debounce time
+        // Set a new timeout to process all pending updates
         updateTimeoutRef.current = setTimeout(() => {
           processUpdates();
           updateTimeoutRef.current = null;
-        }, 2500); // Increased to 2.5s debounce for better performance
+        }, 1000); // 1s debounce for better performance
       };
       
-      // Create a single channel for all database changes instead of multiple channels
+      // Create a single channel for database changes
       const channel = supabase
         .channel('db-changes')
         .on('postgres_changes', 
@@ -87,12 +86,12 @@ export const useRealtimeChannels = (
           console.log(`Realtime channels subscribed with status: ${status}`);
         });
         
-      channelsRef.current.push(channel);
+      channelRef.current = channel;
       
       // Set setup as complete to prevent duplicate subscriptions
       setupCompleteRef.current = true;
       
-      // Try to enable realtime once instead of multiple times
+      // Try to enable realtime
       try {
         await supabase.functions.invoke('enable-realtime', { 
           body: { table_name: 'cafes' }
@@ -114,11 +113,11 @@ export const useRealtimeChannels = (
         updateTimeoutRef.current = null;
       }
       
-      // Remove all channels
-      channelsRef.current.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
-      channelsRef.current = [];
+      // Remove channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       
       // Reset setup flag
       setupCompleteRef.current = false;

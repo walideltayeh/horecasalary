@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 
 /**
  * Hook that provides functionality to fetch cafe data from the database
- * with optimized networking and caching
+ * with optimized networking, caching, and error handling
  */
 export const useCafeFetch = (
   user: any | null,
-  setCafes: React.Dispatch<React.SetStateAction<Cafe[]>>,
+  setCafes: (cafes: Cafe[]) => void,
   setLoading: (loading: boolean) => void
 ) => {
   const fetchingRef = useRef<boolean>(false);
@@ -18,6 +18,11 @@ export const useCafeFetch = (
   const isAdminRef = useRef<boolean>(false);
   const dataFreshUntilRef = useRef<number>(0);
   const fetchAttemptCount = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const cafeCache = useRef<{data: Cafe[] | null, timestamp: number}>({
+    data: null,
+    timestamp: 0
+  });
 
   // Update admin status when user changes
   if (user) {
@@ -31,16 +36,24 @@ export const useCafeFetch = (
     const now = Date.now();
     const CACHE_TIME = 15000; // 15 seconds
     
-    if (!force && now < dataFreshUntilRef.current) {
+    if (!force && now < dataFreshUntilRef.current && cafeCache.current.data) {
       console.log("Using cached cafe data - refresh not needed");
       return;
     }
     
-    // Debounce frequent fetch requests (within 5 seconds)
-    if (!force && now - lastFetchTimeRef.current < 5000) {
+    // Debounce frequent fetch requests (within 3 seconds)
+    if (!force && now - lastFetchTimeRef.current < 3000) {
       console.log("Fetch request debounced - too recent");
       return;
     }
+    
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
     
     // Prevent concurrent fetches
     if (fetchingRef.current) {
@@ -98,21 +111,32 @@ export const useCafeFetch = (
         }));
         
         console.log("Mapped cafes:", mappedCafes.length, "isAdmin:", isAdminRef.current);
+        
+        // Update cache with fresh data
+        cafeCache.current = {
+          data: mappedCafes,
+          timestamp: now
+        };
+        
         setCafes(mappedCafes);
         
         // Set the time until which data is considered fresh
         dataFreshUntilRef.current = now + CACHE_TIME;
       }
     } catch (err: any) {
-      console.error('Error fetching cafes:', err);
-      
-      // Only show toast errors on first few attempts to avoid spamming
-      if (fetchAttemptCount.current <= 3) {
-        toast.error(err.message || 'Failed to fetch cafes');
+      // Only handle errors that aren't from aborting the request
+      if (err.name !== 'AbortError') {
+        console.error('Error fetching cafes:', err);
+        
+        // Only show toast errors on first few attempts to avoid spamming
+        if (fetchAttemptCount.current <= 2) {
+          toast.error(err.message || 'Failed to fetch cafes');
+        }
       }
     } finally {
       setLoading(false);
       fetchingRef.current = false;
+      abortControllerRef.current = null;
     }
   }, [setCafes, setLoading, user?.id]);
 
