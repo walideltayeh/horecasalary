@@ -20,26 +20,30 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
 
   // Force initial data refresh on mount
   useEffect(() => {
-    refreshCafes();
+    console.log("CafeContent - Initial data refresh");
+    refreshCafes(true).catch(err => console.error("Error refreshing cafe data:", err));
     
     // Also listen for stats update events
     const handleStatsUpdated = () => {
       console.log("CafeContent - Stats updated event received");
-      refreshCafes();
+      refreshCafes(true).catch(err => console.error("Error refreshing after stats update:", err));
     };
     
     // Listen for cafe added event
     const handleCafeAdded = () => {
       console.log("Cafe added, forcing form reset");
       setFormKey(prev => prev + 1); // Increment key to force form re-render
+      refreshCafes(true).catch(err => console.error("Error refreshing after cafe added:", err));
     };
     
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     window.addEventListener('cafe_added', handleCafeAdded);
+    window.addEventListener('cafe_data_force_refresh', () => refreshCafes(true));
     
     return () => {
       window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
       window.removeEventListener('cafe_added', handleCafeAdded);
+      window.removeEventListener('cafe_data_force_refresh', () => refreshCafes(true));
     };
   }, [refreshCafes]);
   
@@ -54,6 +58,9 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
     
     // Also trigger a stats update
     window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
+    
+    // Force a refresh
+    refreshCafes(true).catch(err => console.error("Error refreshing after survey completion:", err));
   };
 
   return (

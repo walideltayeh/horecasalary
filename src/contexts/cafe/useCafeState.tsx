@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 
 export const useCafeState = () => {
   const { user } = useAuth();
-  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(Date.now());
   const pendingDeletions = useRef<Set<string>>(new Set());
   const isInitialMount = useRef<boolean>(true);
   
@@ -18,7 +18,7 @@ export const useCafeState = () => {
   const { loading, setLoading, addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
   
   // Use a separate hook for managing cafe data
-  const { cafes, setCafes, pendingDeletions: dataPendingDeletions } = useCafeDataManager();
+  const { cafes, setCafes } = useCafeDataManager();
   
   // Import the fetchCafes from useCafeSubscription with memoization
   const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
@@ -81,10 +81,9 @@ export const useCafeState = () => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       
-      // Stagger the initial data fetch to avoid overloading on app startup
-      setTimeout(() => {
-        memoizedFetchCafes(true);
-      }, 500);
+      // Force immediate data fetch to ensure data is available
+      console.log("Initial mount - forcing immediate data fetch");
+      memoizedFetchCafes(true);
     }
     
     // Listen for deletion events
@@ -94,10 +93,19 @@ export const useCafeState = () => {
       setTimeout(() => memoizedFetchCafes(true), 800); 
     };
     
+    const handleDataRefresh = () => {
+      console.log("Manual data refresh requested");
+      memoizedFetchCafes(true);
+    };
+    
     window.addEventListener('cafe_deleted', handleDeletion);
+    window.addEventListener('cafe_data_force_refresh', handleDataRefresh);
+    window.addEventListener('horeca_data_updated', handleDataRefresh);
     
     return () => {
       window.removeEventListener('cafe_deleted', handleDeletion);
+      window.removeEventListener('cafe_data_force_refresh', handleDataRefresh);
+      window.removeEventListener('horeca_data_updated', handleDataRefresh);
     };
   }, [memoizedFetchCafes]);
   

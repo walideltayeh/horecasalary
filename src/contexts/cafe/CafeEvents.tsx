@@ -1,5 +1,5 @@
 
-import React, { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 
 export const useCafeEvents = ({
   fetchCafes,
@@ -10,34 +10,39 @@ export const useCafeEvents = ({
   setLastRefreshTime: (time: number) => void;
   lastRefreshTime: number;
 }) => {
-  const refreshInProgressRef = useRef<boolean>(false);
-  
-  const refreshCafes = useCallback(async () => {
-    // Prevent concurrent refreshes
-    if (refreshInProgressRef.current) {
-      return;
-    }
-    
+  const refreshCafes = useCallback(async (force = false) => {
     try {
-      refreshInProgressRef.current = true;
+      console.log("Manual refresh triggered, force =", force);
       const now = Date.now();
+      
+      // For non-forced refreshes, add throttling
+      if (!force && now - lastRefreshTime < 5000) {
+        console.log("Refresh throttled - too recent");
+        return;
+      }
+      
       setLastRefreshTime(now);
       
-      await fetchCafes();
+      // Always use force=true for manual refreshes to bypass caching
+      await fetchCafes(true);
+      
       // Dispatch a global event when data is refreshed
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
         detail: { 
           action: 'refresh',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          forceRefresh: true
         }
       }));
       
       // Also dispatch stats updated event to ensure all components refresh
       window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
-    } finally {
-      refreshInProgressRef.current = false;
+      
+      console.log("Manual refresh completed successfully");
+    } catch (error) {
+      console.error("Error during manual refresh:", error);
     }
-  }, [fetchCafes, setLastRefreshTime]);
+  }, [fetchCafes, setLastRefreshTime, lastRefreshTime]);
   
   return { refreshCafes };
 };
@@ -47,7 +52,7 @@ export const useCafeDeletionEvents = ({
 }: { 
   fetchCafes: (force?: boolean) => Promise<void>; 
 }) => {
-  useCallback((cafeId: string) => {
+  const handleCafeDeletion = useCallback((cafeId: string) => {
     // Broadcast cafe deletion
     window.dispatchEvent(new CustomEvent('cafe_deleted', {
       detail: { cafeId, timestamp: Date.now() }
@@ -62,5 +67,5 @@ export const useCafeDeletionEvents = ({
     }, 300);
   }, [fetchCafes]);
   
-  return {};
+  return { handleCafeDeletion };
 };
