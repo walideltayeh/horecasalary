@@ -54,7 +54,7 @@ export function useCafeFetch() {
             .select('*')
             .order('created_at', { ascending: false });
           
-          if (error) throw new Error(`Supabase error: ${error.message}`);
+          if (error) throw new Error(error.message);
           return { data, error };
         },
         maxRetries,
@@ -62,27 +62,27 @@ export function useCafeFetch() {
       );
       
       if (response.error) {
-        throw new Error(response.error);
+        throw new Error(String(response.error));
       }
       
       // Type safety check
       if (Array.isArray(response.data) && response.data.length > 0) {
         // Apply any necessary transformations to the cafe data
-        const formattedCafes = response.data.map((cafe: any) => ({
+        const formattedCafes: Cafe[] = response.data.map((cafe: any) => ({
           id: cafe.id,
           name: cafe.name,
-          owner_name: cafe.owner_name,
-          owner_number: cafe.owner_number,
-          number_of_tables: cafe.number_of_tables || 0,
-          number_of_hookahs: cafe.number_of_hookahs || 0,
+          ownerName: cafe.owner_name,
+          ownerNumber: cafe.owner_number,
+          numberOfTables: cafe.number_of_tables || 0,
+          numberOfHookahs: cafe.number_of_hookahs || 0,
           city: cafe.city,
           governorate: cafe.governorate,
           latitude: cafe.latitude,
           longitude: cafe.longitude,
-          created_at: cafe.created_at,
-          created_by: cafe.created_by,
+          createdAt: cafe.created_at,
+          createdBy: cafe.created_by,
           status: cafe.status,
-          photo_url: cafe.photo_url
+          photoUrl: cafe.photo_url
         }));
         
         if (isMountedRef.current) {
