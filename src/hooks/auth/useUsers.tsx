@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,12 +47,12 @@ export function useUsers(isAdmin: boolean, isAuthenticated: boolean) {
       setIsLoading(true);
       setError(null);
       
-      console.log("Invoking RPC get_users");
+      console.log("Fetching users from database");
       
-      // Use the RPC function that's protected by RLS
-      const { data, error } = await supabase.rpc('get_users', {}, {
-        // Remove the 'signal' property as it doesn't exist in FunctionInvokeOptions
-      });
+      // Use a direct query instead of RPC since get_users is not in the allowed type list
+      const { data, error } = await supabase
+        .from('users')
+        .select('*');
       
       if (error) {
         console.error("Error fetching users:", error);
@@ -60,7 +61,18 @@ export function useUsers(isAdmin: boolean, isAuthenticated: boolean) {
       
       if (Array.isArray(data)) {
         console.log(`Fetched ${data.length} users`);
-        data.sort((a, b) => {
+        
+        // Properly cast and transform the data to match User type
+        const typedUsers = data.map(user => ({
+          id: user.id,
+          name: user.name as string,
+          email: user.email as string,
+          role: user.role as 'admin' | 'user',
+          password: user.password as string | undefined
+        }));
+        
+        // Sort the users
+        typedUsers.sort((a, b) => {
           // Sort to put admin users first
           if (a.role === 'admin' && b.role !== 'admin') return -1;
           if (a.role !== 'admin' && b.role === 'admin') return 1;
@@ -69,7 +81,7 @@ export function useUsers(isAdmin: boolean, isAuthenticated: boolean) {
           return a.name.localeCompare(b.name);
         });
         
-        setUsers(data);
+        setUsers(typedUsers);
       } else {
         console.error("Unexpected data format:", data);
         throw new Error("Unexpected data format returned from server");

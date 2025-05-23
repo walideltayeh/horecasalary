@@ -18,7 +18,7 @@ export function useAuthState() {
   const isAdmin = !!user && user.role === 'admin';
   
   // Pass isAdmin and auth status to useUsers with enhanced debugging
-  const { users, setUsers, isLoadingUsers, error, fetchUsers } = useUsers(
+  const { users, setUsers, isLoading: isLoadingUsers, error, fetchUsers } = useUsers(
     isAdmin, 
     !isLoading && !!user // Only consider authenticated when we have a user and are not loading
   );
