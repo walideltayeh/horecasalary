@@ -4,6 +4,7 @@ import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { validateRole } from '@/utils/authUtils';
+import { fetchWithRetry } from '@/utils/networkUtils';
 
 export function useUsers(isAdmin: boolean, authenticated: boolean) {
   const [users, setUsers] = useState<User[]>([]);
@@ -12,6 +13,7 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [fetchCount, setFetchCount] = useState<number>(0);
   const requestInProgressRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch users from Supabase Auth system
   const fetchUsers = useCallback(async (force: boolean = false) => {
@@ -19,6 +21,12 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
     if (!isAdmin || !authenticated) {
       console.log("[useUsers] Not fetching users - not admin or not authenticated", {isAdmin, authenticated});
       return;
+    }
+    
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      console.log("[useUsers] Cancelling previous fetch request");
+      abortControllerRef.current.abort();
     }
     
     // Prevent concurrent requests
@@ -42,58 +50,79 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
       setLastFetchTime(now);
       setFetchCount(prev => prev + 1);
       
-      // Call admin function to list users with explicit timeout
-      const fetchPromise = supabase.functions.invoke('admin', {
-        method: 'POST',
-        body: { action: 'listUsers' },
-      });
+      // Create new abort controller for this request
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
       
-      // Add timeout to prevent hanging requests
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout after 20 seconds')), 20000);
-      });
-      
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      // Call admin function to list users with explicit timeout and retry
+      const fetchResult = await fetchWithRetry(async () => {
+        // Add timeoutPromise to ensure request doesn't hang
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout after 20 seconds')), 20000);
+        });
+        
+        const fetchPromise = supabase.functions.invoke('admin', {
+          method: 'POST',
+          body: { action: 'listUsers' },
+          signal  // Add abort signal
+        });
+        
+        return Promise.race([fetchPromise, timeoutPromise]) as any;
+      }, 3, 1000);
       
       // Handle errors
-      if (error) {
-        console.error("[useUsers] Error fetching users:", error);
-        setError(typeof error === 'string' ? error : error.message || 'Failed to fetch users');
+      if (fetchResult.error) {
+        console.error("[useUsers] Error fetching users:", fetchResult.error);
+        setError(typeof fetchResult.error === 'string' ? fetchResult.error : fetchResult.error.message || 'Failed to fetch users');
         return;
       }
       
-      if (data?.error) {
-        console.error("[useUsers] Error from admin function:", data.error);
-        setError(typeof data.error === 'string' ? data.error : 'Failed to fetch users');
+      if (fetchResult?.data?.error) {
+        console.error("[useUsers] Error from admin function:", fetchResult.data.error);
+        setError(typeof fetchResult.data.error === 'string' ? fetchResult.data.error : 'Failed to fetch users');
         return;
       }
       
       // Parse and format user data
-      if (data?.data?.users) {
-        const mappedUsers = data.data.users.map(authUser => {
-          const metadata = authUser.user_metadata || {};
-          
-          return {
-            id: authUser.id,
-            email: authUser.email || '',
-            name: metadata.name || authUser.email?.split('@')[0] || 'User',
-            role: validateRole(metadata.role || 'user'),
-            password: null
-          };
-        });
+      if (fetchResult?.data?.data?.users) {
+        const usersList = fetchResult.data.data.users;
         
-        console.log("[useUsers] Fetched users:", mappedUsers.length);
-        setUsers(mappedUsers);
+        if (Array.isArray(usersList)) {
+          const mappedUsers = usersList.map(authUser => {
+            const metadata = authUser.user_metadata || {};
+            
+            return {
+              id: authUser.id,
+              email: authUser.email || '',
+              name: metadata.name || authUser.email?.split('@')[0] || 'User',
+              role: validateRole(metadata.role || 'user'),
+              password: null
+            };
+          });
+          
+          console.log("[useUsers] Fetched users:", mappedUsers.length);
+          setUsers(mappedUsers);
+        } else {
+          console.error("[useUsers] Users data is not an array:", usersList);
+          setError("Invalid users data format");
+        }
       } else {
-        console.error("[useUsers] No users data in response:", data);
+        console.error("[useUsers] No users data in response:", fetchResult);
         setError("Could not retrieve user data");
       }
     } catch (err: any) {
+      // Don't set error for aborted requests
+      if (err.name === 'AbortError') {
+        console.log("[useUsers] Request was cancelled");
+        return;
+      }
+      
       console.error("[useUsers] Error fetching users:", err);
       setError(typeof err === 'string' ? err : err.message || 'Failed to fetch users');
     } finally {
       setIsLoadingUsers(false);
       requestInProgressRef.current = false;
+      abortControllerRef.current = null;
     }
   }, [isAdmin, authenticated, lastFetchTime, fetchCount]);
 
@@ -113,6 +142,10 @@ export function useUsers(isAdmin: boolean, authenticated: boolean) {
       
       return () => {
         clearInterval(intervalId);
+        // Cancel any in-flight request when unmounting
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
       };
     }
   }, [isAdmin, authenticated, fetchUsers]);

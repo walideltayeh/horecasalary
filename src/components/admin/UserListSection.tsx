@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/types";
 import UserList from './UserList';
+import { isOnline } from '@/utils/networkUtils';
 
 interface UserListSectionProps {
   users: User[];
@@ -42,10 +43,18 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       return;
     }
     
+    // Check if online
+    if (!isOnline()) {
+      console.log("Device appears to be offline, cannot refresh");
+      return;
+    }
+    
     try {
       setIsRefreshing(true);
       lastRefreshTimeRef.current = now;
       await onRefreshUsers();
+    } catch (err) {
+      console.error("Error during refresh:", err);
     } finally {
       // Add a minimum visual feedback time
       setTimeout(() => {
@@ -75,7 +84,10 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {error} 
+              {!isOnline() && " (You appear to be offline)"}
+            </AlertDescription>
           </Alert>
         )}
         
@@ -92,6 +104,12 @@ const UserListSection: React.FC<UserListSectionProps> = ({
             onDeleteUser={onDeleteUser}
             isDeletingUser={isDeletingUser}
           />
+        )}
+
+        {!isLoadingUsers && users.length === 0 && !error && (
+          <div className="text-center py-8 text-muted-foreground">
+            No users found. {isOnline() ? 'Try refreshing the list.' : 'You may be offline.'}
+          </div>
         )}
       </CardContent>
     </Card>
