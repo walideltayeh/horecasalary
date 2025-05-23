@@ -1,7 +1,7 @@
 
 import { useAuthSession } from './auth/useAuthSession';
 import { useUsers } from './auth/useUsers';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchWithRetry } from '@/utils/networkUtils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,6 +13,7 @@ export function useAuthState() {
   const { user, isLoading, session } = useAuthSession();
   const [authError, setAuthError] = useState<string | null>(null);
   const [fetchAttempt, setFetchAttempt] = useState(0);
+  const maxFetchAttemptsRef = useRef(3);
   
   // Enhanced admin detection - explicitly check for admin role
   const isAdmin = !!user && user.role === 'admin';
@@ -33,11 +34,13 @@ export function useAuthState() {
       isLoading,
       sessionExists: !!session,
       isLoadingUsers,
-      usersCount: users.length
+      usersCount: users.length,
+      fetchAttempt
     });
     
     // If admin and not loading but users array is empty, try fetching users again
-    if (isAdmin && !isLoading && !isLoadingUsers && users.length === 0 && fetchAttempt < 3) {
+    // but limit to maximum attempts to prevent infinite loops
+    if (isAdmin && !isLoading && !isLoadingUsers && users.length === 0 && fetchAttempt < maxFetchAttemptsRef.current) {
       // Add timeout to avoid immediate retries
       const timer = setTimeout(() => {
         console.log(`No users found but user is admin. Retry attempt ${fetchAttempt + 1}`);

@@ -10,7 +10,7 @@ import UserManagement from '@/components/admin/UserManagement';
 import SystemStats from '@/components/admin/SystemStats';
 import CafeDatabase from '@/components/admin/CafeDatabase';
 import DeletionLogs from '@/components/admin/DeletionLogs';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 const Admin: React.FC = () => {
   const { user, isAdmin, addUser: authAddUser, deleteUser, updateUser, users, fetchUsers } = useAuth();
@@ -54,14 +54,18 @@ const Admin: React.FC = () => {
     }
   }, [refreshCafes, lastRefreshTime]);
 
-  // Explicit check for user data on component mount
+  // Explicit check for user data on component mount with limited retries
   useEffect(() => {
     if (user && isAdmin) {
       console.log("Admin component mounted - forcing user data refresh");
       try {
         // Use a timeout to avoid race conditions on component mount
         const timer = setTimeout(() => {
-          fetchUsers(true);
+          fetchUsers(true).catch(err => {
+            console.error("Error fetching users on Admin mount:", err);
+            // If error persists, show a toast with help information
+            toast.error("Error loading user data. The users database might need to be synced with authentication.");
+          });
         }, 1000);
         
         return () => clearTimeout(timer);
@@ -82,6 +86,7 @@ const Admin: React.FC = () => {
         // Only refresh users when switching to users tab
         fetchUsers(true).catch(err => {
           console.error("Error fetching users when switching tabs:", err);
+          // Don't show too many error toasts
         });
       }
     }

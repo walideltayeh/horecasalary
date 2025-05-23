@@ -14,6 +14,8 @@ export function useUsers(isAdmin: boolean, isAuthenticated: boolean) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isLoadingRef = useRef(false); // Track loading state across renders
+  const retryCountRef = useRef(0); // Track number of retry attempts
+  const MAX_RETRIES = 3; // Maximum number of automatic retries
 
   // Use useRef to persist isAdmin and isAuthenticated values
   const isAdminRef = useRef(isAdmin);
@@ -29,7 +31,7 @@ export function useUsers(isAdmin: boolean, isAuthenticated: boolean) {
   }, [isAuthenticated]);
 
   const fetchUserData = useCallback(async (force = false) => {
-    console.log(`Fetching users with force=${force}, isAdmin=${isAdmin}, isAuthenticated=${isAuthenticated}`);
+    console.log(`Fetching users with force=${force}, isAdmin=${isAdmin}, isAuthenticated=${isAuthenticated}, retry=${retryCountRef.current}`);
     
     // Skip fetch if not admin or not authenticated, unless forced
     if ((!isAdmin || !isAuthenticated) && !force) {
@@ -39,6 +41,13 @@ export function useUsers(isAdmin: boolean, isAuthenticated: boolean) {
     
     if (isLoadingRef.current && !force) {
       console.log("Skipping user fetch - already loading");
+      return;
+    }
+
+    // Check if we've exceeded max retries
+    if (retryCountRef.current >= MAX_RETRIES && !force) {
+      console.log(`Exceeded maximum retry attempts (${MAX_RETRIES}). Use force=true to override.`);
+      setError(`Failed to load users after ${MAX_RETRIES} attempts. Please try refreshing.`);
       return;
     }
     
@@ -56,11 +65,15 @@ export function useUsers(isAdmin: boolean, isAuthenticated: boolean) {
       
       if (error) {
         console.error("Error fetching users:", error);
+        retryCountRef.current++; // Increment retry counter on error
         throw error;
       }
       
       if (Array.isArray(data)) {
         console.log(`Fetched ${data.length} users`);
+        
+        // Reset retry counter on success
+        retryCountRef.current = 0;
         
         // Properly cast and transform the data to match User type
         const typedUsers = data.map(user => ({
