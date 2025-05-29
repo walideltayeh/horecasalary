@@ -67,6 +67,7 @@ const UserApp: React.FC = () => {
               governorate: '',
               city: '',
               status: 'Pending',
+              photoUrl: '',
               createdBy: user.id,
               latitude: 0,
               longitude: 0
