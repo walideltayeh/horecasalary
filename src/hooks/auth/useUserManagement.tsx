@@ -1,12 +1,13 @@
+
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateEmail, validatePassword, sanitizeInput } from '@/utils/inputValidation';
 
 export function useUserManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const operationInProgressRef = useRef<string | null>(null);
 
-  // Helper function to notify updates across tabs
   const notifyUserDataChange = () => {
     try {
       localStorage.setItem('users_updated', String(Date.now()));
@@ -15,7 +16,6 @@ export function useUserManagement() {
     }
   };
 
-  // Add retry logic for reliability
   const retryOperation = async <T,>(
     operation: () => Promise<T>, 
     maxRetries = 2
@@ -32,7 +32,6 @@ export function useUserManagement() {
         retryCount++;
         
         if (retryCount <= maxRetries) {
-          // Calculate delay using exponential backoff
           const delay = 1000 * Math.pow(2, retryCount - 1);
           console.log(`Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -49,7 +48,6 @@ export function useUserManagement() {
     password: string; 
     role: 'admin' | 'user' 
   }): Promise<boolean> => {
-    // Prevent concurrent operations
     if (operationInProgressRef.current === 'add') {
       console.warn("Add user operation already in progress");
       return false;
@@ -58,9 +56,35 @@ export function useUserManagement() {
     try {
       setIsLoading(true);
       operationInProgressRef.current = 'add';
-      console.log("Adding new user:", userData.email);
       
-      const email = userData.email.includes('@') ? userData.email : `${userData.email}@horeca.app`;
+      // Enhanced input validation
+      const sanitizedName = sanitizeInput(userData.name);
+      const sanitizedEmail = sanitizeInput(userData.email.toLowerCase());
+      
+      if (!sanitizedName || sanitizedName.length < 2 || sanitizedName.length > 50) {
+        toast.error('Name must be between 2 and 50 characters');
+        return false;
+      }
+      
+      if (!validateEmail(sanitizedEmail)) {
+        toast.error('Please enter a valid email address');
+        return false;
+      }
+      
+      const passwordValidation = validatePassword(userData.password);
+      if (!passwordValidation.isValid) {
+        toast.error(`Password validation failed: ${passwordValidation.errors[0]}`);
+        return false;
+      }
+      
+      if (!['admin', 'user'].includes(userData.role)) {
+        toast.error('Invalid role specified');
+        return false;
+      }
+      
+      console.log("Adding new user with enhanced validation:", sanitizedEmail);
+      
+      const email = sanitizedEmail.includes('@') ? sanitizedEmail : `${sanitizedEmail}@horeca.app`;
       
       const result = await retryOperation(async () => {
         const { data, error } = await supabase.functions.invoke('admin', {
@@ -70,7 +94,7 @@ export function useUserManagement() {
             userData: {
               email: email,
               password: userData.password,
-              name: userData.name,
+              name: sanitizedName,
               role: userData.role
             }
           }
@@ -84,7 +108,7 @@ export function useUserManagement() {
       });
 
       console.log("User added successfully:", result);
-      toast.success(`User ${userData.name} added successfully`);
+      toast.success(`User ${sanitizedName} added successfully`);
       notifyUserDataChange();
       return true;
     } catch (error: any) {
@@ -103,7 +127,6 @@ export function useUserManagement() {
     password?: string; 
     role?: 'admin' | 'user' 
   }): Promise<boolean> => {
-    // Prevent concurrent operations
     if (operationInProgressRef.current === 'update') {
       console.warn("Update user operation already in progress");
       return false;
@@ -112,20 +135,46 @@ export function useUserManagement() {
     try {
       setIsLoading(true);
       operationInProgressRef.current = 'update';
-      console.log("Updating user:", userId, userData);
-
+      
+      // Input validation
       const updatePayload: any = { id: userId };
       
-      if (userData.email) updatePayload.email = userData.email;
-      if (userData.password) updatePayload.password = userData.password;
+      if (userData.name !== undefined) {
+        const sanitizedName = sanitizeInput(userData.name);
+        if (!sanitizedName || sanitizedName.length < 2 || sanitizedName.length > 50) {
+          toast.error('Name must be between 2 and 50 characters');
+          return false;
+        }
+        updatePayload.user_metadata = { ...updatePayload.user_metadata, name: sanitizedName };
+      }
       
-      if (userData.name || userData.role) {
-        updatePayload.user_metadata = {};
-        if (userData.name) updatePayload.user_metadata.name = userData.name;
-        if (userData.role) updatePayload.user_metadata.role = userData.role;
+      if (userData.email !== undefined) {
+        const sanitizedEmail = sanitizeInput(userData.email.toLowerCase());
+        if (!validateEmail(sanitizedEmail)) {
+          toast.error('Please enter a valid email address');
+          return false;
+        }
+        updatePayload.email = sanitizedEmail;
+      }
+      
+      if (userData.password !== undefined) {
+        const passwordValidation = validatePassword(userData.password);
+        if (!passwordValidation.isValid) {
+          toast.error(`Password validation failed: ${passwordValidation.errors[0]}`);
+          return false;
+        }
+        updatePayload.password = userData.password;
+      }
+      
+      if (userData.role !== undefined) {
+        if (!['admin', 'user'].includes(userData.role)) {
+          toast.error('Invalid role specified');
+          return false;
+        }
+        updatePayload.user_metadata = { ...updatePayload.user_metadata, role: userData.role };
       }
 
-      console.log("Update payload:", updatePayload);
+      console.log("Update payload with validation:", updatePayload);
       
       const result = await retryOperation(async () => {
         const { data, error } = await supabase.functions.invoke('admin', {
@@ -158,7 +207,6 @@ export function useUserManagement() {
   };
 
   const deleteUser = async (userId: string): Promise<boolean> => {
-    // Prevent concurrent operations
     if (operationInProgressRef.current === 'delete') {
       console.warn("Delete user operation already in progress");
       return false;
@@ -167,7 +215,14 @@ export function useUserManagement() {
     try {
       setIsLoading(true);
       operationInProgressRef.current = 'delete';
-      console.log("Deleting user:", userId);
+      
+      // Input validation
+      if (!userId || typeof userId !== 'string') {
+        toast.error('Invalid user ID');
+        return false;
+      }
+      
+      console.log("Deleting user with validation:", userId);
 
       const result = await retryOperation(async () => {
         const { data, error } = await supabase.functions.invoke('admin', {
