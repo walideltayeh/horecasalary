@@ -23,11 +23,10 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Set up events for cafe deletion
   useCafeDeletionEvents({ fetchCafes });
   
-  // Set up refreshing functionality
+  // Set up refreshing functionality - fix the parameter mismatch
   const { refreshCafes } = useCafeEvents({ 
     fetchCafes, 
-    setLastRefreshTime, 
-    lastRefreshTime 
+    setLastRefreshTime
   });
 
   return (
