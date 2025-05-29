@@ -10,27 +10,44 @@ export function useCafeFetch() {
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const isMountedRef = useRef(true);
   const fetchInProgressRef = useRef(false);
+  const lastFetchTimeRef = useRef<number>(0);
 
-  // URGENT FIX: Remove throttling completely to allow immediate database queries
   const refresh = useCallback(() => {
-    console.log("URGENT FIX: Refresh called - triggering immediate fetch");
+    const now = Date.now();
+    // Prevent too frequent refreshes (minimum 1 second between calls)
+    if (now - lastFetchTimeRef.current < 1000) {
+      console.log("Refresh called too soon, skipping");
+      return;
+    }
+    
+    console.log("Refresh called - triggering fetch");
+    lastFetchTimeRef.current = now;
     setRefreshTrigger(prev => prev + 1);
   }, []);
 
-  // Main fetch function with simplified, reliable logic
+  // Main fetch function with proper guards
   const fetchCafes = useCallback(async () => {
     if (fetchInProgressRef.current) {
       console.log("Fetch already in progress, skipping");
       return;
     }
 
+    if (!isMountedRef.current) {
+      console.log("Component unmounted, skipping fetch");
+      return;
+    }
+
     try {
-      console.log("URGENT FIX: Starting immediate cafe fetch from database");
+      console.log("Starting cafe fetch from database");
       fetchInProgressRef.current = true;
       setError(null);
-      setLoading(true);
+      
+      // Only set loading if we don't have data yet
+      if (cafes.length === 0) {
+        setLoading(true);
+      }
 
-      // Direct database query without retries or throttling
+      // Direct database query
       const { data, error } = await supabase
         .from('cafes')
         .select('*')
@@ -41,7 +58,7 @@ export function useCafeFetch() {
         throw new Error(error.message);
       }
       
-      console.log(`URGENT FIX: Retrieved ${data?.length || 0} cafes from database:`, data);
+      console.log(`Retrieved ${data?.length || 0} cafes from database`);
       
       if (isMountedRef.current) {
         if (data && data.length > 0) {
@@ -63,23 +80,23 @@ export function useCafeFetch() {
             photoUrl: cafe.photo_url
           }));
           
-          console.log(`URGENT FIX: Successfully formatted ${formattedCafes.length} cafes`);
+          console.log(`Successfully formatted ${formattedCafes.length} cafes`);
           setCafes(formattedCafes);
           
-          // Immediately dispatch events for dashboard updates
-          window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
-            detail: { cafes: formattedCafes, forceRefresh: true }
-          }));
-          window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-            detail: { action: 'cafesRefreshed', cafes: formattedCafes }
-          }));
+          // Dispatch single event to avoid cascading updates
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('cafe_data_ready', {
+              detail: { cafes: formattedCafes }
+            }));
+          }, 100);
+          
         } else {
-          console.log("URGENT FIX: No cafes found in database");
+          console.log("No cafes found in database");
           setCafes([]);
         }
       }
     } catch (err: any) {
-      console.error("URGENT FIX: Failed to fetch cafes:", err);
+      console.error("Failed to fetch cafes:", err);
       if (isMountedRef.current) {
         setError(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
         setCafes([]);
@@ -90,17 +107,26 @@ export function useCafeFetch() {
         fetchInProgressRef.current = false;
       }
     }
-  }, []);
+  }, [cafes.length]);
 
-  // Effect to fetch cafes when refresh is triggered - immediate execution
+  // Effect to fetch cafes when refresh is triggered - with proper cleanup
   useEffect(() => {
-    console.log("URGENT FIX: useEffect triggered for cafe fetch");
-    fetchCafes();
+    if (refreshTrigger > 0) {
+      console.log("useEffect triggered for cafe fetch, trigger:", refreshTrigger);
+      fetchCafes();
+    }
   }, [fetchCafes, refreshTrigger]);
+
+  // Initial fetch on mount
+  useEffect(() => {
+    console.log("Initial cafe fetch on mount");
+    setRefreshTrigger(1);
+  }, []);
 
   // Clean up effect
   useEffect(() => {
     return () => {
+      console.log("useCafeFetch cleanup");
       isMountedRef.current = false;
     };
   }, []);

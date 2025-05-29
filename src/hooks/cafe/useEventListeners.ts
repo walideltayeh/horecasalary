@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { Cafe } from '@/types';
 
@@ -8,129 +9,81 @@ export const useEventListeners = (
   handleRefresh?: () => Promise<void>
 ) => {
   const mounted = useRef(true);
-  const lastRefreshTime = useRef(Date.now());
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastEventTimeRef = useRef<number>(0);
+  const eventTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Set up listeners for data update events with reduced throttling
+  // Set up listeners with heavy throttling to prevent infinite loops
   useEffect(() => {
-    const handleDataUpdated = (event: CustomEvent) => {
+    const handleDataReady = (event: CustomEvent) => {
+      const { cafes } = event.detail || {};
+      
+      if (mounted.current && cafes && Array.isArray(cafes)) {
+        console.log("Cafe data ready event - updating local state");
+        setLocalCafes(cafes);
+      }
+    };
+    
+    // Only handle critical events with heavy throttling
+    const handleCriticalUpdate = (event: CustomEvent) => {
       const detail = event.detail || {};
+      const now = Date.now();
       
-      // Consider more events as critical
-      const isCriticalUpdate = 
-        detail.action === 'statusUpdate' || 
-        detail.action === 'cafeCreated' || 
-        detail.action === 'cafeEdited' ||
-        detail.action === 'cafeDeleted' || 
-        detail.action === 'cafeAdded' ||
-        detail.highPriority === true ||
-        detail.forceRefresh === true;
-      
-      if (!isCriticalUpdate) {
-        return; // Skip non-critical updates
+      // Heavy throttling - minimum 5 seconds between events
+      if (now - lastEventTimeRef.current < 5000) {
+        console.log("Event throttled - too recent");
+        return;
       }
       
-      // Reduce throttling to 5 seconds (was 10 seconds)
-      const now = Date.now();
-      if (now - lastRefreshTime.current < 5000) { 
-        console.log("Skipping refresh - too recent");
+      // Only handle truly critical updates
+      const isCritical = 
+        detail.action === 'cafeDeleted' || 
+        detail.action === 'cafeAdded' ||
+        detail.forceRefresh === true;
+      
+      if (!isCritical) {
         return;
       }
       
       if (mounted.current && !refreshing && handleRefresh) {
         // Clear any existing timeout
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
+        if (eventTimeoutRef.current) {
+          clearTimeout(eventTimeoutRef.current);
         }
         
-        // Execute refresh for critical updates with shorter delay
-        lastRefreshTime.current = Date.now();
-        console.log("Critical update detected - refreshing data");
-        handleRefresh();
+        console.log("Critical update detected - scheduling refresh");
+        lastEventTimeRef.current = now;
+        
+        // Debounce the refresh call
+        eventTimeoutRef.current = setTimeout(() => {
+          if (mounted.current && !refreshing) {
+            handleRefresh();
+          }
+        }, 1000);
       }
     };
     
-    // Handle cafe added events specifically - add local state update
-    const handleCafeAdded = (event: CustomEvent) => {
-      const { cafeId } = event.detail || {};
-      console.log("Cafe added event detected, ID:", cafeId);
-      
-      if (cafeId && handleRefresh && !refreshing) {
-        console.log("Cafe added - triggering immediate refresh");
-        // Clear any existing timeout
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
-        }
-        
-        // Trigger refresh with shorter delay
-        refreshTimeoutRef.current = setTimeout(() => {
-          lastRefreshTime.current = Date.now();
-          handleRefresh();
-        }, 500);
-      }
-    };
-    
-    // Handle cafe deleted event - keep current behavior for deletion
+    // Handle cafe deleted event with immediate local state update
     const handleCafeDeleted = (event: CustomEvent) => {
       const { cafeId } = event.detail;
       
-      // Update local state immediately for better responsiveness
-      if (mounted.current) {
+      if (mounted.current && cafeId) {
+        console.log("Cafe deleted - updating local state");
         setLocalCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
-        
-        // Only trigger refresh after deletion if absolutely necessary
-        // with a significant delay to reduce network load
-        if (handleRefresh && !refreshing) {
-          // Clear any existing timeout
-          if (refreshTimeoutRef.current) {
-            clearTimeout(refreshTimeoutRef.current);
-          }
-          
-          // Use longer timeout to debounce multiple events
-          refreshTimeoutRef.current = setTimeout(() => {
-            lastRefreshTime.current = Date.now();
-            handleRefresh();
-          }, 2500);
-        }
       }
     };
     
-    // Handle cafe stats updated event with more aggressive throttling
-    const handleStatsUpdated = () => {
-      console.log("Stats updated event received");
-      
-      // Throttle updates with a much longer interval
-      const now = Date.now();
-      if (now - lastRefreshTime.current < 15000) {
-        console.log("Skipping stats refresh - too recent");
-        return;
-      }
-      
-      if (mounted.current && !refreshing && handleRefresh) {
-        // Clear any existing timeout
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
-        }
-        
-        // Execute refresh for stats updates
-        lastRefreshTime.current = Date.now();
-        console.log("Refreshing due to stats update");
-        handleRefresh();
-      }
-    };
-    
-    window.addEventListener('horeca_data_updated', handleDataUpdated);
+    // Listen only to essential events
+    window.addEventListener('cafe_data_ready', handleDataReady as EventListener);
+    window.addEventListener('horeca_data_updated', handleCriticalUpdate as EventListener);
     window.addEventListener('cafe_deleted', handleCafeDeleted as EventListener);
-    window.addEventListener('cafe_added', handleCafeAdded as EventListener);
-    window.addEventListener('cafe_stats_updated', handleStatsUpdated as EventListener);
     
     return () => {
-      window.removeEventListener('horeca_data_updated', handleDataUpdated);
+      window.removeEventListener('cafe_data_ready', handleDataReady as EventListener);
+      window.removeEventListener('horeca_data_updated', handleCriticalUpdate as EventListener);
       window.removeEventListener('cafe_deleted', handleCafeDeleted as EventListener);
-      window.removeEventListener('cafe_added', handleCafeAdded as EventListener);
-      window.removeEventListener('cafe_stats_updated', handleStatsUpdated as EventListener);
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
+      
+      if (eventTimeoutRef.current) {
+        clearTimeout(eventTimeoutRef.current);
       }
     };
   }, [refreshing, deleteInProgress, setLocalCafes, handleRefresh]);
@@ -139,9 +92,10 @@ export const useEventListeners = (
   useEffect(() => {
     mounted.current = true;
     return () => {
+      console.log("useEventListeners cleanup");
       mounted.current = false;
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
+      if (eventTimeoutRef.current) {
+        clearTimeout(eventTimeoutRef.current);
       }
     };
   }, []);
