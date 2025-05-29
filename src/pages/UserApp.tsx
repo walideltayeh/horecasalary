@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import PasswordProtection from '@/components/PasswordProtection';
 import UserHeader from '@/components/layout/UserHeader';
 import UserNavigation from '@/components/layout/UserNavigation';
 import UserDashboard from '@/components/UserDashboard';
@@ -13,11 +12,10 @@ import { DataProvider } from '@/contexts/DataContext';
 
 const UserApp: React.FC = () => {
   const { user, isLoading } = useAuth();
-  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const { handleLogout, isLoggingOut } = useLogoutHandler();
 
-  console.log("UserApp render - user:", user?.id, "loading:", isLoading, "passwordVerified:", isPasswordVerified);
+  console.log("UserApp render - user:", user?.id, "loading:", isLoading);
 
   if (isLoading) {
     return (
@@ -38,15 +36,6 @@ const UserApp: React.FC = () => {
   if (user.role === 'admin') {
     console.log("UserApp: Admin user detected, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
-  }
-
-  if (!isPasswordVerified) {
-    return (
-      <PasswordProtection 
-        onAuthenticate={() => setIsPasswordVerified(true)}
-        title="User Application"
-      />
-    );
   }
 
   const renderContent = () => {

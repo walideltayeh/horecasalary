@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Cafe } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useCafeFetch() {
   const [cafes, setCafes] = useState<Cafe[]>([]);
@@ -9,19 +10,24 @@ export function useCafeFetch() {
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const hasInitialFetchRef = useRef(false);
+  const { user, session } = useAuth();
 
   const fetchCafes = useCallback(async () => {
-    if (!isMountedRef.current) {
+    if (!isMountedRef.current || !user || !session) {
+      console.log("useCafeFetch: Skipping fetch - no user or session");
+      setLoading(false);
       return;
     }
 
     try {
       setError(null);
+      console.log("useCafeFetch: Starting fetch for user:", user.id);
       
       const { data, error } = await supabase
         .from('cafes')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
       
       if (error) {
         throw new Error(error.message);
@@ -45,6 +51,7 @@ export function useCafeFetch() {
           photoUrl: cafe.photo_url
         }));
         
+        console.log("useCafeFetch: Successfully fetched", formattedCafes.length, "cafes");
         setCafes(formattedCafes);
         setLoading(false);
         
@@ -57,22 +64,33 @@ export function useCafeFetch() {
         }
       }
     } catch (err: any) {
-      console.error("Failed to fetch cafes:", err);
+      console.error("useCafeFetch: Failed to fetch cafes:", err);
       if (isMountedRef.current) {
-        setError(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
+        if (err.name === 'AbortError' || err.message?.includes('timeout')) {
+          setError('Request timed out. Please check your connection and try again.');
+        } else {
+          setError(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
+        }
         setLoading(false);
       }
     }
-  }, []);
+  }, [user, session]);
 
   const refresh = useCallback(() => {
-    fetchCafes();
-  }, [fetchCafes]);
+    if (user && session) {
+      fetchCafes();
+    }
+  }, [fetchCafes, user, session]);
 
-  // Single fetch on mount
+  // Only fetch when user and session are available
   useEffect(() => {
-    fetchCafes();
-  }, [fetchCafes]);
+    if (user && session) {
+      fetchCafes();
+    } else {
+      setLoading(false);
+      setCafes([]);
+    }
+  }, [fetchCafes, user, session]);
 
   // Cleanup
   useEffect(() => {

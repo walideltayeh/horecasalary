@@ -4,12 +4,14 @@ import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeFetch } from '@/hooks/cafe/useCafeFetch';
 import { useClientSideDelete } from '@/hooks/cafe/deletion/useClientSideDelete';
 import { useEdgeFunctionDelete } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export const useCafeState = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
+  const { user, session } = useAuth();
   
-  // Use the simplified cafe fetch hook without auth dependency
+  // Use the cafe fetch hook with auth dependency
   const { cafes, loading, error, refresh } = useCafeFetch();
   
   // Use the cafe operations
@@ -21,6 +23,11 @@ export const useCafeState = () => {
   
   // Simple fetchCafes function
   const fetchCafes = async (force = false) => {
+    if (!user || !session) {
+      console.log("useCafeState: Cannot fetch cafes - no user or session");
+      return;
+    }
+    
     try {
       await refresh();
       setLastRefreshTime(Date.now());
@@ -32,6 +39,11 @@ export const useCafeState = () => {
   
   // Simple delete function
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
+    if (!user || !session) {
+      toast.error("Authentication required");
+      return false;
+    }
+    
     try {
       const result = await deleteViaEdgeFunction(cafeId);
       
