@@ -13,27 +13,33 @@ export const useCafeEvents = ({
   const refreshInProgressRef = useRef<boolean>(false);
   
   const refreshCafes = useCallback(async () => {
-    // Prevent concurrent refreshes
-    if (refreshInProgressRef.current) {
-      return;
-    }
+    // Remove throttling - allow immediate refresh
+    console.log("refreshCafes called - executing immediately");
     
     try {
       refreshInProgressRef.current = true;
       const now = Date.now();
       setLastRefreshTime(now);
       
-      await fetchCafes();
+      await fetchCafes(true);
+      
       // Dispatch a global event when data is refreshed
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
         detail: { 
           action: 'refresh',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          forceRefresh: true
         }
       }));
       
       // Also dispatch stats updated event to ensure all components refresh
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+        detail: { forceRefresh: true }
+      }));
+      
+      console.log("Cafes refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing cafes:", error);
     } finally {
       refreshInProgressRef.current = false;
     }
@@ -53,13 +59,14 @@ export const useCafeDeletionEvents = ({
       detail: { cafeId, timestamp: Date.now() }
     }));
     
-    // Force refresh data after a short delay
-    setTimeout(() => {
-      fetchCafes(true);
-      
-      // Also dispatch stats updated event
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
-    }, 300);
+    // Force refresh data immediately
+    console.log("Cafe deletion event - refreshing immediately");
+    fetchCafes(true);
+    
+    // Also dispatch stats updated event
+    window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+      detail: { forceRefresh: true }
+    }));
   }, [fetchCafes]);
   
   return {};

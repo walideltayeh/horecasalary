@@ -2,11 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
-import { useCafeSubscription } from '@/hooks/useCafeSubscription';
-import { useCafeDataManager } from './hooks/useCafeDataManager';
+import { useCafeFetch } from '@/hooks/cafe/useCafeFetch';
 import { useClientSideDelete } from '@/hooks/cafe/deletion/useClientSideDelete';
 import { useEdgeFunctionDelete } from '@/hooks/cafe/deletion/useEdgeFunctionDelete';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const useCafeState = () => {
@@ -14,20 +12,41 @@ export const useCafeState = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const pendingDeletions = useRef<Set<string>>(new Set());
   
+  // Use the working cafe fetch hook that actually queries the database
+  const { cafes, loading, error, refresh } = useCafeFetch();
+  
   // Use the modified hooks without the deleteCafe dependency
-  const { loading, setLoading, addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
-  
-  // Use a separate hook for managing cafe data
-  const { cafes, setCafes, pendingDeletions: dataPendingDeletions } = useCafeDataManager();
-  
-  // Import the fetchCafes from useCafeSubscription
-  const { fetchCafes } = useCafeSubscription(user, setCafes, setLoading);
+  const { addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
   
   // Get client-side deletion functionality
   const { clientSideDeletion } = useClientSideDelete();
   
   // Get edge function deletion functionality
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
+  
+  // Create a direct fetchCafes function that calls refresh
+  const fetchCafes = async (force = false) => {
+    console.log("fetchCafes called with force:", force);
+    try {
+      await refresh();
+      setLastRefreshTime(Date.now());
+      
+      // Dispatch events to notify other components
+      window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+        detail: { 
+          action: 'refresh',
+          timestamp: Date.now(),
+          forceRefresh: true
+        }
+      }));
+      
+      window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+        detail: { forceRefresh: true }
+      }));
+    } catch (err) {
+      console.error("Error in fetchCafes:", err);
+    }
+  };
   
   // Implement a proper deleteCafe function that uses the edge function with a fallback
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
@@ -73,9 +92,19 @@ export const useCafeState = () => {
     }
   };
   
-  // Add refresh on mount
-  useEffect(() => {
+  // Set up a manual setCafes function for compatibility
+  const setCafes = (newCafes: any) => {
+    console.log("setCafes called with:", newCafes);
+    // The useCafeFetch hook manages the cafes state internally
+    // We dispatch an event to trigger refresh instead
     fetchCafes(true);
+  };
+  
+  // Add refresh on mount and listen for deletion events
+  useEffect(() => {
+    console.log("useCafeState mounted, fetching cafes immediately");
+    fetchCafes(true);
+    
     // Listen for deletion events
     const handleDeletion = () => {
       console.log("Deletion event detected, refreshing cafes");

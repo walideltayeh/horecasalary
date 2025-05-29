@@ -14,9 +14,9 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
         return;
       }
       
-      // Significantly increase throttling - now 2 minutes instead of 30 seconds
+      // Reduce throttling significantly - only 5 seconds instead of 2 minutes
       const now = Date.now();
-      if (!force && now - lastRefreshTime.current < 120000) {
+      if (!force && now - lastRefreshTime.current < 5000) {
         console.log("Dashboard throttling refresh - too recent");
         return;
       }
@@ -24,8 +24,9 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
       try {
         refreshInProgressRef.current = true;
         lastRefreshTime.current = now;
+        console.log("Dashboard refreshing cafes at", new Date(now).toLocaleTimeString());
         await refreshCafes();
-        console.log("Dashboard data refreshed at", new Date(now).toLocaleTimeString());
+        console.log("Dashboard data refreshed successfully");
       } catch (error) {
         console.error("Error refreshing dashboard data:", error);
       } finally {
@@ -33,37 +34,41 @@ export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => 
       }
     };
     
-    // Listen for important data update events with increased throttling
+    // Listen for important data update events
     const handleCafeDataUpdated = (event: CustomEvent) => {
       const detail = event.detail || {};
       
-      // More restrictive criteria for critical updates
+      console.log("Dashboard received data update event:", detail);
+      
+      // More responsive criteria for updates
       const isCriticalUpdate = 
         detail.forceRefresh === true || 
         detail.action === 'statusUpdate' || 
-        detail.action === 'cafeAdded';
+        detail.action === 'cafeAdded' ||
+        detail.action === 'refresh';
       
       if (isCriticalUpdate) {
-        // Set a longer debounce delay
+        // Reduce debounce timer to 1 second for responsiveness
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
         
-        // Increase debounce timer to 3 seconds
         timerRef.current = setTimeout(() => {
           refreshWithThrottle(true);
-        }, 3000);
+        }, 1000);
       }
     };
     
-    // Specifically listen for cafe_added events
+    // Listen for both events
     window.addEventListener('horeca_data_updated', handleCafeDataUpdated as any);
+    window.addEventListener('cafe_stats_updated', handleCafeDataUpdated as any);
     
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
       window.removeEventListener('horeca_data_updated', handleCafeDataUpdated as any);
+      window.removeEventListener('cafe_stats_updated', handleCafeDataUpdated as any);
     };
   }, [refreshCafes]);
 };

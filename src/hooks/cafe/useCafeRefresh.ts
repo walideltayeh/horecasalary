@@ -6,18 +6,13 @@ import { toast } from 'sonner';
 export const useCafeRefresh = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { refreshCafes } = useData();
-  const lastRefreshTimeRef = useRef<number>(0);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleRefresh = async () => {
-    // Prevent multiple refreshes
-    if (refreshing) return; 
-    
-    // Add throttling - only refresh once every 5 seconds
-    const now = Date.now();
-    if (now - lastRefreshTimeRef.current < 5000) {
-      console.log("Throttling refresh request - too soon since last refresh");
-      return;
+    // Remove throttling - allow immediate refresh
+    if (refreshing) {
+      console.log("Refresh already in progress, skipping");
+      return; 
     }
     
     // Cancel any pending refresh
@@ -27,8 +22,7 @@ export const useCafeRefresh = () => {
     
     try {
       setRefreshing(true);
-      lastRefreshTimeRef.current = now;
-      console.log("Refreshing cafe data from server...");
+      console.log("Refreshing cafe data from server - no throttling");
       
       await refreshCafes();
       console.log("Data refreshed successfully");
