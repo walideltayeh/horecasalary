@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCafeForm } from '@/hooks/useCafeForm';
 import { CafeFormState } from './types/CafeFormTypes';
 import { CafeFormLayout } from './layout/CafeFormLayout';
 import { CafeSubmitHandler } from './form-handlers/CafeSubmitHandler';
 import CafeFormFields from './form-sections/CafeFormFields';
-import { CafeSurveySection } from './form-sections/CafeSurveySection';
 import CafeSurveyWrapper from './CafeSurveyWrapper';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AddCafeFormProps {
   onPreSubmit?: (cafeData: CafeFormState & { latitude: number, longitude: number }) => Promise<boolean>;
@@ -21,9 +21,8 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
   onFormChange,
   onComplete
 }) => {
-  const [showSurvey, setShowSurvey] = useState(false);
+  const { user } = useAuth();
   const [localSurveyCompleted, setLocalSurveyCompleted] = useState(externalSurveyCompleted);
-  const formRef = useRef<HTMLFormElement>(null);
 
   const {
     formState,
@@ -50,29 +49,28 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
     }
   }, [formState, onFormChange]);
 
-  const handleShowSurvey = () => {
-    setShowSurvey(true);
-  };
-
   const handleSurveyComplete = () => {
     setLocalSurveyCompleted(true);
-    setShowSurvey(false);
     if (onComplete) {
       onComplete();
     }
   };
 
-  const handleCancelSurvey = () => {
-    setShowSurvey(false);
-  };
-
   const handleFormSuccess = () => {
     // Reset the form after successful submission
     resetForm();
-    // Reset coordinates if needed
-    // Reset survey completion state if needed
     setLocalSurveyCompleted(false);
   };
+
+  // Show the form regardless of authentication status - but with appropriate messaging
+  if (!user) {
+    return (
+      <div className="bg-white rounded-lg border p-6">
+        <h2 className="text-lg font-semibold mb-4">Add New Cafe</h2>
+        <p className="text-gray-500">Please log in to add cafes to the system.</p>
+      </div>
+    );
+  }
 
   return (
     <CafeFormLayout
@@ -86,7 +84,7 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         coordinates={coordinates}
         surveyCompleted={localSurveyCompleted}
         onPreSubmit={onPreSubmit}
-        onShowSurvey={handleShowSurvey}
+        onShowSurvey={() => {}}
         onSuccess={handleFormSuccess}
       >
         <CafeFormFields
@@ -106,22 +104,10 @@ const AddCafeForm: React.FC<AddCafeFormProps> = ({
         
         <CafeSurveyWrapper
           surveyCompleted={localSurveyCompleted}
-          onFormChange={(formData) => {
-            if (onFormChange) {
-              onFormChange(formData);
-            }
-          }}
+          onFormChange={onFormChange}
           currentFormData={formState}
           onSurveyComplete={handleSurveyComplete}
           onPreSubmit={onPreSubmit}
-        />
-
-        <CafeSurveySection 
-          showSurvey={showSurvey}
-          formState={formState}
-          coordinates={coordinates}
-          onSurveyComplete={handleSurveyComplete}
-          onCancelSurvey={handleCancelSurvey}
         />
       </CafeSubmitHandler>
     </CafeFormLayout>

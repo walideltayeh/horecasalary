@@ -8,7 +8,7 @@ import UserDashboard from '@/components/UserDashboard';
 import CafeList from '@/components/CafeList';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import { DataProvider } from '@/contexts/DataContext';
+import EmergencyErrorBoundary from '@/components/common/EmergencyErrorBoundary';
 
 const UserApp: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -43,7 +43,11 @@ const UserApp: React.FC = () => {
       case 'dashboard':
         return <UserDashboard userId={user.id} userName={user.name} />;
       case 'cafes':
-        return <CafeList />;
+        return (
+          <EmergencyErrorBoundary fallbackMessage="Error loading cafe list. Please refresh.">
+            <CafeList />
+          </EmergencyErrorBoundary>
+        );
       case 'survey':
         return (
           <CafeBrandSurvey 
@@ -70,22 +74,20 @@ const UserApp: React.FC = () => {
   };
 
   return (
-    <DataProvider>
-      <div className="min-h-screen bg-gray-50">
-        <UserHeader user={user} />
-        
-        <UserNavigation 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab}
-          handleLogout={handleLogout}
-          isLoggingOut={isLoggingOut}
-        />
-        
-        <main className="container mx-auto px-4 py-6">
-          {renderContent()}
-        </main>
-      </div>
-    </DataProvider>
+    <div className="min-h-screen bg-gray-50">
+      <UserHeader user={user} />
+      
+      <UserNavigation 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        handleLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
+      />
+      
+      <main className="container mx-auto px-4 py-6">
+        {renderContent()}
+      </main>
+    </div>
   );
 };
 

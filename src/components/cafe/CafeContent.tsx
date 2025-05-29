@@ -14,31 +14,33 @@ interface CafeContentProps {
 }
 
 const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurveyComplete }) => {
-  const { refreshCafes } = useData();
   const { t } = useLanguage();
-  const [formKey, setFormKey] = useState<number>(0); // Add a key to force re-render
+  const [formKey, setFormKey] = useState<number>(0);
 
-  // Force initial data refresh on mount
+  // Try to get refreshCafes if DataContext is available, but don't crash if it's not
+  let refreshCafes: (() => Promise<void>) | undefined;
+  try {
+    const dataContext = useData();
+    refreshCafes = dataContext.refreshCafes;
+  } catch (error) {
+    console.warn("DataContext not available, continuing without it");
+  }
+
+  // Force initial data refresh on mount if available
   useEffect(() => {
-    refreshCafes();
-    
-    // Also listen for stats update events
-    const handleStatsUpdated = () => {
-      console.log("CafeContent - Stats updated event received");
+    if (refreshCafes) {
       refreshCafes();
-    };
+    }
     
     // Listen for cafe added event
     const handleCafeAdded = () => {
       console.log("Cafe added, forcing form reset");
-      setFormKey(prev => prev + 1); // Increment key to force form re-render
+      setFormKey(prev => prev + 1);
     };
     
-    window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     window.addEventListener('cafe_added', handleCafeAdded);
     
     return () => {
-      window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
       window.removeEventListener('cafe_added', handleCafeAdded);
     };
   }, [refreshCafes]);
@@ -51,9 +53,6 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
       detail: { action: 'cafeCreated', forceRefresh: true }
     });
     window.dispatchEvent(event);
-    
-    // Also trigger a stats update
-    window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
   };
 
   return (
@@ -64,7 +63,7 @@ const CafeContent: React.FC<CafeContentProps> = ({ user, surveyCompleted, onSurv
       </div>
 
       <AddCafeForm 
-        key={formKey} // Add key to force re-render when needed
+        key={formKey}
         surveyCompleted={surveyCompleted}
         onPreSubmit={async () => true}
         onComplete={handleSurveyComplete}

@@ -21,24 +21,22 @@ export const useCafeState = () => {
   const { clientSideDeletion } = useClientSideDelete();
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
   
-  // Enhanced fetchCafes function with error handling
+  // Simplified fetchCafes function
   const fetchCafes = async (force = false) => {
-    if (!user || !session) {
-      console.log("useCafeState: Cannot fetch cafes - no authentication");
-      return;
-    }
-    
     try {
       console.log("useCafeState: Triggering cafe refresh");
       await refresh();
       setLastRefreshTime(Date.now());
     } catch (err: any) {
       console.error("useCafeState: Error in fetchCafes:", err);
-      toast.error(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
+      // Don't show error toast if user is not authenticated
+      if (user && session) {
+        toast.error(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
+      }
     }
   };
   
-  // Enhanced delete function
+  // Simplified delete function
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     if (!user || !session) {
       toast.error("Authentication required");
@@ -73,18 +71,13 @@ export const useCafeState = () => {
     }
   };
   
-  // Show error state if there's an error
+  // Only show error if user is authenticated
   useEffect(() => {
-    if (error) {
+    if (error && user && session) {
       console.error("useCafeState: Cafe fetch error detected:", error);
       toast.error(error);
     }
-  }, [error]);
-
-  // Log authentication state changes
-  useEffect(() => {
-    console.log("useCafeState: Auth state changed - user:", !!user, "session:", !!session);
-  }, [user, session]);
+  }, [error, user, session]);
 
   return { 
     cafes,
