@@ -11,92 +11,63 @@ export const useCafeState = () => {
   const { user } = useAuth();
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   
-  // URGENT FIX: Use the working cafe fetch hook directly
+  // Use the simplified cafe fetch hook
   const { cafes, loading, error, refresh } = useCafeFetch();
   
-  // Use the cafe operations without deleteCafe dependency
+  // Use the cafe operations
   const { addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
   
   // Get deletion functionality
   const { clientSideDeletion } = useClientSideDelete();
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
   
-  // URGENT FIX: Create a direct fetchCafes function that immediately calls refresh
+  // Simple fetchCafes function
   const fetchCafes = async (force = false) => {
-    console.log("URGENT FIX: fetchCafes called - executing immediate refresh");
+    console.log("fetchCafes called");
     try {
       await refresh();
       setLastRefreshTime(Date.now());
-      
-      console.log("URGENT FIX: Cafes fetched successfully, dispatching events");
-      // Dispatch events to notify other components
-      window.dispatchEvent(new CustomEvent('horeca_data_updated', {
-        detail: { 
-          action: 'refresh',
-          timestamp: Date.now(),
-          forceRefresh: true
-        }
-      }));
-      
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
-        detail: { forceRefresh: true }
-      }));
     } catch (err) {
-      console.error("URGENT FIX: Error in fetchCafes:", err);
+      console.error("Error in fetchCafes:", err);
       toast.error("Failed to fetch cafes");
     }
   };
   
-  // URGENT FIX: Simplified delete function
+  // Simple delete function
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
-    console.log("URGENT FIX: Delete cafe called for:", cafeId);
+    console.log("Delete cafe called for:", cafeId);
     
     try {
-      // Try edge function first
       const result = await deleteViaEdgeFunction(cafeId);
       
       if (result) {
-        console.log("URGENT FIX: Edge function deletion successful");
-        // Immediate refresh after deletion
+        console.log("Edge function deletion successful");
         setTimeout(() => fetchCafes(true), 100);
         return true;
       }
       
-      // Fallback to client-side deletion
-      console.log("URGENT FIX: Falling back to client-side deletion");
+      console.log("Falling back to client-side deletion");
       const clientResult = await clientSideDeletion(cafeId);
-      
-      // Always refresh after deletion attempt
       setTimeout(() => fetchCafes(true), 100);
       
       return clientResult;
     } catch (err: any) {
-      console.error("URGENT FIX: Deletion error:", err);
+      console.error("Deletion error:", err);
       toast.error(`Deletion failed: ${err.message || "Unknown error"}`);
-      
-      // Refresh to ensure UI is accurate
-      setTimeout(() => fetchCafes(true), 100);
-      
       return false;
     }
   };
   
-  // URGENT FIX: Simplified setCafes function
+  // Simple setCafes function
   const setCafes = (newCafes: any) => {
-    console.log("URGENT FIX: setCafes called - triggering refresh");
-    fetchCafes(true);
+    console.log("setCafes called - will trigger refresh");
+    refresh();
   };
   
-  // URGENT FIX: Immediate refresh on mount
-  useEffect(() => {
-    console.log("URGENT FIX: useCafeState mounted - immediate cafe fetch");
-    fetchCafes(true);
-  }, []);
-  
-  // URGENT FIX: Show error state if there's an error
+  // Show error state if there's an error
   useEffect(() => {
     if (error) {
-      console.error("URGENT FIX: Cafe fetch error:", error);
+      console.error("Cafe fetch error:", error);
       toast.error("Failed to load cafes");
     }
   }, [error]);
@@ -112,6 +83,6 @@ export const useCafeState = () => {
     deleteCafe,
     lastRefreshTime,
     setLastRefreshTime,
-    pendingDeletions: { current: new Set() } // Simplified
+    pendingDeletions: { current: new Set() }
   };
 };

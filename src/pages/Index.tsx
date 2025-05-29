@@ -5,38 +5,20 @@ import { useEffect, useState } from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
-  const { user, isLoading, session } = useAuth();
-  const [timeoutReached, setTimeoutReached] = useState(false);
+  const { user, isLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
-    console.log("Index page - Current user:", user);
-    console.log("Index page - Current session:", session);
-    console.log("Index page - Is loading:", isLoading);
-    
-    // Shorter timeout to prevent infinite loading
-    const timer = setTimeout(() => {
-      console.log("Index page - Timeout reached, proceeding with redirect");
-      setTimeoutReached(true);
-    }, 3000); // Reduced from 2000 to 3000ms
-    
-    return () => clearTimeout(timer);
-  }, [user, isLoading, session]);
+    setMounted(true);
+  }, []);
   
-  // If we have a clear auth state or timeout reached, proceed with redirect
-  if (timeoutReached || (!isLoading && (user !== undefined))) {
-    if (user) {
-      const redirectPath = user.role === 'admin' ? '/dashboard' : '/user-app';
-      console.log("Index page - User authenticated, redirecting to:", redirectPath);
-      return <Navigate to={redirectPath} replace />;
-    } else {
-      console.log("Index page - No authenticated user, redirecting to login");
-      return <Navigate to="/login" replace />;
-    }
+  // Don't render anything until component is mounted
+  if (!mounted) {
+    return null;
   }
   
-  // Show loading state only when actually loading
-  if (isLoading && !timeoutReached) {
-    console.log("Index page - Auth is still loading, showing loading state");
+  // Show loading only for a short time during actual loading
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -46,15 +28,17 @@ const Index = () => {
             <Skeleton className="h-10 w-40 bg-gray-200" />
           </div>
           <p className="mt-4 text-sm text-gray-500">Loading your account...</p>
-          <div className="text-xs text-center mt-4 text-gray-500">
-            Good Luck
-          </div>
         </div>
       </div>
     );
   }
   
-  // If somehow we get here, redirect to login as fallback
+  // Simple redirect logic
+  if (user) {
+    const redirectPath = user.role === 'admin' ? '/dashboard' : '/user-app';
+    return <Navigate to={redirectPath} replace />;
+  }
+  
   return <Navigate to="/login" replace />;
 };
 
