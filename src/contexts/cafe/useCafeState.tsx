@@ -21,23 +21,24 @@ export const useCafeState = () => {
   const { clientSideDeletion } = useClientSideDelete();
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
   
-  // Simple fetchCafes function
+  // Enhanced fetchCafes function with error handling
   const fetchCafes = async (force = false) => {
     if (!user || !session) {
-      console.log("useCafeState: Cannot fetch cafes - no user or session");
+      console.log("useCafeState: Cannot fetch cafes - no authentication");
       return;
     }
     
     try {
+      console.log("useCafeState: Triggering cafe refresh");
       await refresh();
       setLastRefreshTime(Date.now());
-    } catch (err) {
-      console.error("Error in fetchCafes:", err);
-      toast.error("Failed to fetch cafes");
+    } catch (err: any) {
+      console.error("useCafeState: Error in fetchCafes:", err);
+      toast.error(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
     }
   };
   
-  // Simple delete function
+  // Enhanced delete function
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
     if (!user || !session) {
       toast.error("Authentication required");
@@ -45,40 +46,52 @@ export const useCafeState = () => {
     }
     
     try {
+      console.log("useCafeState: Attempting to delete cafe:", cafeId);
+      
+      // Try edge function first
       const result = await deleteViaEdgeFunction(cafeId);
       
       if (result) {
+        console.log("useCafeState: Edge function deletion successful");
         setTimeout(() => fetchCafes(true), 100);
         return true;
       }
       
+      // Fallback to client-side deletion
+      console.log("useCafeState: Falling back to client-side deletion");
       const clientResult = await clientSideDeletion(cafeId);
-      setTimeout(() => fetchCafes(true), 100);
+      
+      if (clientResult) {
+        setTimeout(() => fetchCafes(true), 100);
+      }
       
       return clientResult;
     } catch (err: any) {
-      console.error("Deletion error:", err);
+      console.error("useCafeState: Deletion error:", err);
       toast.error(`Deletion failed: ${err.message || "Unknown error"}`);
       return false;
     }
   };
   
-  // Simple setCafes function
-  const setCafes = (newCafes: any) => {
-    refresh();
-  };
-  
   // Show error state if there's an error
   useEffect(() => {
     if (error) {
-      console.error("Cafe fetch error:", error);
-      toast.error("Failed to load cafes");
+      console.error("useCafeState: Cafe fetch error detected:", error);
+      toast.error(error);
     }
   }, [error]);
 
+  // Log authentication state changes
+  useEffect(() => {
+    console.log("useCafeState: Auth state changed - user:", !!user, "session:", !!session);
+  }, [user, session]);
+
   return { 
     cafes,
-    setCafes,
+    setCafes: () => {
+      console.log("useCafeState: setCafes called, triggering refresh");
+      refresh();
+    },
     loading,
     fetchCafes,
     addCafe,

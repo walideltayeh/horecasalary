@@ -41,13 +41,38 @@ export const supabase = createClient<Database>(
           headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
-          }
+          },
+          timeout: 15000 // 15 second timeout
         };
         return fetch(url, { ...defaultOptions, ...options });
       }
     }
   }
 );
+
+// Test database connection on initialization
+const testDatabaseConnection = async () => {
+  try {
+    console.log("[Database] Testing connection...");
+    
+    const { data, error } = await supabase
+      .from('cafes')
+      .select('count')
+      .limit(1)
+      .abortSignal(AbortSignal.timeout(5000));
+    
+    if (error) {
+      console.error('[Database] Connection test failed:', error);
+    } else {
+      console.log('[Database] Connection test successful');
+    }
+  } catch (error) {
+    console.error('[Database] Connection test error:', error);
+  }
+};
+
+// Test connection after a short delay to allow client initialization
+setTimeout(testDatabaseConnection, 2000);
 
 // Manual function to initialize database structure
 const initializeDatabase = async () => {
