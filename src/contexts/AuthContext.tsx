@@ -4,7 +4,6 @@ import { User } from '@/types';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { useUserManagement } from '@/hooks/auth/useUserManagement';
-import { toast } from '@/components/ui/use-toast';
 
 type AuthContextType = {
   user: User | null;
@@ -29,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { login, logout } = useAuthActions();
   const { addUser, deleteUser, updateUser } = useUserManagement();
 
-  // Debug authentication status on mount and changes
+  // Simplified debug logging
   useEffect(() => {
     console.log("AuthContext state:", { 
       userId: user?.id, 
@@ -38,18 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       usersLoaded: users.length,
       isLoading
     });
-  }, [user, isAdmin, users, isLoading]);
-
-  // Force an initial fetch of users if admin
-  useEffect(() => {
-    if (isAdmin && !isLoading && users.length === 0) {
-      console.log("AuthProvider: Admin user detected, forcing initial users fetch");
-      fetchUsers(true).catch(err => {
-        console.error("Error in initial users fetch:", err);
-        toast.error("Failed to load users data");
-      });
-    }
-  }, [isAdmin, isLoading, users.length, fetchUsers]);
+  }, [user?.id, user?.role, isAdmin, users.length, isLoading]);
 
   const value = useMemo(
     () => ({
@@ -71,9 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   return (
-    <AuthContext.Provider
-      value={value}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

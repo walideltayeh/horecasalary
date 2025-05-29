@@ -1,46 +1,58 @@
 
 import { useAuthSession } from './auth/useAuthSession';
 import { useUsers } from './auth/useUsers';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export function useAuthState() {
   const { user, isLoading, session } = useAuthSession();
   const [authError, setAuthError] = useState<string | null>(null);
+  const fetchTriggeredRef = useRef(false);
   
   const isAdmin = !!user && user.role === 'admin';
   
-  // Only fetch users if admin and authenticated - simplified
+  // Only fetch users if admin and authenticated - with stable reference
   const { users, setUsers, isLoading: isLoadingUsers, error, fetchUsers } = useUsers(
     isAdmin, 
     !isLoading && !!user
   );
 
-  // Simple user fetch function without retries
+  // Simplified user fetch function
   const fetchUsersSimple = async (force: boolean = false) => {
-    if (!isAdmin || isLoading) {
+    if (!isAdmin || isLoading || fetchTriggeredRef.current) {
       return;
     }
     
     try {
       setAuthError(null);
+      fetchTriggeredRef.current = true;
       await fetchUsers(force);
     } catch (err: any) {
       console.error("Failed to fetch users:", err);
       setAuthError(err.message || "Failed to load user data");
+    } finally {
+      fetchTriggeredRef.current = false;
     }
   };
 
-  // Simple effect for admin user fetch - no complex retry logic
+  // Single effect for admin user fetch - no dependency on users.length
   useEffect(() => {
-    if (isAdmin && !isLoading && users.length === 0) {
-      // Simple timeout to avoid immediate calls
+    if (isAdmin && !isLoading && !fetchTriggeredRef.current) {
+      console.log("AuthState: Admin detected, scheduling user fetch");
+      // Use setTimeout to prevent blocking the main thread
       const timer = setTimeout(() => {
         fetchUsersSimple(true);
-      }, 1000);
+      }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [isAdmin, isLoading, users.length]);
+  }, [isAdmin, isLoading]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      fetchTriggeredRef.current = false;
+    };
+  }, []);
 
   return { 
     user, 

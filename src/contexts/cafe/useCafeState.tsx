@@ -21,15 +21,23 @@ export const useCafeState = () => {
   const { clientSideDeletion } = useClientSideDelete();
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
   
-  // Simplified fetchCafes function
+  // Simplified fetchCafes function with throttling
   const fetchCafes = async (force = false) => {
+    const now = Date.now();
+    
+    // Throttle non-forced refreshes
+    if (!force && now - lastRefreshTime < 10000) {
+      console.log("useCafeState: Throttling fetch request");
+      return;
+    }
+    
     try {
       console.log("useCafeState: Triggering cafe refresh");
       await refresh();
-      setLastRefreshTime(Date.now());
+      setLastRefreshTime(now);
     } catch (err: any) {
       console.error("useCafeState: Error in fetchCafes:", err);
-      // Don't show error toast if user is not authenticated
+      // Only show error toast if user is authenticated
       if (user && session) {
         toast.error(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
       }
@@ -51,7 +59,7 @@ export const useCafeState = () => {
       
       if (result) {
         console.log("useCafeState: Edge function deletion successful");
-        setTimeout(() => fetchCafes(true), 100);
+        setTimeout(() => fetchCafes(true), 1000);
         return true;
       }
       
@@ -60,7 +68,7 @@ export const useCafeState = () => {
       const clientResult = await clientSideDeletion(cafeId);
       
       if (clientResult) {
-        setTimeout(() => fetchCafes(true), 100);
+        setTimeout(() => fetchCafes(true), 1000);
       }
       
       return clientResult;

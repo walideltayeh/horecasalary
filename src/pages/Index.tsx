@@ -6,9 +6,17 @@ import { useEffect, useState } from 'react';
 const Index = () => {
   const { user, isLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [timeoutReached, setTimeoutReached] = useState(false);
   
   useEffect(() => {
     setMounted(true);
+    
+    // Add timeout to prevent infinite loading
+    const timer = setTimeout(() => {
+      setTimeoutReached(true);
+    }, 5000); // 5 second timeout
+    
+    return () => clearTimeout(timer);
   }, []);
   
   // Don't render anything until component is mounted
@@ -16,8 +24,8 @@ const Index = () => {
     return null;
   }
   
-  // Simple loading state with timeout
-  if (isLoading) {
+  // Show loading with timeout protection
+  if (isLoading && !timeoutReached) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -29,12 +37,20 @@ const Index = () => {
     );
   }
   
-  // Simple redirect logic
+  // If timeout reached and still loading, force redirect to login
+  if (isLoading && timeoutReached) {
+    console.log("Index: Loading timeout reached, redirecting to login");
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Redirect based on user state
   if (user) {
     const redirectPath = user.role === 'admin' ? '/dashboard' : '/user-app';
+    console.log("Index: User found, redirecting to:", redirectPath);
     return <Navigate to={redirectPath} replace />;
   }
   
+  console.log("Index: No user, redirecting to login");
   return <Navigate to="/login" replace />;
 };
 

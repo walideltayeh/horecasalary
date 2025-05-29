@@ -9,16 +9,17 @@ export function useCafeFetch() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const fetchInProgressRef = useRef(false);
   const { user, session } = useAuth();
 
   const fetchCafes = useCallback(async () => {
-    // Don't fetch if component unmounted
-    if (!isMountedRef.current) {
-      console.log("useCafeFetch: Component unmounted, skipping fetch");
+    // Prevent multiple simultaneous fetches
+    if (!isMountedRef.current || fetchInProgressRef.current) {
+      console.log("useCafeFetch: Fetch prevented - unmounted or in progress");
       return;
     }
 
-    // Don't fetch if no authentication - but don't treat this as an error
+    // Clear state if no authentication
     if (!user || !session) {
       console.log("useCafeFetch: No authentication - clearing data");
       setLoading(false);
@@ -28,15 +29,22 @@ export function useCafeFetch() {
     }
 
     try {
+      fetchInProgressRef.current = true;
       setLoading(true);
       setError(null);
-      console.log("useCafeFetch: Starting basic fetch for user:", user.id);
+      console.log("useCafeFetch: Starting fetch for user:", user.id);
       
-      // Use the most basic query possible to avoid function errors
+      // Simple query with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const { data, error } = await supabase
         .from('cafes')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(controller.signal);
+      
+      clearTimeout(timeoutId);
       
       if (error) {
         console.error("useCafeFetch: Database query error:", error);
@@ -75,20 +83,24 @@ export function useCafeFetch() {
         return;
       }
       
-      setError(err.message || 'Failed to fetch cafes');
+      // Don't set error for aborted requests
+      if (err.name !== 'AbortError') {
+        setError(err.message || 'Failed to fetch cafes');
+      }
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
       }
+      fetchInProgressRef.current = false;
     }
-  }, [user, session]);
+  }, [user?.id, session?.access_token]); // Stable dependencies
 
   const refresh = useCallback(() => {
     console.log("useCafeFetch: Refresh triggered");
     fetchCafes();
   }, [fetchCafes]);
 
-  // Fetch when authentication is available
+  // Single effect for initial fetch
   useEffect(() => {
     if (user && session) {
       console.log("useCafeFetch: Authentication available, fetching data");
@@ -99,13 +111,14 @@ export function useCafeFetch() {
       setCafes([]);
       setError(null);
     }
-  }, [fetchCafes, user, session]);
+  }, [user?.id, session?.access_token]); // Only depend on stable auth identifiers
 
   // Cleanup
   useEffect(() => {
     return () => {
       console.log("useCafeFetch: Component unmounting");
       isMountedRef.current = false;
+      fetchInProgressRef.current = false;
     };
   }, []);
 
