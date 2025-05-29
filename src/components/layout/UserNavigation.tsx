@@ -31,8 +31,8 @@ const UserNavigation: React.FC<UserNavigationProps> = ({
         </button>
         
         <button 
-          className={`flex flex-col items-center p-4 ${activeTab === 'cafe' ? 'text-custom-red' : 'text-gray-600'}`}
-          onClick={() => setActiveTab('cafe')}
+          className={`flex flex-col items-center p-4 ${activeTab === 'cafes' ? 'text-custom-red' : 'text-gray-600'}`}
+          onClick={() => setActiveTab('cafes')}
           disabled={isLoggingOut}
         >
           <Building />

@@ -52,28 +52,43 @@ const UserApp: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <UserDashboard />;
+        return <UserDashboard userId={user.id} userName={user.name} />;
       case 'cafes':
         return <CafeList />;
       case 'survey':
-        return <CafeBrandSurvey />;
+        return (
+          <CafeBrandSurvey 
+            cafeFormData={{
+              name: '',
+              ownerName: '',
+              ownerNumber: '',
+              numberOfHookahs: 0,
+              numberOfTables: 0,
+              governorate: '',
+              city: '',
+              status: 'Pending',
+              createdBy: user.id,
+              latitude: 0,
+              longitude: 0
+            }}
+            onComplete={() => {}}
+          />
+        );
       default:
-        return <UserDashboard />;
+        return <UserDashboard userId={user.id} userName={user.name} />;
     }
   };
 
   return (
     <DataProvider>
       <div className="min-h-screen bg-gray-50">
-        <UserHeader 
-          user={user} 
-          onLogout={handleLogout} 
-          isLoggingOut={isLoggingOut}
-        />
+        <UserHeader user={user} />
         
         <UserNavigation 
           activeTab={activeTab} 
-          onTabChange={setActiveTab} 
+          setActiveTab={setActiveTab}
+          handleLogout={handleLogout}
+          isLoggingOut={isLoggingOut}
         />
         
         <main className="container mx-auto px-4 py-6">
