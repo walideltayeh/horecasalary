@@ -1,81 +1,86 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
-import Dashboard from './Dashboard';
+import { Navigate } from 'react-router-dom';
+import PasswordProtection from '@/components/PasswordProtection';
 import UserHeader from '@/components/layout/UserHeader';
 import UserNavigation from '@/components/layout/UserNavigation';
-import CafeContent from '@/components/cafe/CafeContent';
-import ErrorBoundary from '@/components/common/ErrorBoundary';
+import UserDashboard from '@/components/UserDashboard';
+import CafeList from '@/components/CafeList';
+import CafeBrandSurvey from '@/components/CafeBrandSurvey';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
+import { DataProvider } from '@/contexts/DataContext';
 
 const UserApp: React.FC = () => {
-  const { user } = useAuth();
-  const { t } = useLanguage();
+  const { user, isLoading } = useAuth();
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [surveyCompleted, setSurveyCompleted] = useState(false);
-  const mounted = useRef(true);
-  const refreshTriggeredRef = useRef(false);
   const { handleLogout, isLoggingOut } = useLogoutHandler();
-  
-  // Clear notification timeouts on unmount and only refresh once on mount
-  useEffect(() => {
-    mounted.current = true;
-    
-    // Only trigger a refresh once when the component first mounts
-    if (!refreshTriggeredRef.current) {
-      refreshTriggeredRef.current = true;
-      
-      // Force data refresh on mount with a small delay to ensure context is ready
-      setTimeout(() => {
-        const event = new CustomEvent('horeca_data_updated', {
-          detail: { action: 'cafeCreated', forceRefresh: true }
-        });
-        window.dispatchEvent(event);
-      }, 300);
-    }
-    
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  
-  if (!user || user.role === 'admin') {
-    return <Navigate to="/login" />;
+
+  console.log("UserApp render - user:", user?.id, "loading:", isLoading, "passwordVerified:", isPasswordVerified);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-custom-red mx-auto"></div>
+          <p className="mt-4 text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
-  const handleSurveyComplete = () => {
-    setSurveyCompleted(true);
+  if (!user) {
+    console.log("UserApp: No user found, redirecting to login");
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'admin') {
+    console.log("UserApp: Admin user detected, redirecting to dashboard");
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (!isPasswordVerified) {
+    return (
+      <PasswordProtection 
+        onAuthenticate={() => setIsPasswordVerified(true)}
+        title="User Application"
+      />
+    );
+  }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <UserDashboard />;
+      case 'cafes':
+        return <CafeList />;
+      case 'survey':
+        return <CafeBrandSurvey />;
+      default:
+        return <UserDashboard />;
+    }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
-      <UserHeader user={user} />
-      
-      <main className="flex-1 overflow-y-auto p-4 pb-24">
-        {activeTab === 'dashboard' ? (
-          <ErrorBoundary fallback={<p>Error loading dashboard. Please try the Cafe tab instead.</p>}>
-            <Dashboard />
-          </ErrorBoundary>
-        ) : null}
+    <DataProvider>
+      <div className="min-h-screen bg-gray-50">
+        <UserHeader 
+          user={user} 
+          onLogout={handleLogout} 
+          isLoggingOut={isLoggingOut}
+        />
         
-        {activeTab === 'cafe' && (
-          <CafeContent 
-            user={user} 
-            surveyCompleted={surveyCompleted} 
-            onSurveyComplete={handleSurveyComplete} 
-          />
-        )}
-      </main>
-      
-      <UserNavigation
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        handleLogout={handleLogout}
-        isLoggingOut={isLoggingOut}
-      />
-    </div>
+        <UserNavigation 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+        />
+        
+        <main className="container mx-auto px-4 py-6">
+          {renderContent()}
+        </main>
+      </div>
+    </DataProvider>
   );
 };
 

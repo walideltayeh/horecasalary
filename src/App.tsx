@@ -38,26 +38,31 @@ const App = () => {
             <LanguageProvider>
               <EmergencyErrorBoundary fallbackMessage="Authentication system error. Please refresh.">
                 <AuthProvider>
-                  <EmergencyErrorBoundary fallbackMessage="Data loading error. Please refresh.">
-                    <DataProvider>
-                      <Toaster />
-                      <Sonner />
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/user-app" element={<UserApp />} />
-                        
-                        <Route path="/" element={<AppLayout />}>
-                          <Route path="dashboard" element={<Dashboard />} />
-                          <Route path="cafe-management" element={<CafeManagement />} />
-                          <Route path="kpi-settings" element={<KPISettings />} />
-                          <Route path="admin" element={<Admin />} />
-                        </Route>
-                        
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </DataProvider>
-                  </EmergencyErrorBoundary>
+                  <Toaster />
+                  <Sonner />
+                  <Routes>
+                    {/* Public routes - NO DataProvider wrapper */}
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/user-app" element={<UserApp />} />
+                    
+                    {/* Authenticated routes - WITH DataProvider wrapper */}
+                    <Route path="/*" element={
+                      <EmergencyErrorBoundary fallbackMessage="Data loading error. Please refresh.">
+                        <DataProvider>
+                          <Routes>
+                            <Route path="/" element={<AppLayout />}>
+                              <Route path="dashboard" element={<Dashboard />} />
+                              <Route path="cafe-management" element={<CafeManagement />} />
+                              <Route path="kpi-settings" element={<KPISettings />} />
+                              <Route path="admin" element={<Admin />} />
+                            </Route>
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </DataProvider>
+                      </EmergencyErrorBoundary>
+                    } />
+                  </Routes>
                 </AuthProvider>
               </EmergencyErrorBoundary>
             </LanguageProvider>

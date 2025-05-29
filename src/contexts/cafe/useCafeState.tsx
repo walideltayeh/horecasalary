@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeFetch } from '@/hooks/cafe/useCafeFetch';
 import { useClientSideDelete } from '@/hooks/cafe/deletion/useClientSideDelete';
@@ -8,10 +7,9 @@ import { useEdgeFunctionDelete } from '@/hooks/cafe/deletion/useEdgeFunctionDele
 import { toast } from 'sonner';
 
 export const useCafeState = () => {
-  const { user } = useAuth();
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   
-  // Use the simplified cafe fetch hook
+  // Use the simplified cafe fetch hook without auth dependency
   const { cafes, loading, error, refresh } = useCafeFetch();
   
   // Use the cafe operations
