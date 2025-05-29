@@ -7,6 +7,7 @@ import UserNavigation from '@/components/layout/UserNavigation';
 import UserDashboard from '@/components/UserDashboard';
 import CafeList from '@/components/CafeList';
 import CafeBrandSurvey from '@/components/CafeBrandSurvey';
+import AddCafeForm from '@/components/cafe/AddCafeForm';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 import EmergencyErrorBoundary from '@/components/common/EmergencyErrorBoundary';
 
@@ -42,6 +43,17 @@ const UserApp: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return <UserDashboard userId={user.id} userName={user.name} />;
+      case 'add-cafe':
+        return (
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold mb-6">Add New Cafe</h2>
+            <AddCafeForm 
+              onComplete={() => {
+                setActiveTab('cafes');
+              }}
+            />
+          </div>
+        );
       case 'cafes':
         return (
           <EmergencyErrorBoundary fallbackMessage="Error loading cafe list. Please refresh.">
