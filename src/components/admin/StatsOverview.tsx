@@ -22,7 +22,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     small: 0,
     medium: 0,
     large: 0,
-    inNegotiation: 0, // Added inNegotiation count
+    inNegotiation: 0,
     total: 0
   });
   
@@ -33,11 +33,12 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     total: 0
   });
   
-  // Update stats whenever cafes change
+  // Update stats whenever cafes change - URGENT FIX for display issues
   useEffect(() => {
-    console.log("StatsOverview - Recalculating statistics with cafes:", cafes.length);
+    console.log("StatsOverview - URGENT RECALCULATION with cafes:", cafes.length);
+    console.log("Raw cafes data:", cafes);
     
-    // Calculate basic stats
+    // Force immediate calculation even with empty array to show proper zero states
     const totalCafes = cafes.length;
     const pendingCafes = cafes.filter(cafe => cafe.status === 'Pending').length;
     // Count both Visited AND Contracted as visited for total visited count
@@ -45,10 +46,11 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
       cafe.status === 'Visited' || cafe.status === 'Contracted').length;
     const contractedCafes = cafes.filter(cafe => cafe.status === 'Contracted').length;
     
-    // Calculate detailed size-based counts
-    // For visited cafes (includes both 'Visited' and 'Contracted' statuses)
+    // Calculate detailed size-based counts with detailed logging
     const visitedOrContractedCafes = cafes.filter(cafe => 
       cafe.status === 'Visited' || cafe.status === 'Contracted');
+    
+    console.log("Visited or contracted cafes:", visitedOrContractedCafes);
       
     const visitSmall = visitedOrContractedCafes.filter(cafe => 
       getCafeSize(cafe.numberOfHookahs) === 'Small').length;
@@ -61,6 +63,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     
     // For contracted cafes (only 'Contracted' status)
     const contractedOnlyCafes = cafes.filter(cafe => cafe.status === 'Contracted');
+    console.log("Contracted only cafes:", contractedOnlyCafes);
     
     const contractSmall = contractedOnlyCafes.filter(cafe => 
       getCafeSize(cafe.numberOfHookahs) === 'Small').length;
@@ -69,27 +72,19 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
     const contractLarge = contractedOnlyCafes.filter(cafe => 
       getCafeSize(cafe.numberOfHookahs) === 'Large').length;
     
-    console.log("Visit counts by size:", { 
-      small: visitSmall, 
-      medium: visitMedium, 
-      large: visitLarge, 
-      inNegotiation: visitInNegotiation, 
-      total: visitedCafes 
-    });
-    console.log("Contract counts by size:", { 
-      small: contractSmall, 
-      medium: contractMedium, 
-      large: contractLarge, 
-      total: contractedCafes 
+    console.log("URGENT FIX - Calculated stats:", { 
+      totalCafes, pendingCafes, visitedCafes, contractedCafes,
+      visitSmall, visitMedium, visitLarge, visitInNegotiation,
+      contractSmall, contractMedium, contractLarge
     });
     
-    // Update state
+    // Update state immediately
     setStats({ totalCafes, pendingCafes, visitedCafes, contractedCafes });
     setVisitDetails({
       small: visitSmall,
       medium: visitMedium, 
       large: visitLarge,
-      inNegotiation: visitInNegotiation, // Store in-negotiation count
+      inNegotiation: visitInNegotiation,
       total: visitedCafes
     });
     setContractDetails({
@@ -110,7 +105,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
           small: visitSmall,
           medium: visitMedium,
           large: visitLarge,
-          inNegotiation: visitInNegotiation, // Include in-negotiation count
+          inNegotiation: visitInNegotiation,
           total: visitedCafes
         },
         contractCounts: {
@@ -121,7 +116,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ cafes }) => {
         }
       }
     }));
-  }, [cafes]);
+  }, [cafes]); // React immediately to any cafe changes
 
   // Format the detailed counts with targets
   const formatVisitCountDetails = () => {

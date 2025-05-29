@@ -30,65 +30,61 @@ const Dashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<string>(user?.id || 'summary');
   const [initialRefreshDone, setInitialRefreshDone] = useState(false);
   
-  // Use the custom hook for data refresh with reduced frequency
+  // Use the custom hook for data refresh
   useDashboardDataRefresh({ refreshCafes });
   
-  // Perform just one refresh on mount instead of multiple
+  // URGENT FIX: Perform aggressive refresh on mount to ensure cafes display
   useEffect(() => {
     if (initialRefreshDone) {
-      return; // Skip if already refreshed
+      return;
     }
 
     const initialRefresh = async () => {
-      console.log("Dashboard - Performing single initial refresh");
+      console.log("Dashboard - URGENT REFRESH - Performing aggressive initial refresh");
       setInitialRefreshDone(true);
+      
+      // Force multiple refreshes to ensure data loads
       await refreshCafes();
       
-      // Dispatch stats event to update all UI components
-      window.dispatchEvent(new CustomEvent('cafe_stats_updated'));
+      // Additional refresh after short delay
+      setTimeout(async () => {
+        console.log("Dashboard - Secondary refresh for urgent fix");
+        await refreshCafes();
+        
+        // Force stats update event
+        window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+          detail: { forceRefresh: true, urgent: true }
+        }));
+      }, 1000);
     };
     
     initialRefresh();
     
-    // Listen for stats update events with reduced frequency
-    const lastRefreshTime = Date.now();
-    let throttleTimer: NodeJS.Timeout | null = null;
-    
+    // Listen for stats update events
     const handleStatsUpdated = () => {
-      // Throttle stat updates substantially
-      const now = Date.now();
-      if (now - lastRefreshTime < 20000) { // 20 seconds throttle
-        return;
-      }
-      
-      // Debounce updates
-      if (throttleTimer) {
-        clearTimeout(throttleTimer);
-      }
-      
-      throttleTimer = setTimeout(() => {
-        console.log("Dashboard - Stats updated event received");
+      console.log("Dashboard - Stats updated event received - urgent fix");
+      // Trigger additional refresh if no cafes loaded
+      if (cafes.length === 0) {
+        console.log("Dashboard - No cafes detected, triggering emergency refresh");
         refreshCafes();
-      }, 500);
+      }
     };
     
     window.addEventListener('cafe_stats_updated', handleStatsUpdated);
     
     return () => {
       window.removeEventListener('cafe_stats_updated', handleStatsUpdated);
-      if (throttleTimer) {
-        clearTimeout(throttleTimer);
-      }
     };
-  }, [refreshCafes, initialRefreshDone]);
+  }, [refreshCafes, initialRefreshDone, cafes.length]);
   
-  // Calculate stats with immediate rendering
+  // Calculate stats with immediate rendering and force recalculation
   const visitCounts = getVisitCounts();
   const contractCounts = getContractCounts();
   const salaryStats = calculateSalary();
   
-  console.log("Dashboard render - Visit counts:", visitCounts);
-  console.log("Dashboard render - Contract counts:", contractCounts);
+  console.log("Dashboard render - URGENT FIX - Visit counts:", visitCounts);
+  console.log("Dashboard render - URGENT FIX - Contract counts:", contractCounts);
+  console.log("Dashboard render - URGENT FIX - Total cafes:", cafes.length);
   
   // Admin dashboard view
   if (isAdmin) {

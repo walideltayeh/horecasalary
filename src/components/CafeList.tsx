@@ -35,6 +35,27 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     setCafeToEdit
   } = useCafeListState(filterByUser, adminView);
   
+  // URGENT FIX: Add detailed logging for debugging cafe display issues
+  console.log("CafeList render - URGENT DEBUG:", {
+    totalCafes: filteredCafes.length,
+    filterByUser,
+    adminView,
+    loading,
+    refreshing,
+    userRole: user?.role,
+    isAdmin
+  });
+  
+  if (filterByUser) {
+    console.log("CafeList - Filtering by user:", filterByUser);
+    console.log("CafeList - Filtered cafes for user:", filteredCafes.map(c => ({
+      id: c.id,
+      name: c.name,
+      createdBy: c.createdBy,
+      status: c.status
+    })));
+  }
+  
   return (
     <div className="space-y-4">
       <div className="flex justify-between mb-2">
@@ -42,7 +63,11 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
           {loading ? (
             <p className="text-gray-500 text-sm">{t('cafe.loading')}</p>
           ) : (
-            <p className="text-gray-500 text-sm">{filteredCafes.length} {t('cafe.found')} {adminView ? '(Admin view)' : ''}</p>
+            <p className="text-gray-500 text-sm">
+              {filteredCafes.length} {t('cafe.found')} 
+              {adminView ? ' (Admin view)' : ''}
+              {filterByUser ? ` (User: ${filterByUser})` : ''}
+            </p>
           )}
         </div>
         <CafeTableActions 
@@ -78,7 +103,9 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
             setShowEditDialog(false);
             setCafeToEdit(null);
             // Dispatch event to trigger refresh across components
-            window.dispatchEvent(new CustomEvent('horeca_data_updated'));
+            window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+              detail: { action: 'cafeUpdated', forceRefresh: true }
+            }));
           }}
         />
       )}

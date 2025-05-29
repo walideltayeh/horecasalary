@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Cafe, User } from '@/types';
+import { Cafe } from '@/types';
 import { fetchWithRetry } from '@/utils/networkUtils';
 
 export function useCafeFetch() {
@@ -14,11 +14,11 @@ export function useCafeFetch() {
   const lastFetchTimeRef = useRef(0);
   const initialLoadCompleteRef = useRef(false);
 
-  // Define a throttled refresh function
+  // Define a more aggressive refresh function - reduce throttling for urgent fix
   const refresh = useCallback(() => {
     const now = Date.now();
-    // Allow refreshing at most once every 5 seconds
-    if (now - lastFetchTimeRef.current > 5000 && !fetchInProgressRef.current) {
+    // Reduce throttling from 5 seconds to 2 seconds for urgent fix
+    if (now - lastFetchTimeRef.current > 2000 && !fetchInProgressRef.current) {
       lastFetchTimeRef.current = now;
       setRefreshTrigger(prev => prev + 1);
     } else {
@@ -26,7 +26,7 @@ export function useCafeFetch() {
     }
   }, []);
 
-  // Main fetch function with retry logic
+  // Main fetch function with improved retry logic
   const fetchCafes = useCallback(async () => {
     if (fetchInProgressRef.current) {
       console.log("Fetch already in progress, skipping");
@@ -34,7 +34,7 @@ export function useCafeFetch() {
     }
 
     try {
-      console.log("Starting cafe fetch");
+      console.log("Starting cafe fetch - URGENT FIX");
       fetchInProgressRef.current = true;
       setError(null);
       
@@ -42,19 +42,23 @@ export function useCafeFetch() {
         setLoading(true);
       }
 
-      // Maximum retries and delay for exponential backoff
-      const maxRetries = 3;
-      const baseDelay = 1000; // 1 second
+      // Increase retries for urgent fix
+      const maxRetries = 5;
+      const baseDelay = 500; // Reduce delay for urgency
       
       // Use fetchWithRetry utility for better error handling
       const response = await fetchWithRetry(
         async () => {
+          console.log("Fetching cafes from database...");
           const { data, error } = await supabase
             .from('cafes')
             .select('*')
             .order('created_at', { ascending: false });
           
-          if (error) throw new Error(error.message);
+          if (error) {
+            console.error("Database error:", error);
+            throw new Error(error.message);
+          }
           return { data, error };
         },
         maxRetries,
@@ -65,8 +69,10 @@ export function useCafeFetch() {
         throw new Error(String(response.error));
       }
       
-      // Type safety check
-      if (Array.isArray(response.data) && response.data.length > 0) {
+      // Handle data formatting more robustly
+      if (response.data) {
+        console.log(`Raw data from database:`, response.data);
+        
         // Apply any necessary transformations to the cafe data
         const formattedCafes: Cafe[] = response.data.map((cafe: any) => ({
           id: cafe.id,
@@ -86,29 +92,47 @@ export function useCafeFetch() {
         }));
         
         if (isMountedRef.current) {
+          console.log(`Successfully formatted ${formattedCafes.length} cafes:`, formattedCafes);
           setCafes(formattedCafes);
-          console.log(`Fetched ${formattedCafes.length} cafes`);
+          
+          // Force update events for dashboard refresh
+          window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+            detail: { cafes: formattedCafes, forceRefresh: true }
+          }));
+          window.dispatchEvent(new CustomEvent('horeca_data_updated', {
+            detail: { action: 'cafesRefreshed', cafes: formattedCafes }
+          }));
         }
       } else {
-        // If no cafes, set empty array
+        // If no cafes, set empty array and still trigger events
         if (isMountedRef.current) {
+          console.log("No cafes found in database");
           setCafes([]);
-          console.log("No cafes found");
+          
+          // Still dispatch events for empty state
+          window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+            detail: { cafes: [], forceRefresh: true }
+          }));
         }
       }
     } catch (err: any) {
       console.error("Failed to fetch cafes:", err);
       if (isMountedRef.current) {
         setError(`Failed to fetch cafes: ${err.message || 'Unknown error'}`);
+        // Set empty array on error but still trigger refresh events
+        setCafes([]);
+        window.dispatchEvent(new CustomEvent('cafe_stats_updated', {
+          detail: { cafes: [], error: err.message }
+        }));
       }
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
         initialLoadCompleteRef.current = true;
-        // Add small delay before clearing the in-progress flag
+        // Reduce delay before clearing progress flag for urgency
         setTimeout(() => {
           fetchInProgressRef.current = false;
-        }, 1000);
+        }, 500);
       }
     }
   }, []);
