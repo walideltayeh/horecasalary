@@ -16,7 +16,6 @@ export const useEventListeners = (
       const { cafes } = event.detail || {};
       
       if (mounted.current && cafes && Array.isArray(cafes)) {
-        console.log("Cafe data ready event - updating local state");
         setLocalCafes(cafes);
       }
     };
@@ -33,7 +32,6 @@ export const useEventListeners = (
   useEffect(() => {
     mounted.current = true;
     return () => {
-      console.log("useEventListeners cleanup");
       mounted.current = false;
     };
   }, []);

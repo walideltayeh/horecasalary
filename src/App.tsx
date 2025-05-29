@@ -1,12 +1,13 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { useEffect } from "react";
+import EmergencyErrorBoundary from "@/components/common/EmergencyErrorBoundary";
 
 // Pages
 import Login from "./pages/Login";
@@ -19,154 +20,52 @@ import AppLayout from "./components/AppLayout";
 import UserApp from "./pages/UserApp";
 import Index from "./pages/Index";
 
-// Custom event bus for cross-tab communication
-const setupCrossTabSync = () => {
-  // Create a broadcast channel if supported
-  let broadcastChannel: BroadcastChannel | null = null;
-  
-  try {
-    broadcastChannel = new BroadcastChannel('horeca_sync_channel');
-    
-    broadcastChannel.onmessage = (event) => {
-      console.log("[CrossTab] Message received:", event.data);
-      if (event.data.type === 'DATA_UPDATED') {
-        // Dispatch a custom event that components can listen for
-        window.dispatchEvent(new CustomEvent('horeca_data_updated', { 
-          detail: event.data 
-        }));
-      }
-    };
-    
-    console.log("[CrossTab] Broadcast channel setup successful");
-  } catch (err) {
-    console.warn("[CrossTab] BroadcastChannel not supported, falling back to localStorage");
-  }
-  
-  // Function to notify other tabs about data changes
-  window.notifyCafesUpdated = () => {
-    const message = { 
-      type: 'DATA_UPDATED', 
-      timestamp: new Date().getTime() 
-    };
-    
-    // Try broadcast channel first
-    if (broadcastChannel) {
-      try {
-        broadcastChannel.postMessage(message);
-      } catch (err) {
-        console.error("[CrossTab] Error sending via broadcast channel:", err);
-      }
-    }
-    
-    // Also use localStorage as fallback
-    try {
-      localStorage.setItem('cafe_data_updated', String(new Date().getTime()));
-    } catch (err) {
-      console.error("[CrossTab] Error using localStorage:", err);
-    }
-  };
-  
-  // Cleanup function
-  return () => {
-    if (broadcastChannel) {
-      broadcastChannel.close();
-    }
-  };
-};
-
-// Route tracker component for analytics and sync
-const RouteTracker = () => {
-  const location = useLocation();
-  
-  useEffect(() => {
-    // Log page changes
-    console.log(`[Navigation] Page changed to: ${location.pathname}`);
-    
-    // Special handling for dashboard - refresh data when navigating to it
-    if (location.pathname === '/dashboard') {
-      // Small delay to ensure components are mounted
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('dashboard_opened'));
-      }, 500);
-    }
-  }, [location]);
-  
-  return null;
-};
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
-      staleTime: 30000, // Consider data fresh for 30 seconds
+      retry: 1,
+      staleTime: 30000,
     },
   },
 });
 
-// Fix 1: Create a TooltipWrapper component to properly use TooltipProvider
-const TooltipWrapper = ({ children }: { children: React.ReactNode }) => {
-  return <TooltipProvider>{children}</TooltipProvider>;
-};
-
 const App = () => {
-  // Set up cross-tab sync when the app loads
-  useEffect(() => {
-    const cleanup = setupCrossTabSync();
-    
-    // Global error handler for fetch
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      try {
-        const response = await originalFetch(...args);
-        return response;
-      } catch (error) {
-        console.error("[Network] Fetch error:", error);
-        throw error;
-      }
-    };
-    
-    return cleanup;
-  }, []);
-  
   return (
-    <QueryClientProvider client={queryClient}>
-      {/* Fix 2: Move TooltipProvider inside BrowserRouter */}
-      <BrowserRouter>
-        <TooltipWrapper>
-          <LanguageProvider>
-            <AuthProvider>
-              <DataProvider>
-                <RouteTracker />
-                <Toaster />
-                <Sonner />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/user-app" element={<UserApp />} />
-                  
-                  <Route path="/" element={<AppLayout />}>
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="cafe-management" element={<CafeManagement />} />
-                    <Route path="kpi-settings" element={<KPISettings />} />
-                    <Route path="admin" element={<Admin />} />
-                  </Route>
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </DataProvider>
-            </AuthProvider>
-          </LanguageProvider>
-        </TooltipWrapper>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <EmergencyErrorBoundary fallbackMessage="The app encountered a critical error. Please refresh to continue.">
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <TooltipProvider>
+            <LanguageProvider>
+              <EmergencyErrorBoundary fallbackMessage="Authentication system error. Please refresh.">
+                <AuthProvider>
+                  <EmergencyErrorBoundary fallbackMessage="Data loading error. Please refresh.">
+                    <DataProvider>
+                      <Toaster />
+                      <Sonner />
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/user-app" element={<UserApp />} />
+                        
+                        <Route path="/" element={<AppLayout />}>
+                          <Route path="dashboard" element={<Dashboard />} />
+                          <Route path="cafe-management" element={<CafeManagement />} />
+                          <Route path="kpi-settings" element={<KPISettings />} />
+                          <Route path="admin" element={<Admin />} />
+                        </Route>
+                        
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </DataProvider>
+                  </EmergencyErrorBoundary>
+                </AuthProvider>
+              </EmergencyErrorBoundary>
+            </LanguageProvider>
+          </TooltipProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </EmergencyErrorBoundary>
   );
 };
 
 export default App;
-
-// Add the global notifyCafesUpdated method for TypeScript
-declare global {
-  interface Window {
-    notifyCafesUpdated: () => void;
-  }
-}

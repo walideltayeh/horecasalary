@@ -16,7 +16,6 @@ export function useCafeFetch() {
     }
 
     try {
-      console.log("Fetching cafes from database");
       setError(null);
       
       const { data, error } = await supabase
@@ -67,7 +66,6 @@ export function useCafeFetch() {
   }, []);
 
   const refresh = useCallback(() => {
-    console.log("Manual refresh triggered");
     fetchCafes();
   }, [fetchCafes]);
 

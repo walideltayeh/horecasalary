@@ -23,7 +23,6 @@ export const useCafeState = () => {
   
   // Simple fetchCafes function
   const fetchCafes = async (force = false) => {
-    console.log("fetchCafes called");
     try {
       await refresh();
       setLastRefreshTime(Date.now());
@@ -35,18 +34,14 @@ export const useCafeState = () => {
   
   // Simple delete function
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
-    console.log("Delete cafe called for:", cafeId);
-    
     try {
       const result = await deleteViaEdgeFunction(cafeId);
       
       if (result) {
-        console.log("Edge function deletion successful");
         setTimeout(() => fetchCafes(true), 100);
         return true;
       }
       
-      console.log("Falling back to client-side deletion");
       const clientResult = await clientSideDeletion(cafeId);
       setTimeout(() => fetchCafes(true), 100);
       
@@ -60,7 +55,6 @@ export const useCafeState = () => {
   
   // Simple setCafes function
   const setCafes = (newCafes: any) => {
-    console.log("setCafes called - will trigger refresh");
     refresh();
   };
   

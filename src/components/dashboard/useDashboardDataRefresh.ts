@@ -1,12 +1,10 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 export const useDashboardDataRefresh = ({ refreshCafes }: { refreshCafes: () => Promise<void> }) => {
-  const refreshInProgressRef = useRef(false);
   
   useEffect(() => {
     const handleCafeDataReady = (event: CustomEvent) => {
-      console.log("Dashboard received cafe data ready event");
       // Data is already available, no need to refresh
     };
     

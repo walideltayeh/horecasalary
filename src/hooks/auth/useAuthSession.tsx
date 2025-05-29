@@ -4,10 +4,6 @@ import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { validateRole, formatDisplayName } from '@/utils/authUtils';
 
-/**
- * Hook to manage authentication session state
- * @returns Current user, loading state, and session
- */
 export function useAuthSession() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -15,15 +11,13 @@ export function useAuthSession() {
 
   useEffect(() => {
     console.log("useAuthSession: Setting up auth state listener");
-    setIsLoading(true);
     
     // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("useAuthSession: Auth state changed:", event, newSession?.user?.id);
+      (event, newSession) => {
+        console.log("useAuthSession: Auth state changed:", event);
         
         if (event === 'SIGNED_OUT') {
-          console.log("useAuthSession: User signed out, clearing user state");
           setUser(null);
           setSession(null);
           setIsLoading(false);
@@ -36,11 +30,9 @@ export function useAuthSession() {
           const metadata = newSession.user.user_metadata || {};
           const email = newSession.user.email || '';
           
-          // Determine user role and name
           let roleName = metadata.role || 'user';
           let name = formatDisplayName(email, metadata.name);
           
-          // Special case for admin@horeca.app
           if (email === 'admin@horeca.app' || email === 'admin') {
             roleName = 'admin';
             name = 'Admin';
@@ -54,11 +46,9 @@ export function useAuthSession() {
             password: null
           };
           
-          console.log("useAuthSession: Setting user from session data:", currentUser);
           setUser(currentUser);
           setIsLoading(false);
         } else {
-          console.log("useAuthSession: No session in state change");
           setUser(null);
           setSession(null);
           setIsLoading(false);
@@ -66,11 +56,9 @@ export function useAuthSession() {
       }
     );
 
-    // Check for existing session on initial load
-    const checkExistingSession = async () => {
+    // Check for existing session once
+    const checkSession = async () => {
       try {
-        console.log("useAuthSession: Checking for existing session");
-        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -79,53 +67,45 @@ export function useAuthSession() {
           return;
         }
         
-        console.log("useAuthSession: Existing session check result:", !!session);
-        setSession(session);
-        
         if (!session) {
           setUser(null);
+          setSession(null);
           setIsLoading(false);
           return;
         }
         
-        if (session && session.user) {
-          const metadata = session.user.user_metadata || {};
-          const email = session.user.email || '';
-          
-          // Determine user role and name
-          let roleName = metadata.role || 'user';
-          let name = formatDisplayName(email, metadata.name);
-          
-          // Special case for admin@horeca.app
-          if (email === 'admin@horeca.app' || email === 'admin') {
-            roleName = 'admin';
-            name = 'Admin';
-          }
-          
-          const currentUser: User = {
-            id: session.user.id,
-            email: email,
-            name: name,
-            role: validateRole(roleName),
-            password: null
-          };
-          
-          console.log("useAuthSession: Setting user from session:", currentUser);
-          setUser(currentUser);
+        // Process session the same way as in the listener
+        const metadata = session.user.user_metadata || {};
+        const email = session.user.email || '';
+        
+        let roleName = metadata.role || 'user';
+        let name = formatDisplayName(email, metadata.name);
+        
+        if (email === 'admin@horeca.app' || email === 'admin') {
+          roleName = 'admin';
+          name = 'Admin';
         }
         
+        const currentUser: User = {
+          id: session.user.id,
+          email: email,
+          name: name,
+          role: validateRole(roleName),
+          password: null
+        };
+        
+        setUser(currentUser);
+        setSession(session);
         setIsLoading(false);
       } catch (err) {
-        console.error("Unexpected error in auth setup:", err);
+        console.error("Error in session check:", err);
         setIsLoading(false);
       }
     };
     
-    // Check for existing session after setting up the listener
-    checkExistingSession();
+    checkSession();
 
     return () => {
-      console.log("useAuthSession: Cleaning up auth state subscription");
       subscription.unsubscribe();
     };
   }, []);
