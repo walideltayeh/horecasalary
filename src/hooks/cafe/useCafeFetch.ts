@@ -30,13 +30,34 @@ export function useCafeFetch() {
     try {
       setLoading(true);
       setError(null);
-      console.log("useCafeFetch: Starting fetch for user:", user.id);
+      console.log("useCafeFetch: Starting simplified fetch for user:", user.id);
       
-      // Simple fetch without complex error handling
+      // Simplified query with timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const { data, error } = await supabase
         .from('cafes')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select(`
+          id,
+          name,
+          owner_name,
+          owner_number,
+          number_of_tables,
+          number_of_hookahs,
+          city,
+          governorate,
+          latitude,
+          longitude,
+          created_at,
+          created_by,
+          status,
+          photo_url
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100); // Limit results to prevent timeout
+      
+      clearTimeout(timeoutId);
       
       if (error) {
         console.error("useCafeFetch: Database query error:", error);
@@ -75,8 +96,12 @@ export function useCafeFetch() {
         return;
       }
       
-      // Simplified error handling
-      setError(err.message || 'Failed to fetch cafes');
+      // Handle timeout specifically
+      if (err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err.message || 'Failed to fetch cafes');
+      }
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
