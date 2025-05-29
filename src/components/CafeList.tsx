@@ -35,8 +35,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     setCafeToEdit
   } = useCafeListState(filterByUser, adminView);
   
-  // URGENT FIX: Add detailed logging for debugging cafe display issues
-  console.log("CafeList render - URGENT DEBUG:", {
+  // URGENT FIX: Enhanced logging for debugging
+  console.log("URGENT FIX - CafeList render:", {
     totalCafes: filteredCafes.length,
     filterByUser,
     adminView,
@@ -47,8 +47,8 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
   });
   
   if (filterByUser) {
-    console.log("CafeList - Filtering by user:", filterByUser);
-    console.log("CafeList - Filtered cafes for user:", filteredCafes.map(c => ({
+    console.log("URGENT FIX - Filtering by user:", filterByUser);
+    console.log("URGENT FIX - Filtered cafes for user:", filteredCafes.map(c => ({
       id: c.id,
       name: c.name,
       createdBy: c.createdBy,
@@ -56,12 +56,26 @@ const CafeList: React.FC<CafeListProps> = ({ adminView = false, filterByUser }) 
     })));
   }
   
+  // URGENT FIX: Show meaningful loading and error states
+  if (loading && filteredCafes.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <p className="text-gray-500">Loading cafes from database...</p>
+          <div className="mt-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-custom-red mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-4">
       <div className="flex justify-between mb-2">
         <div>
-          {loading ? (
-            <p className="text-gray-500 text-sm">{t('cafe.loading')}</p>
+          {loading && filteredCafes.length === 0 ? (
+            <p className="text-gray-500 text-sm">Loading cafes...</p>
           ) : (
             <p className="text-gray-500 text-sm">
               {filteredCafes.length} {t('cafe.found')} 

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCafeOperations } from '@/hooks/useCafeOperations';
 import { useCafeFetch } from '@/hooks/cafe/useCafeFetch';
@@ -10,27 +10,25 @@ import { toast } from 'sonner';
 export const useCafeState = () => {
   const { user } = useAuth();
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
-  const pendingDeletions = useRef<Set<string>>(new Set());
   
-  // Use the working cafe fetch hook that actually queries the database
+  // URGENT FIX: Use the working cafe fetch hook directly
   const { cafes, loading, error, refresh } = useCafeFetch();
   
-  // Use the modified hooks without the deleteCafe dependency
+  // Use the cafe operations without deleteCafe dependency
   const { addCafe, updateCafe, updateCafeStatus } = useCafeOperations();
   
-  // Get client-side deletion functionality
+  // Get deletion functionality
   const { clientSideDeletion } = useClientSideDelete();
-  
-  // Get edge function deletion functionality
   const { deleteViaEdgeFunction } = useEdgeFunctionDelete();
   
-  // Create a direct fetchCafes function that calls refresh
+  // URGENT FIX: Create a direct fetchCafes function that immediately calls refresh
   const fetchCafes = async (force = false) => {
-    console.log("fetchCafes called with force:", force);
+    console.log("URGENT FIX: fetchCafes called - executing immediate refresh");
     try {
       await refresh();
       setLastRefreshTime(Date.now());
       
+      console.log("URGENT FIX: Cafes fetched successfully, dispatching events");
       // Dispatch events to notify other components
       window.dispatchEvent(new CustomEvent('horeca_data_updated', {
         detail: { 
@@ -44,80 +42,65 @@ export const useCafeState = () => {
         detail: { forceRefresh: true }
       }));
     } catch (err) {
-      console.error("Error in fetchCafes:", err);
+      console.error("URGENT FIX: Error in fetchCafes:", err);
+      toast.error("Failed to fetch cafes");
     }
   };
   
-  // Implement a proper deleteCafe function that uses the edge function with a fallback
+  // URGENT FIX: Simplified delete function
   const deleteCafe = async (cafeId: string): Promise<boolean> => {
-    console.log("Delete cafe called for:", cafeId);
+    console.log("URGENT FIX: Delete cafe called for:", cafeId);
     
     try {
-      // First try to delete using the edge function
-      console.log("DELETION: Attempting to delete via edge function");
+      // Try edge function first
       const result = await deleteViaEdgeFunction(cafeId);
       
       if (result) {
-        console.log("DELETION: Edge function deletion successful");
-        // Always refresh cafes after deletion
-        setTimeout(() => fetchCafes(true), 500);
+        console.log("URGENT FIX: Edge function deletion successful");
+        // Immediate refresh after deletion
+        setTimeout(() => fetchCafes(true), 100);
         return true;
       }
       
-      // If edge function fails, fall back to client-side deletion
-      console.log("DELETION: Edge function failed, falling back to client-side deletion");
-      toast.info("Edge function deletion failed. Trying client-side deletion...", {
-        id: `delete-fallback-${cafeId}`,
-        duration: 3000
-      });
-      
-      // Use the enhanced client-side deletion with improved error handling
+      // Fallback to client-side deletion
+      console.log("URGENT FIX: Falling back to client-side deletion");
       const clientResult = await clientSideDeletion(cafeId);
       
-      // Always refresh cafes after deletion attempt
-      setTimeout(() => fetchCafes(true), 500);
+      // Always refresh after deletion attempt
+      setTimeout(() => fetchCafes(true), 100);
       
       return clientResult;
     } catch (err: any) {
-      // Handle any unexpected errors
-      console.error("DELETION: Unexpected error:", err);
-      toast.error(`Deletion failed with error: ${err.message || "Unknown error"}`, {
-        id: `delete-error-${cafeId}`
-      });
+      console.error("URGENT FIX: Deletion error:", err);
+      toast.error(`Deletion failed: ${err.message || "Unknown error"}`);
       
-      // Always refresh cafes to ensure UI is up to date
-      setTimeout(() => fetchCafes(true), 500);
+      // Refresh to ensure UI is accurate
+      setTimeout(() => fetchCafes(true), 100);
       
       return false;
     }
   };
   
-  // Set up a manual setCafes function for compatibility
+  // URGENT FIX: Simplified setCafes function
   const setCafes = (newCafes: any) => {
-    console.log("setCafes called with:", newCafes);
-    // The useCafeFetch hook manages the cafes state internally
-    // We dispatch an event to trigger refresh instead
+    console.log("URGENT FIX: setCafes called - triggering refresh");
     fetchCafes(true);
   };
   
-  // Add refresh on mount and listen for deletion events
+  // URGENT FIX: Immediate refresh on mount
   useEffect(() => {
-    console.log("useCafeState mounted, fetching cafes immediately");
+    console.log("URGENT FIX: useCafeState mounted - immediate cafe fetch");
     fetchCafes(true);
-    
-    // Listen for deletion events
-    const handleDeletion = () => {
-      console.log("Deletion event detected, refreshing cafes");
-      fetchCafes(true);
-    };
-    
-    window.addEventListener('cafe_deleted', handleDeletion);
-    
-    return () => {
-      window.removeEventListener('cafe_deleted', handleDeletion);
-    };
   }, []);
   
+  // URGENT FIX: Show error state if there's an error
+  useEffect(() => {
+    if (error) {
+      console.error("URGENT FIX: Cafe fetch error:", error);
+      toast.error("Failed to load cafes");
+    }
+  }, [error]);
+
   return { 
     cafes,
     setCafes,
@@ -129,6 +112,6 @@ export const useCafeState = () => {
     deleteCafe,
     lastRefreshTime,
     setLastRefreshTime,
-    pendingDeletions
+    pendingDeletions: { current: new Set() } // Simplified
   };
 };

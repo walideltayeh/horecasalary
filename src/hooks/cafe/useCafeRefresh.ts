@@ -1,33 +1,27 @@
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 
 export const useCafeRefresh = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { refreshCafes } = useData();
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleRefresh = async () => {
-    // Remove throttling - allow immediate refresh
+    // URGENT FIX: Remove all throttling - allow immediate refresh
     if (refreshing) {
-      console.log("Refresh already in progress, skipping");
+      console.log("URGENT FIX: Refresh already in progress, skipping");
       return; 
-    }
-    
-    // Cancel any pending refresh
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
     }
     
     try {
       setRefreshing(true);
-      console.log("Refreshing cafe data from server - no throttling");
+      console.log("URGENT FIX: Executing immediate refresh");
       
       await refreshCafes();
-      console.log("Data refreshed successfully");
+      console.log("URGENT FIX: Data refreshed successfully");
     } catch (error) {
-      console.error("Error during refresh:", error);
+      console.error("URGENT FIX: Error during refresh:", error);
       toast.error("Failed to refresh data");
     } finally {
       setRefreshing(false);
