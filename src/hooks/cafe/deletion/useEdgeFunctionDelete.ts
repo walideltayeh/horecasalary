@@ -50,7 +50,7 @@ export const useEdgeFunctionDelete = () => {
       
       // Create a separate log entry independent of the deletion process
       // This ensures we have a record even if deletion fails
-      await logDeletion('cafe', cafeId, userId, cafeData);
+      await logDeletion('cafe', cafeId, cafeData, userId);
       
       // Call the edge function to delete cafe and related data
       const result = await invokeEdgeFunction(params);

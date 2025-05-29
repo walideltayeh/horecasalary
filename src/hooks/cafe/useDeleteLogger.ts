@@ -93,8 +93,20 @@ export const useDeleteLogger = () => {
         return [];
       }
       
-      console.log("useDeleteLogger: Retrieved", data?.length || 0, "deletion logs");
-      return data || [];
+      // Transform the data to match our DeletionLog interface
+      const transformedData: DeletionLog[] = (data || []).map(item => ({
+        id: item.id,
+        entity_type: item.entity_type,
+        entity_id: item.entity_id,
+        deleted_by: item.deleted_by,
+        deleted_at: item.deleted_at,
+        entity_data: typeof item.entity_data === 'string' 
+          ? JSON.parse(item.entity_data) 
+          : (item.entity_data as Record<string, any>) || {}
+      }));
+      
+      console.log("useDeleteLogger: Retrieved", transformedData.length, "deletion logs");
+      return transformedData;
     } catch (err: any) {
       console.error("useDeleteLogger: Error in getDeletionLogs:", err);
       return [];
